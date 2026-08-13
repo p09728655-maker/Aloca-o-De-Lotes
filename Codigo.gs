@@ -20,12 +20,21 @@ var SHEET_ID = '1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg';
 var AB_REG   = 'REGISTRO';
 var AB_PAD   = 'ALOCACAO_PADRAO';
 var AB_COL   = 'COLABORADORES';
+var AB_MAPA  = 'MAPA_TRILHOS';
 
 var CAB_REG = ['TS','ID_ENVIO','LOTE','COR','DATA_EMB','COD_PRODUTO','DESC_PRODUTO',
                'VOLUMES','N_POSTOS','POSTO','MATRICULA','NOME','COD_PECA','DESC_PECA',
                'QTD','TIPO'];
 var CAB_PAD = ['COD_PRODUTO','POSTO','COD_PECA','QTD','ATUALIZADO_EM'];
 var CAB_COL = ['MATRICULA','NOME','ATIVO','CADASTRADO_EM'];
+
+/* O mapa dos trilhos é o desenho da esteira para um produto: qual item entra
+   em qual trilho, em que ordem, e qual OP cobre aquele trilho. Uma linha por
+   item — trilho com dois itens ocupa duas linhas, trilho vazio não ocupa
+   nenhuma (o número dele volta pelo N_TRILHOS do cabeçalho). */
+var CAB_MAPA = ['COD_PRODUTO','DESC_PRODUTO','N_TRILHOS','TRILHO','OP','SEQ',
+                'COD_ITEM','DESC_ITEM','QTD','TIPO','VELOCIDADE','N_ESQUEMA',
+                'ATUALIZADO_EM'];
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -42,6 +51,7 @@ function doPost(e) {
     var ss = SpreadsheetApp.openById(SHEET_ID);
 
     if (p.acao === 'salvar_lote')  return json(salvarLote(ss, p));
+    if (p.acao === 'salvar_mapa')  return json(salvarMapa(ss, p));
     if (p.acao === 'colaborador')  return json(salvarColaborador(ss, p));
     return json({ ok: false, erro: 'acao desconhecida: ' + p.acao });
 
@@ -106,6 +116,45 @@ function atualizarPadrao(ss, p, ts) {
   }
 }
 
+/**
+ * Grava o mapa dos trilhos de um produto. Sobrescreve o mapa anterior daquele
+ * código: o mapa é o desenho vigente da esteira, não histórico. O que aconteceu
+ * em cada lote fica em REGISTRO, que é append-only.
+ *
+ * Apagar linha a linha ficaria lento num mapa de 28 trilhos, então reescreve a
+ * aba inteira sem as linhas do produto e devolve as novas de uma vez só.
+ */
+function salvarMapa(ss, p) {
+  if (!p.cod_produto) return { ok: false, erro: 'cod_produto obrigatorio' };
+  if (!p.trilhos || !p.trilhos.length) return { ok: false, erro: 'mapa vazio' };
+
+  var sh = aba(ss, AB_MAPA, CAB_MAPA);
+  var cod = String(p.cod_produto);
+  var ts = new Date();
+  var ult = sh.getLastRow();
+
+  var mantidas = [];
+  if (ult > 1) {
+    var vals = sh.getRange(2, 1, ult - 1, CAB_MAPA.length).getValues();
+    for (var i = 0; i < vals.length; i++) {
+      if (String(vals[i][0]) !== cod) mantidas.push(vals[i]);
+    }
+  }
+
+  var novas = p.trilhos.map(function (t) {
+    return [cod, p.desc_produto || '', p.n_trilhos || 0, t.trilho, t.op || '',
+            t.seq || 1, t.cod_item, t.desc_item || '', t.qtd || 0, t.tipo || '',
+            p.velocidade || '', p.n_esquema || '', ts];
+  });
+
+  var todas = mantidas.concat(novas);
+  if (ult > 1) sh.getRange(2, 1, ult - 1, CAB_MAPA.length).clearContent();
+  if (todas.length) {
+    sh.getRange(2, 1, todas.length, CAB_MAPA.length).setValues(todas);
+  }
+  return { ok: true, trilhos: p.n_trilhos || 0, linhas: novas.length };
+}
+
 function salvarColaborador(ss, p) {
   var mat = String(p.matricula || '').trim();
   var nome = String(p.nome || '').trim();
@@ -140,10 +189,15 @@ function jaGravado(sh, id) {
   return false;
 }
 
+/**
+ * Devolve a aba, criando-a se não existir. Se a aba existir mas estiver vazia
+ * — caso de quem criou na mão antes de rodar o script — escreve o cabeçalho
+ * mesmo assim: sem ele o app não acha as colunas e a aba parece quebrada.
+ */
 function aba(ss, nome, cab) {
   var sh = ss.getSheetByName(nome);
-  if (!sh) {
-    sh = ss.insertSheet(nome);
+  if (!sh) sh = ss.insertSheet(nome);
+  if (sh.getLastRow() === 0) {
     sh.getRange(1, 1, 1, cab.length).setValues([cab]);
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, cab.length).setFontWeight('bold');
@@ -157,11 +211,51 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Rode uma vez pelo editor para autorizar o script e criar as três abas. */
+/** Rode uma vez pelo editor para autorizar o script e criar as abas. */
 function garantirAbas() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   aba(ss, AB_REG, CAB_REG);
   aba(ss, AB_PAD, CAB_PAD);
+  aba(ss, AB_MAPA, CAB_MAPA);
   aba(ss, AB_COL, CAB_COL);
   Logger.log('abas prontas');
+}
+
+/**
+ * Cadastro em lote da equipe da embalagem — mais rápido que digitar um a um
+ * pelo tablet. Cole os nomes aqui, rode uma vez, apague a lista.
+ * Formato: 'matricula, nome' por linha.
+ */
+function cadastrarEquipe() {
+  var LISTA = [
+    // '12345, MARIA DA SILVA',
+    // '12346, JOAO SOUZA',
+  ];
+  if (!LISTA.length) { Logger.log('preencha LISTA antes de rodar'); return; }
+
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sh = aba(ss, AB_COL, CAB_COL);
+  var ja = {};
+  var ult = sh.getLastRow();
+  if (ult > 1) {
+    sh.getRange(2, 1, ult - 1, 1).getValues().forEach(function (r) {
+      ja[String(r[0]).trim()] = true;
+    });
+  }
+
+  var novas = [], pulados = [];
+  LISTA.forEach(function (linha) {
+    var partes = String(linha).split(',');
+    var mat = (partes.shift() || '').trim();
+    var nome = partes.join(',').trim();
+    if (!mat || !nome) { pulados.push(linha + ' (formato)'); return; }
+    if (ja[mat]) { pulados.push(linha + ' (ja cadastrada)'); return; }
+    ja[mat] = true;
+    novas.push([mat, nome, 'SIM', new Date()]);
+  });
+
+  if (novas.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, novas.length, CAB_COL.length).setValues(novas);
+  }
+  Logger.log(novas.length + ' cadastrados; ' + pulados.length + ' pulados: ' + pulados.join(' | '));
 }
