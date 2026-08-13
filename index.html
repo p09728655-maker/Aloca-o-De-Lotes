@@ -33,9 +33,13 @@
     display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px 18px;
     border-bottom:2px solid var(--amber); padding:6px 0; margin-top:-10px;
     box-shadow:0 8px 16px -6px rgba(0,0,0,.9)}
-  .brand{display:flex; flex-direction:column; gap:2px; flex:1 1 0}
+  .brand{display:flex; flex-direction:column; gap:4px; flex:1 1 0}
   .brand .eyebrow{font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.22em;
-    text-transform:uppercase; color:var(--mut)}
+    text-transform:uppercase; color:var(--mut); display:flex; align-items:center; gap:10px}
+  /* a logo vem com fundo transparente e o "móveis" clareado — no JPG original
+     ela é branca por baixo e sumiria num quadrado branco aqui no preto */
+  .brand .eyebrow img{height:26px; width:auto; display:block; flex:none}
+  .brand .eyebrow .sep{color:var(--mut2)}
   .brand h1{font-family:"Oswald"; font-weight:600; font-size:20px; letter-spacing:.02em; margin:0; line-height:1}
   .brand h1 span{color:var(--amber)}
   .headmeta{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px 18px; align-items:flex-end}
@@ -69,8 +73,12 @@
   button.gho{background:transparent}
   button:disabled{opacity:.4; cursor:not-allowed}
 
+  /* stretch para as duas caixas terminarem na mesma altura — a da direita tem
+     botões no pé e a da esquerda não, e sem isto os rodapés ficam desencontrados. */
   .work{display:grid; grid-template-columns:minmax(300px,1fr) minmax(340px,1.1fr);
-    gap:14px; margin-top:14px; align-items:start}
+    gap:14px; margin-top:14px; align-items:stretch}
+  .box{display:flex; flex-direction:column}
+  .box .rolagem{flex:1 1 auto}
   @media(max-width:1000px){ .work{grid-template-columns:1fr} }
 
   .box{background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
@@ -98,12 +106,19 @@
   .item.fora .onde{background:#1c1f24; color:var(--mut2)}
   .item.completo .onde{background:var(--green-dim); color:var(--green)}
   .item .info{flex:1 1 0; min-width:0}
-  .item .desc{font-size:13.5px; line-height:1.3}
-  .item .cod{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut); letter-spacing:.04em}
+  /* span é inline: sem isto a descrição e o código emendam numa linha só
+     assim que a tela é larga o bastante para os dois caberem juntos. */
+  .item .desc{display:block; font-size:13.5px; line-height:1.3;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .item .cod{display:block; font-family:"IBM Plex Mono"; font-size:10.5px;
+    color:var(--mut); letter-spacing:.04em; margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .item .cod .tp{color:var(--steel)}
   .item .cod .tp.emb{color:var(--roxo)}
-  .item .qtd{font-family:"Oswald"; font-weight:600; font-size:17px; flex:none; text-align:right}
-  .item .qtd small{font-size:9.5px; color:var(--mut); letter-spacing:.1em; display:block}
+  .item .qtd{font-family:"Oswald"; font-weight:600; font-size:17px; flex:none;
+    text-align:right; min-width:64px}
+  .item .qtd small{font-size:9.5px; color:var(--mut); letter-spacing:.1em; display:block;
+    font-family:"Inter"; font-weight:400}
 
   /* ---------- trilhos ---------- */
   .opsep{display:flex; align-items:center; gap:9px; padding:7px 13px;
@@ -120,8 +135,14 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none; cursor:pointer}
   .trilho.sel .num{background:var(--amber); border-color:var(--amber); color:#000}
   .trilho .corpo{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:6px;
-    padding-top:2px}
-  .trilho .vazio{font-size:12px; color:var(--mut2); font-style:italic; padding:12px 0 0}
+    padding-top:2px; justify-content:center}
+  /* Trilho vazio é a maioria enquanto o mapa está sendo montado. Repetir a
+     instrução em cada um vira parede de texto: o traço marca o lugar, e a
+     frase só aparece no trilho selecionado, que é onde ela serve. */
+  .trilho.vazia{padding:5px 13px}
+  .trilho.vazia .num{height:38px; width:var(--tap); font-size:16px}
+  .trilho .risco{height:2px; border-radius:1px; background:var(--line); width:56px}
+  .trilho .dica{font-size:12px; color:var(--mut2); font-style:italic}
   .trilho .mover{display:flex; flex-direction:column; gap:3px; flex:none}
   .trilho .mover button{min-height:22px; padding:0 9px; font-size:12px; line-height:1;
     border-radius:5px}
@@ -179,7 +200,10 @@
 
 <header class="top">
   <div class="brand">
-    <div class="eyebrow">PPCP · Patrimar Móveis</div>
+    <div class="eyebrow">
+      <img src="./logo-patrimar.png" alt="Patrimar Móveis" width="900" height="291">
+      <span class="sep">·</span><span>PPCP</span>
+    </div>
     <h1>Mapa dos <span>Trilhos</span></h1>
   </div>
   <div class="headmeta">
@@ -292,7 +316,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.1.0";
+const VERSAO = "1.2.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -763,8 +787,9 @@ function faixaOp(op, t){
 
 function linhaTrilho(t){
   const tr = S.trilhos[t-1] || { itens:[] };
+  const vazio = !tr.itens.length;
   const el = document.createElement("div");
-  el.className = "trilho" + (t===S.sel ? " sel" : "");
+  el.className = "trilho" + (t===S.sel ? " sel" : "") + (vazio ? " vazia" : "");
 
   const num = document.createElement("span");
   num.className = "num"; num.textContent = t;
@@ -772,8 +797,10 @@ function linhaTrilho(t){
 
   const corpo = document.createElement("div");
   corpo.className = "corpo";
-  if(!tr.itens.length){
-    corpo.innerHTML = `<div class="vazio">Vazio — toque no número e depois nos itens.</div>`;
+  if(vazio){
+    corpo.innerHTML = t===S.sel
+      ? `<div class="dica">Toque nos itens da lista para colocar neste trilho.</div>`
+      : `<div class="risco"></div>`;
   }else{
     tr.itens.forEach((x, j)=>{
       const it = itemPorCod(x.cod) || { desc:x.cod, emb:false };
