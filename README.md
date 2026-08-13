@@ -45,7 +45,7 @@ aceita os dois casos.
 ## Implantação
 
 **1. Apps Script** — na planilha, `Extensões > Apps Script`, cole `Codigo.gs`.
-Execute `garantirAbas()` uma vez (autoriza e cria as quatro abas).
+Execute `garantirAbas()` uma vez (autoriza e cria as três abas).
 Depois `Implantar > Nova implantação > Aplicativo da Web`, executar como **Eu**,
 acesso para **Qualquer pessoa**. Copie a URL que termina em `/exec`.
 
@@ -75,11 +75,16 @@ Criadas pelo Apps Script:
 | `MAPA_TRILHOS` | COD_PRODUTO · DESC_PRODUTO · N_TRILHOS · TRILHO · OP · SEQ · COD_ITEM · DESC_ITEM · QTD · TIPO · VELOCIDADE · N_ESQUEMA · ATUALIZADO_EM |
 | `REGISTRO` | TS · ID_ENVIO · LOTE · COR · DATA_EMB · COD_PRODUTO · DESC_PRODUTO · VOLUMES · N_POSTOS · POSTO · MATRICULA · NOME · COD_PECA · DESC_PECA · QTD · TIPO |
 | `COLABORADORES` | MATRICULA · NOME · ATIVO · CADASTRADO_EM |
-| `ALOCACAO_PADRAO` | COD_PRODUTO · POSTO · COD_PECA · QTD · ATUALIZADO_EM |
+
+Em `REGISTRO`, `POSTO` guarda o número da OP e `COD_PECA` o código do item — nomes
+herdados de quando o app pensava em postos, mantidos para não quebrar quem já lê a aba.
 
 `MAPA_TRILHOS` é sobrescrito por produto: o mapa é o desenho vigente da esteira, não
 histórico. `REGISTRO` é append-only e guarda o snapshot completo, não a referência —
 o mapa vai mudar com o tempo e o histórico não pode mudar junto.
+
+A aba `ALOCACAO_PADRAO` deixou de ser usada quando o mapa passou a viver em
+`MAPA_TRILHOS`. Se ela já existir na sua planilha, pode apagar.
 
 ## Decisões que precisam ser validadas na linha
 

@@ -18,14 +18,14 @@
 var SHEET_ID = '1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg';
 
 var AB_REG   = 'REGISTRO';
-var AB_PAD   = 'ALOCACAO_PADRAO';
 var AB_COL   = 'COLABORADORES';
 var AB_MAPA  = 'MAPA_TRILHOS';
 
+/* POSTO guarda o número da OP e COD_PECA o código do item — nomes herdados de
+   quando o app pensava em postos, mantidos para não quebrar o que já leu a aba. */
 var CAB_REG = ['TS','ID_ENVIO','LOTE','COR','DATA_EMB','COD_PRODUTO','DESC_PRODUTO',
                'VOLUMES','N_POSTOS','POSTO','MATRICULA','NOME','COD_PECA','DESC_PECA',
                'QTD','TIPO'];
-var CAB_PAD = ['COD_PRODUTO','POSTO','COD_PECA','QTD','ATUALIZADO_EM'];
 var CAB_COL = ['MATRICULA','NOME','ATIVO','CADASTRADO_EM'];
 
 /* O mapa dos trilhos é o desenho da esteira para um produto: qual item entra
@@ -86,34 +86,11 @@ function salvarLote(ss, p) {
             l.posto, l.matricula || '', l.nome || '', l.cod_peca,
             l.desc_peca || '', l.qtd || 0, l.tipo || ''];
   });
-  reg.getRange(reg.getLastRow() + 1, 1, linhas.length, CAB_REG.length).setValues(linhas);
+  var ini = reg.getLastRow() + 1;
+  garantirLinhas(reg, ini + linhas.length);
+  reg.getRange(ini, 1, linhas.length, CAB_REG.length).setValues(linhas);
 
-  atualizarPadrao(ss, p, ts);
   return { ok: true, linhas: linhas.length };
-}
-
-/**
- * O padrão é sobrescrito por produto: a alocação mais recente vale.
- * O histórico não se perde — ele mora em REGISTRO, que é append-only.
- */
-function atualizarPadrao(ss, p, ts) {
-  var sh = aba(ss, AB_PAD, CAB_PAD);
-  var cod = String(p.cod_produto);
-  var ult = sh.getLastRow();
-
-  if (ult > 1) {
-    var vals = sh.getRange(2, 1, ult - 1, 1).getValues();
-    // apaga de baixo para cima para os índices não escorregarem
-    for (var i = vals.length - 1; i >= 0; i--) {
-      if (String(vals[i][0]) === cod) sh.deleteRow(i + 2);
-    }
-  }
-  var novas = p.linhas.map(function (l) {
-    return [cod, l.posto, l.cod_peca, l.qtd || 0, ts];
-  });
-  if (novas.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, novas.length, CAB_PAD.length).setValues(novas);
-  }
 }
 
 /**
@@ -150,6 +127,7 @@ function salvarMapa(ss, p) {
   var todas = mantidas.concat(novas);
   if (ult > 1) sh.getRange(2, 1, ult - 1, CAB_MAPA.length).clearContent();
   if (todas.length) {
+    garantirLinhas(sh, todas.length + 1);
     sh.getRange(2, 1, todas.length, CAB_MAPA.length).setValues(todas);
   }
   return { ok: true, trilhos: p.n_trilhos || 0, linhas: novas.length };
@@ -175,6 +153,18 @@ function salvarColaborador(ss, p) {
 }
 
 /* ---------------------------------------------------------------- */
+
+/**
+ * Aba nova nasce com 1.000 linhas e getRange() estoura se a linha pedida passar
+ * do tamanho do grid — não cresce sozinha como o appendRow. REGISTRO ganha ~280
+ * linhas por dia, então sem isto a gravação começaria a falhar na primeira
+ * semana de fábrica. Cresce com folga para não chamar insertRowsAfter a cada
+ * lote salvo.
+ */
+function garantirLinhas(sh, ate) {
+  var max = sh.getMaxRows();
+  if (ate > max) sh.insertRowsAfter(max, ate - max + 500);
+}
 
 function jaGravado(sh, id) {
   var ult = sh.getLastRow();
@@ -215,7 +205,6 @@ function json(obj) {
 function garantirAbas() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   aba(ss, AB_REG, CAB_REG);
-  aba(ss, AB_PAD, CAB_PAD);
   aba(ss, AB_MAPA, CAB_MAPA);
   aba(ss, AB_COL, CAB_COL);
   Logger.log('abas prontas');
@@ -255,7 +244,9 @@ function cadastrarEquipe() {
   });
 
   if (novas.length) {
-    sh.getRange(sh.getLastRow() + 1, 1, novas.length, CAB_COL.length).setValues(novas);
+    var ini = sh.getLastRow() + 1;
+    garantirLinhas(sh, ini + novas.length);
+    sh.getRange(ini, 1, novas.length, CAB_COL.length).setValues(novas);
   }
   Logger.log(novas.length + ' cadastrados; ' + pulados.length + ' pulados: ' + pulados.join(' | '));
 }
