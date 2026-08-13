@@ -258,65 +258,6 @@ function garantirAbas() {
 
 /* ---------------------------------------------------------------- */
 
-var AB_REL = 'RELATORIO_LOTES';
-var CAB_REL = ['LOTE','COD_PRODUTO','DESC_PRODUTO','DATA_EMB','GRAVACOES','LINHAS',
-               'ITENS_DISTINTOS','QTD_TOTAL','OPS','OPERADORES','PRIMEIRA','ULTIMA','SITUACAO'];
-
-/**
- * Uma linha por lote e produto, para conferir o que foi gravado sem ler o
- * REGISTRO cru. A coluna GRAVACOES é a que importa: mais de uma significa que
- * o lote foi salvo mais de uma vez e as quantidades estão contadas em dobro.
- */
-function relatorioLotes() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var reg = ss.getSheetByName(AB_REG);
-  var ult = reg ? reg.getLastRow() : 0;
-  if (ult < 2) { Logger.log('REGISTRO vazio'); return; }
-
-  var vals = reg.getRange(2, 1, ult - 1, CAB_REG.length).getValues();
-  var mapa = {}, ordem = [];
-  for (var i = 0; i < vals.length; i++) {
-    var v = vals[i];
-    var chave = String(v[2]).trim() + '|' + String(v[5]).trim();   // LOTE | COD_PRODUTO
-    if (!mapa[chave]) {
-      mapa[chave] = { lote: v[2], cod: v[5], desc: v[6], data: v[4], envios: {},
-                      linhas: 0, itens: {}, qtd: 0, ops: {}, gente: {},
-                      primeira: v[0], ultima: v[0] };
-      ordem.push(chave);
-    }
-    var r = mapa[chave];
-    r.envios[String(v[1])] = true;
-    r.linhas++;
-    r.itens[String(v[12])] = true;
-    r.qtd += Number(v[14]) || 0;
-    if (v[9] !== '' && v[9] != null) r.ops[String(v[9])] = true;
-    if (v[11]) r.gente[String(v[11])] = true;
-    if (v[0] < r.primeira) r.primeira = v[0];
-    if (v[0] > r.ultima) r.ultima = v[0];
-  }
-
-  var linhas = ordem.map(function (k) {
-    var r = mapa[k];
-    var n = Object.keys(r.envios).length;
-    return [r.lote, r.cod, r.desc, r.data, n, r.linhas,
-            Object.keys(r.itens).length, r.qtd, Object.keys(r.ops).length,
-            Object.keys(r.gente).sort().join(', '), r.primeira, r.ultima,
-            n > 1 ? 'DUPLICADO — gravado ' + n + 'x' : 'ok'];
-  });
-  linhas.sort(function (a, b) { return b[11] - a[11]; });   // mais recente primeiro
-
-  var sh = aba(ss, AB_REL, CAB_REL);
-  var antes = sh.getLastRow();
-  if (antes > 1) sh.getRange(2, 1, antes - 1, CAB_REL.length).clearContent();
-  if (linhas.length) {
-    garantirLinhas(sh, linhas.length + 1);
-    sh.getRange(2, 1, linhas.length, CAB_REL.length).setValues(linhas);
-  }
-  var dup = linhas.filter(function (l) { return l[4] > 1; });
-  Logger.log(linhas.length + ' lote(s) no relatório; ' + dup.length + ' duplicado(s)' +
-    (dup.length ? ': ' + dup.map(function (l) { return l[0] + '/' + l[1] + ' (' + l[4] + 'x)'; }).join(', ') : ''));
-}
-
 /**
  * Tira a duplicidade já gravada, mantendo a gravação mais recente de cada lote
  * e produto — que é a que o líder quis deixar valendo quando salvou de novo.

@@ -153,13 +153,26 @@ o app pergunta: *“o lote X já foi gravado com N linhas. Substituir?”*. Subs
 apaga as linhas anteriores daquele lote e produto; cancelar mantém o que já estava.
 Nenhum outro lote é tocado.
 
-Para conferir o que já está gravado, rode `relatorioLotes()` no Apps Script. Ele
-escreve a aba `RELATORIO_LOTES` com uma linha por lote e produto: quantas gravações,
-quantas linhas, quantos itens, quantidade total, quantas OPs, quem estava e a
-situação. A coluna `GRAVACOES` maior que 1 é a que denuncia duplicidade.
+Para conferir, **digite o lote no app**. Ele consulta o `REGISTRO` e mostra o que já
+foi gravado daquele lote: quantas linhas, quantas OPs, quem estava em cada uma, e um
+aviso em laranja quando o lote foi gravado mais de uma vez.
 
-Para limpar duplicidade já gravada, `limparDuplicados()` mantém a gravação mais
-recente de cada lote e apaga as antigas. Rode o relatório antes e depois.
+Não existe aba de relatório: ela nasceria desatualizada no instante seguinte, e o
+`REGISTRO` já tem tudo. A consulta filtra no servidor pelo `tq` do gviz, então o
+tablet baixa só as linhas daquele lote em vez da aba inteira.
+
+Para limpar duplicidade já gravada, `limparDuplicados()` no Apps Script mantém a
+gravação mais recente de cada lote e apaga as antigas.
+
+## Imprimir o mapa
+
+*Imprimir mapa* gera a folha que fica pendurada na esteira, no mesmo desenho da que
+a embalagem usa hoje: OP à esquerda, insumo, descrição da peça, e o número do trilho
+à direita. Trilho vazio aparece como linha vazia — isso é informação, marca que
+aquele trilho não recebe nada.
+
+Cabe numa folha A4 com os 28 trilhos. Os campos de data e lote saem preenchidos
+quando o lote está escolhido no app, e em branco para preencher à mão quando não está.
 
 ## Versões e atualização
 

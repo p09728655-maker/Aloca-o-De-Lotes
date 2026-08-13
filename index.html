@@ -195,8 +195,66 @@
   dialog .foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:9px; justify-content:flex-end}
   dialog p.hint{font-size:12.5px; color:var(--mut); line-height:1.5; margin:0}
 
+  /* ---------- rastreio do lote ---------- */
+  .rastro{margin-top:10px; background:var(--panel); border:1px solid var(--line);
+    border-left:4px solid var(--steel); border-radius:10px; padding:10px 13px;
+    font-size:13px; line-height:1.5}
+  .rastro.alerta{border-left-color:var(--amber)}
+  .rastro .mut{color:var(--mut)}
+  .rastro .rlinha{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline;
+    padding-top:7px; margin-top:7px; border-top:1px solid var(--line)}
+  .rastro .rcod{font-family:"IBM Plex Mono"; font-size:12px; color:var(--steel)}
+  .rastro .rdesc{flex:1 1 220px; min-width:0; font-size:12.5px}
+  .rastro .rnum{font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--mut)}
+  .rastro .rdup{font-family:"Oswald"; font-size:12px; letter-spacing:.05em; color:#000;
+    background:var(--amber); border-radius:5px; padding:2px 8px}
+  .rastro .rops{flex:1 1 100%; font-family:"IBM Plex Mono"; font-size:11px; color:var(--mut)}
+
   .vazio-tela{padding:26px 16px; color:var(--mut); font-size:13.5px; line-height:1.6}
   @media(prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
+
+  /* ---------- impressão ----------
+     Sai no desenho da folha que a linha já usa: faixa de OP à esquerda,
+     número do trilho à direita, um trilho por linha. O operador não pode
+     estranhar o papel — é ele que fica pendurado na esteira. */
+  #folha{display:none}
+  @media print{
+    body{background:#fff; color:#000; padding:0}
+    body > *{display:none !important}
+    body > #folha{display:block !important}
+    @page{size:A4 portrait; margin:10mm}
+
+    #folha{font-family:"Times New Roman",Georgia,serif; color:#000}
+    #folha .cab{display:flex; align-items:flex-end; gap:12px; border-bottom:2px solid #000;
+      padding-bottom:4px; margin-bottom:2px}
+    #folha .cab img{height:26px; width:auto}
+    #folha .cab .tit{flex:1 1 0; text-align:center}
+    #folha .cab .tit b{display:block; font-size:13pt; text-decoration:underline; letter-spacing:.02em}
+    #folha .cab .tit span{display:block; font-size:12pt; font-weight:bold; text-decoration:underline}
+    #folha .cab .vel{font-size:9pt; text-align:right; line-height:1.4}
+
+    #folha .campos{display:flex; gap:18px; font-size:9.5pt; padding:4px 2px 5px}
+    #folha .campos span{flex:1 1 0; border-bottom:1px solid #000; padding-bottom:1px}
+
+    #folha table{width:100%; table-layout:fixed; border-collapse:collapse; font-size:10pt}
+    #folha th, #folha td{border:1px solid #000; padding:3.5px 6px; vertical-align:middle; line-height:1.25}
+    #folha th{font-size:8.5pt; text-transform:uppercase; letter-spacing:.05em; background:#eee}
+    /* Classes com prefixo f- de propósito: o app define .item e .op globais,
+       e .item carrega min-height de 48px (o alvo de toque do tablet). Sem o
+       prefixo, cada célula da folha herdava isso e a tabela nem cabia na
+       página. Foi a segunda colisão de nome aqui — a primeira foi .rodape. */
+    #folha td.fop{text-align:center; font-weight:bold; font-size:11pt}
+    #folha td.fins{text-align:center; font-size:8pt}
+    #folha td.ftr{text-align:center; font-weight:bold; font-size:12pt}
+    #folha tr.fvazio td.fitem{color:#999}
+    /* nome próprio: ".rodape" é o rodapé fixo do app, e o position:fixed dele
+       vazava para cá, jogando este texto por cima da tabela */
+    #folha .pe{display:flex; justify-content:space-between; font-size:8pt;
+      padding-top:6px; color:#333}
+    /* uma caixa por página: o operador pendura uma folha por vez */
+    #folha .caixa{break-after:page; page-break-after:always}
+    #folha .caixa:last-child{break-after:auto; page-break-after:auto}
+  }
 </style>
 </head>
 <body>
@@ -245,7 +303,10 @@
   </div>
   <button class="gho" id="btnAuto">Sugerir mapa</button>
   <button class="gho" id="btnLimpar">Limpar</button>
+  <button class="gho" id="btnImprimir">Imprimir mapa</button>
 </div>
+
+<div class="rastro" id="rastro" hidden></div>
 
 <div class="work">
   <div class="box">
@@ -302,6 +363,8 @@
   </div>
 </dialog>
 
+<div id="folha"></div>
+
 <dialog id="dlgImp">
   <h3>Importar mapa do Excel</h3>
   <div class="body" id="impCorpo" style="max-height:60vh; overflow-y:auto"></div>
@@ -333,7 +396,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.4.0";
+const VERSAO = "1.5.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -357,6 +420,11 @@ const extraiId = s => { const t=String(s||"").trim();
 
 const urlGid  = gid  => `https://docs.google.com/spreadsheets/d/${CFG.sheet}/gviz/tq?tqx=out:csv&gid=${gid}`;
 const urlAba  = nome => `https://docs.google.com/spreadsheets/d/${CFG.sheet}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(nome)}`;
+/* O REGISTRO cresce ~280 linhas por dia; baixar a aba inteira só para conferir
+   um lote seria pesado no Wi-Fi da fábrica. O gviz filtra no servidor. */
+const urlConsulta = (nome, tq) =>
+  `https://docs.google.com/spreadsheets/d/${CFG.sheet}/gviz/tq?tqx=out:csv` +
+  `&sheet=${encodeURIComponent(nome)}&tq=${encodeURIComponent(tq)}`;
 
 /* ==================================================================
    LEITURA
@@ -1067,6 +1135,12 @@ function escolherLote(txt){
   });
   if(S.lote && S.lote.itens.length === 1){ sp.value = "0"; sp.dispatchEvent(new Event("change")); }
   else render();
+
+  // consulta o registro só quando o lote existe, e sem repetir a cada tecla
+  clearTimeout(escolherLote._t);
+  if(!S.lote){ $("rastro").hidden = true; return; }
+  const alvo = S.lote.lote;
+  escolherLote._t = setTimeout(()=> rastrearLote(alvo), 350);
 }
 // "input" pega a escolha no datalist, que não dispara change em todo navegador
 $("inLote").addEventListener("input", ev=> escolherLote(ev.target.value));
@@ -1151,6 +1225,168 @@ $("colOk").addEventListener("click", async ()=>{
     render(); linhaStatus();
   }catch(e){ setMsg("err", "Não cadastrou: "+e.message); }
 });
+
+/* ==================================================================
+   IMPRESSÃO
+   A folha impressa substitui a que está pendurada na esteira, então ela sai
+   no desenho que o operador já conhece: OP à esquerda, item no meio, número
+   do trilho à direita, e trilho vazio aparecendo como vazio — a linha em
+   branco é informação, marca que aquele trilho não recebe nada.
+   ================================================================== */
+function montarFolha(){
+  const f = $("folha");
+  if(!S.prod || !S.itens.length){ f.innerHTML = ""; return false; }
+
+  const linhas = [];
+  for(let t = 1; t <= S.nTrilhos; t++){
+    const tr = S.trilhos[t-1] || { itens:[] };
+    const nomes = tr.itens.map(x => {
+      const it = itemPorCod(x.cod) || {};
+      const q = x.qtd > 1 ? fmtQtd(x.qtd) + " " : "";
+      return { emb: !!it.emb, txt: q + (it.desc || x.cod) };
+    });
+    linhas.push({
+      trilho: t,
+      op: S.inicioOp.has(t) ? "OP " + String(opDoTrilho(t)).padStart(2, "0") : "",
+      insumo: nomes.filter(n => n.emb).map(n => n.txt).join(" + "),
+      item: nomes.filter(n => !n.emb).map(n => n.txt).join(" + ")
+    });
+  }
+
+  const corpo = linhas.map(l =>
+    `<tr class="${l.item || l.insumo ? "" : "fvazio"}">
+       <td class="fop">${escapa(l.op)}</td>
+       <td class="fins">${escapa(l.insumo)}</td>
+       <td class="fitem">${escapa(l.item)}</td>
+       <td class="ftr">${l.trilho}</td>
+     </tr>`).join("");
+
+  f.innerHTML = `
+    <div class="caixa">
+      <div class="cab">
+        <img src="./logo-patrimar.png" alt="Patrimar Móveis">
+        <div class="tit">
+          <b>MAPA DOS TRILHOS DA EMBALAGEM</b>
+          <span>${escapa(S.prod.desc || S.prod.cod)}</span>
+        </div>
+        <div class="vel">VELOCIDADE EST<br><b>${escapa(S.vel || "—")}</b>
+          <br>Nº ESQUEMA ${escapa(S.esq || "—")}</div>
+      </div>
+      <div class="campos">
+        <span>DATA ____/____/______</span>
+        <span>LOTE ${escapa(S.lote ? S.lote.lote : "____________")}</span>
+        <span>CAIXAS ${escapa(S.prod.qtd ? fmtQtd(S.prod.qtd) : "________")}</span>
+      </div>
+      <table>
+        <colgroup>
+          <col style="width:13%"><col style="width:19%">
+          <col style="width:54%"><col style="width:14%">
+        </colgroup>
+        <thead><tr><th>OP</th><th>Insumo</th><th>Descrição da peça</th><th>Nº trilho</th></tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+      <div class="pe">
+        <span>${escapa(S.prod.cod)} · ${S.nTrilhos} trilhos · ${totalOps()} OPs</span>
+        <span>PPCP · impresso pelo app v${VERSAO}</span>
+      </div>
+    </div>`;
+  return true;
+}
+
+$("btnImprimir").addEventListener("click", ()=>{
+  if(!montarFolha()){ setMsg("err", "Escolha um lote e um produto antes de imprimir."); return; }
+  window.print();
+});
+
+/* ==================================================================
+   RASTREIO DO LOTE
+   Digitou o lote, o app vai no REGISTRO e mostra o que já foi gravado:
+   quem estava em cada OP, quantas linhas, e se o lote foi gravado mais de
+   uma vez. É o relatório de conferência sem aba nova e sem fórmula — o
+   REGISTRO já tem tudo, só faltava alguém perguntar.
+   ================================================================== */
+const IDX_REG = { ts:0, envio:1, lote:2, cor:3, emb:4, cod:5, desc:6,
+                  vol:7, nops:8, op:9, mat:10, nome:11, peca:12, dpeca:13, qtd:14, tipo:15 };
+
+async function lerRegistroDoLote(lote){
+  const num = String(lote).trim();
+  // primeiro tenta filtrar no servidor; o tipo da coluna LOTE depende de como
+  // o Sheets interpretou o número, então se a comparação como texto falhar,
+  // cai para baixar a aba e filtrar aqui
+  for(const tq of [`select * where C = '${num}'`, `select * where C = ${num}`]){
+    try{
+      const linhas = await lerCSV(urlConsulta("REGISTRO", tq));
+      return linhas.filter(l => String(l[IDX_REG.lote] || "").trim() === num);
+    }catch(e){ /* tenta a próxima forma */ }
+  }
+  const todas = await lerCSV(urlAba("REGISTRO"));
+  return todas.filter(l => String(l[IDX_REG.lote] || "").trim() === num);
+}
+
+/** Agrupa por produto: um lote pode ter vários volumes gravados. */
+function resumirRegistro(linhas){
+  const porProduto = new Map();
+  for(const l of linhas){
+    const cod = String(l[IDX_REG.cod] || "").trim();
+    if(!cod || cod.toUpperCase() === "COD_PRODUTO") continue;
+    if(!porProduto.has(cod)){
+      porProduto.set(cod, { cod, desc: l[IDX_REG.desc] || "", envios: new Set(),
+                            linhas: 0, qtd: 0, ops: new Map(), quando: new Set() });
+    }
+    const r = porProduto.get(cod);
+    r.envios.add(String(l[IDX_REG.envio] || ""));
+    r.quando.add(String(l[IDX_REG.ts] || ""));
+    r.linhas++;
+    r.qtd += numDec(l[IDX_REG.qtd]);
+    const op = String(l[IDX_REG.op] || "").trim();
+    const nome = String(l[IDX_REG.nome] || "").trim();
+    if(op && !r.ops.has(op)) r.ops.set(op, new Set());
+    if(op && nome) r.ops.get(op).add(nome);
+  }
+  return [...porProduto.values()];
+}
+
+/* Digitar rápido dispara mais de uma consulta, e elas não voltam
+   necessariamente na ordem em que saíram. Sem esta guarda, a resposta de um
+   lote anterior pode chegar depois e pintar a tela com o rastro errado — do
+   tipo de erro que ninguém percebe olhando. */
+let rastroAtual = 0;
+
+async function rastrearLote(lote){
+  const meu = ++rastroAtual;
+  const cx = $("rastro");
+  cx.hidden = false;
+  cx.className = "rastro";
+  cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">consultando o registro…</span>`;
+  try{
+    const linhas = await lerRegistroDoLote(lote);
+    if(meu !== rastroAtual) return;
+    const resumo = resumirRegistro(linhas);
+    if(!resumo.length){
+      cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">ainda não foi gravado.</span>`;
+      return;
+    }
+    const dup = resumo.filter(r => r.envios.size > 1);
+    if(dup.length) cx.className = "rastro alerta";
+    cx.innerHTML = `<b>Lote ${escapa(lote)}</b> · já gravado` +
+      resumo.map(r => {
+        const ops = [...r.ops.entries()].sort((a,b)=> (+a[0]) - (+b[0]))
+          .map(([op, gente]) => `OP ${String(op).padStart(2,"0")} ${escapa([...gente].join("/") || "—")}`)
+          .join(" · ");
+        return `<div class="rlinha">
+            <span class="rcod">${escapa(r.cod)}</span>
+            <span class="rdesc">${escapa(r.desc)}</span>
+            <span class="rnum">${r.linhas} linhas · ${fmtQtd(r.qtd)} un · ${r.ops.size} OPs</span>
+            ${r.envios.size > 1 ? `<span class="rdup">gravado ${r.envios.size}× — quantidade em dobro</span>` : ""}
+            <span class="rops">${ops}</span>
+          </div>`;
+      }).join("");
+  }catch(e){
+    if(meu !== rastroAtual) return;
+    cx.className = "rastro";
+    cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">não consegui consultar o registro (${escapa(e.message)}).</span>`;
+  }
+}
 
 /* ==================================================================
    IMPORTAR O MAPA DE UM EXCEL
