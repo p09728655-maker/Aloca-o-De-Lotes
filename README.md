@@ -142,6 +142,25 @@ da fábrica não baixaria mesmo.
 
 Importar um produto substitui o mapa que ele já tinha; os outros não são tocados.
 
+## Gravar o mesmo lote duas vezes
+
+O `ID_ENVIO` protege contra o tablet reenviar o **mesmo** pacote quando o Wi-Fi cai.
+Ele nunca pegou o líder tocando em *Gravar lote* de novo: aí o id é outro, e as duas
+gravações entram, dobrando a quantidade de todo indicador feito em cima.
+
+Regravar é legítimo — corrigir um nome, refazer o rodízio —, então em vez de recusar,
+o app pergunta: *“o lote X já foi gravado com N linhas. Substituir?”*. Substituir
+apaga as linhas anteriores daquele lote e produto; cancelar mantém o que já estava.
+Nenhum outro lote é tocado.
+
+Para conferir o que já está gravado, rode `relatorioLotes()` no Apps Script. Ele
+escreve a aba `RELATORIO_LOTES` com uma linha por lote e produto: quantas gravações,
+quantas linhas, quantos itens, quantidade total, quantas OPs, quem estava e a
+situação. A coluna `GRAVACOES` maior que 1 é a que denuncia duplicidade.
+
+Para limpar duplicidade já gravada, `limparDuplicados()` mantém a gravação mais
+recente de cada lote e apaga as antigas. Rode o relatório antes e depois.
+
 ## Versões e atualização
 
 A versão fica no rodapé do status (`v1.1.0`) e no ⚙. Quando alguém pergunta por

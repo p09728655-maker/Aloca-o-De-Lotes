@@ -79,6 +79,18 @@ function salvarLote(ss, p) {
     return { ok: true, duplicado: true, linhas: 0 };
   }
 
+  /* O id_envio só pega reenvio do MESMO pacote, que é o caso do Wi-Fi caindo.
+     Não pega o líder tocando em Gravar lote de novo: aí o id é outro e as duas
+     gravações entram, dobrando a quantidade de todo indicador feito em cima.
+     Regravar o mesmo lote é legítimo — corrigir um nome, refazer o rodízio —,
+     então em vez de recusar, pergunta e substitui. */
+  var antigas = linhasDoLote(reg, p.lote, p.cod_produto);
+  if (antigas.length && !p.substituir) {
+    return { ok: false, erro: 'ja_gravado', lote: p.lote, cod_produto: p.cod_produto,
+             linhas_antigas: antigas.length };
+  }
+  if (antigas.length) apagarLinhas(reg, antigas);
+
   var ts = new Date();
   var linhas = p.linhas.map(function (l) {
     return [ts, p.id_envio || '', p.lote, p.cor || '', p.data_emb || '',
@@ -166,6 +178,40 @@ function garantirLinhas(sh, ate) {
   if (ate > max) sh.insertRowsAfter(max, ate - max + 500);
 }
 
+/**
+ * Linhas já gravadas para um lote e produto. Olha só as últimas 5.000: regravar
+ * é sempre coisa do mesmo dia, e varrer o histórico inteiro ficaria lento.
+ * Colunas 3 a 6 do REGISTRO são LOTE, COR, DATA_EMB e COD_PRODUTO.
+ */
+function linhasDoLote(sh, lote, cod) {
+  var ult = sh.getLastRow();
+  if (ult < 2) return [];
+  var ini = Math.max(2, ult - 5000);
+  var vals = sh.getRange(ini, 3, ult - ini + 1, 4).getValues();
+  var achadas = [];
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][0]).trim() === String(lote).trim() &&
+        String(vals[i][3]).trim() === String(cod).trim()) achadas.push(ini + i);
+  }
+  return achadas;
+}
+
+/**
+ * Apaga as linhas de baixo para cima e em blocos: as linhas de uma gravação
+ * são contíguas, e uma chamada por bloco em vez de uma por linha é a diferença
+ * entre um segundo e meio minuto num mapa de 28 trilhos.
+ */
+function apagarLinhas(sh, linhas) {
+  var ord = linhas.slice().sort(function (a, b) { return b - a; });
+  var i = 0;
+  while (i < ord.length) {
+    var fim = ord[i], j = i;
+    while (j + 1 < ord.length && ord[j + 1] === ord[j] - 1) j++;
+    sh.deleteRows(ord[j], fim - ord[j] + 1);
+    i = j + 1;
+  }
+}
+
 function jaGravado(sh, id) {
   var ult = sh.getLastRow();
   if (ult < 2) return false;
@@ -208,6 +254,99 @@ function garantirAbas() {
   aba(ss, AB_MAPA, CAB_MAPA);
   aba(ss, AB_COL, CAB_COL);
   Logger.log('abas prontas');
+}
+
+/* ---------------------------------------------------------------- */
+
+var AB_REL = 'RELATORIO_LOTES';
+var CAB_REL = ['LOTE','COD_PRODUTO','DESC_PRODUTO','DATA_EMB','GRAVACOES','LINHAS',
+               'ITENS_DISTINTOS','QTD_TOTAL','OPS','OPERADORES','PRIMEIRA','ULTIMA','SITUACAO'];
+
+/**
+ * Uma linha por lote e produto, para conferir o que foi gravado sem ler o
+ * REGISTRO cru. A coluna GRAVACOES é a que importa: mais de uma significa que
+ * o lote foi salvo mais de uma vez e as quantidades estão contadas em dobro.
+ */
+function relatorioLotes() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var reg = ss.getSheetByName(AB_REG);
+  var ult = reg ? reg.getLastRow() : 0;
+  if (ult < 2) { Logger.log('REGISTRO vazio'); return; }
+
+  var vals = reg.getRange(2, 1, ult - 1, CAB_REG.length).getValues();
+  var mapa = {}, ordem = [];
+  for (var i = 0; i < vals.length; i++) {
+    var v = vals[i];
+    var chave = String(v[2]).trim() + '|' + String(v[5]).trim();   // LOTE | COD_PRODUTO
+    if (!mapa[chave]) {
+      mapa[chave] = { lote: v[2], cod: v[5], desc: v[6], data: v[4], envios: {},
+                      linhas: 0, itens: {}, qtd: 0, ops: {}, gente: {},
+                      primeira: v[0], ultima: v[0] };
+      ordem.push(chave);
+    }
+    var r = mapa[chave];
+    r.envios[String(v[1])] = true;
+    r.linhas++;
+    r.itens[String(v[12])] = true;
+    r.qtd += Number(v[14]) || 0;
+    if (v[9] !== '' && v[9] != null) r.ops[String(v[9])] = true;
+    if (v[11]) r.gente[String(v[11])] = true;
+    if (v[0] < r.primeira) r.primeira = v[0];
+    if (v[0] > r.ultima) r.ultima = v[0];
+  }
+
+  var linhas = ordem.map(function (k) {
+    var r = mapa[k];
+    var n = Object.keys(r.envios).length;
+    return [r.lote, r.cod, r.desc, r.data, n, r.linhas,
+            Object.keys(r.itens).length, r.qtd, Object.keys(r.ops).length,
+            Object.keys(r.gente).sort().join(', '), r.primeira, r.ultima,
+            n > 1 ? 'DUPLICADO — gravado ' + n + 'x' : 'ok'];
+  });
+  linhas.sort(function (a, b) { return b[11] - a[11]; });   // mais recente primeiro
+
+  var sh = aba(ss, AB_REL, CAB_REL);
+  var antes = sh.getLastRow();
+  if (antes > 1) sh.getRange(2, 1, antes - 1, CAB_REL.length).clearContent();
+  if (linhas.length) {
+    garantirLinhas(sh, linhas.length + 1);
+    sh.getRange(2, 1, linhas.length, CAB_REL.length).setValues(linhas);
+  }
+  var dup = linhas.filter(function (l) { return l[4] > 1; });
+  Logger.log(linhas.length + ' lote(s) no relatório; ' + dup.length + ' duplicado(s)' +
+    (dup.length ? ': ' + dup.map(function (l) { return l[0] + '/' + l[1] + ' (' + l[4] + 'x)'; }).join(', ') : ''));
+}
+
+/**
+ * Tira a duplicidade já gravada, mantendo a gravação mais recente de cada lote
+ * e produto — que é a que o líder quis deixar valendo quando salvou de novo.
+ * Rode relatorioLotes() antes para ver o que vai sair, e depois para conferir.
+ */
+function limparDuplicados() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var reg = ss.getSheetByName(AB_REG);
+  var ult = reg ? reg.getLastRow() : 0;
+  if (ult < 2) { Logger.log('REGISTRO vazio'); return; }
+
+  var vals = reg.getRange(2, 1, ult - 1, 16).getValues();
+  var ultimoEnvio = {}, quando = {};
+  for (var i = 0; i < vals.length; i++) {
+    var chave = String(vals[i][2]).trim() + '|' + String(vals[i][5]).trim();
+    var ts = vals[i][0] instanceof Date ? vals[i][0].getTime() : 0;
+    if (quando[chave] === undefined || ts >= quando[chave]) {
+      quando[chave] = ts;
+      ultimoEnvio[chave] = String(vals[i][1]);
+    }
+  }
+
+  var apagar = [];
+  for (var j = 0; j < vals.length; j++) {
+    var k = String(vals[j][2]).trim() + '|' + String(vals[j][5]).trim();
+    if (String(vals[j][1]) !== ultimoEnvio[k]) apagar.push(j + 2);
+  }
+  if (!apagar.length) { Logger.log('nada duplicado a limpar'); return; }
+  apagarLinhas(reg, apagar);
+  Logger.log(apagar.length + ' linha(s) antiga(s) apagada(s); ficou a gravação mais recente de cada lote');
 }
 
 /**
