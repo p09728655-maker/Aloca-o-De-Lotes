@@ -108,6 +108,25 @@ duas linhas, e não sobre uma. Se isso significa que esses operadores ficam do o
 lado da esteira e a faixa deles é outra, o app não sabe: as fronteiras são definidas
 no tablet, pelo botão *+ OP aqui*.
 
+## Montar o mapa fora do tablet
+
+Montar 28 trilhos de dezenas de produtos na tela é lento. Para a carga inicial,
+use `modelo-mapa-trilhos.xlsx`: uma linha por item em cada trilho, com uma aba de
+consulta trazendo os itens da `ESTRUTURA` para copiar o código em vez de digitar.
+
+1. Preencha a aba `MAPA_IMPORTAR` do modelo.
+2. Na planilha da produção: `Arquivo > Importar > Enviar`, marcando
+   **Substituir planilha atual** e apontando para uma aba chamada `MAPA_IMPORTAR`.
+3. No Apps Script, rode `importarMapas()`.
+
+A importação valida por produto, não por linha: se uma linha do produto estiver
+errada, o mapa inteiro dele é recusado e o motivo sai no registro de execução.
+Meio mapa gravado seria pior que mapa nenhum, porque parece completo. Recusa
+produto fora da `ESTRUTURA`, item que não é daquele produto, trilho ou OP que não
+seja inteiro maior que zero, e trilho além do `N_TRILHOS` informado.
+
+Importar um produto substitui o mapa que ele já tinha; os outros não são tocados.
+
 ## Versões e atualização
 
 A versão fica no rodapé do status (`v1.1.0`) e no ⚙. Quando alguém pergunta por

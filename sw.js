@@ -9,7 +9,7 @@
  * Ao publicar uma versão nova, mude VERSAO aqui e em index.html. É a troca
  * de bytes deste arquivo que faz o navegador procurar atualização.
  */
-const VERSAO = "1.1.0";
+const VERSAO = "1.2.0";
 const CACHE = "trilhos-" + VERSAO;
 
 const CASCA = [
@@ -19,7 +19,8 @@ const CASCA = [
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./logo-patrimar.png"
 ];
 
 /* Dados vivos nunca entram em cache: a programação e a ESTRUTURA mudam
