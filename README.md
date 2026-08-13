@@ -164,6 +164,20 @@ tablet baixa só as linhas daquele lote em vez da aba inteira.
 Para limpar duplicidade já gravada, `limparDuplicados()` no Apps Script mantém a
 gravação mais recente de cada lote e apaga as antigas.
 
+## Conferência — quem pôs o quê na caixa
+
+No rastreio do lote, *Conferência* abre a lista por OP: quem embalou, matrícula, e
+peça por peça com a quantidade. *Imprimir conferência* leva isso para o papel com um
+quadradinho ao lado de cada item, para bater com a caixa aberta na mesa.
+
+Quando o lote foi gravado mais de uma vez, a conferência usa só a gravação mais
+recente — somar as duas mostraria a peça em dobro e acusaria um erro que não existe.
+O aviso de duplicidade continua aparecendo à parte.
+
+Isso serve para apurar padrão, não pessoa. Peça que falta sempre, na mesma OP,
+independentemente de quem está lá, é problema de projeto de embalagem ou de posição
+na esteira — e esse é o achado que vale dinheiro.
+
 ## Imprimir o mapa
 
 *Imprimir mapa* gera a folha que fica pendurada na esteira, no mesmo desenho da que
