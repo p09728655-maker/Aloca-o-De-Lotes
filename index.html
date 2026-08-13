@@ -63,6 +63,9 @@
     font-family:"Inter"; font-size:15px; min-height:var(--tap)}
   select:focus,input:focus{outline:2px solid var(--amber); outline-offset:1px}
   .fld.grow{flex:1 1 240px}
+  .achou{font-family:"IBM Plex Mono"; font-size:10.5px; letter-spacing:.04em;
+    color:var(--mut2); min-height:13px}
+  .achou.ok{color:var(--green)} .achou.err{color:var(--red)}
   .fld.mini{min-width:96px; max-width:120px}
 
   button{font-family:"Oswald"; font-weight:600; letter-spacing:.04em; font-size:15px;
@@ -218,8 +221,11 @@
 
 <div class="setup">
   <div class="fld grow">
-    <label for="selLote">Lote</label>
-    <select id="selLote"><option value="">—</option></select>
+    <label for="inLote">Lote — digite o número</label>
+    <input type="text" id="inLote" list="listaLotes" inputmode="numeric"
+           autocomplete="off" placeholder="ex.: 25055">
+    <datalist id="listaLotes"></datalist>
+    <span class="achou" id="achouLote"></span>
   </div>
   <div class="fld grow">
     <label for="selProd">Produto do lote</label>
@@ -327,7 +333,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.3.0";
+const VERSAO = "1.4.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -632,15 +638,27 @@ function linhaStatus(){
   setStatus("", p.join(" · "));
 }
 
+/* Com 74 lotes na programação, rolar uma lista suspensa no tablet é mais lento
+   que digitar os cinco dígitos que o líder já tem na ordem de produção. O
+   datalist deixa os dois caminhos abertos: digita ou escolhe. */
 function montarSelects(){
-  const sl = $("selLote");
-  sl.innerHTML = '<option value="">—</option>';
-  S.lotes.forEach((l,i)=>{
+  const dl = $("listaLotes");
+  dl.innerHTML = "";
+  S.lotes.forEach(l=>{
     const o = document.createElement("option");
-    o.value = String(i);
-    o.textContent = l.lote + (l.cor ? " · "+l.cor : "") + (l.emb ? "  ("+l.emb+")" : "");
-    sl.appendChild(o);
+    o.value = l.lote;
+    o.label = (l.cor ? l.cor : "") + (l.emb ? " · " + l.emb : "");
+    dl.appendChild(o);
   });
+}
+
+/** Aceita o número cru ou o texto completo que o datalist devolve. */
+function acharLote(txt){
+  const t = String(txt || "").trim();
+  if(!t) return null;
+  const num = t.split("·")[0].trim();
+  return S.lotes.find(l => String(l.lote).trim() === num) ||
+         S.lotes.find(l => String(l.lote).trim().startsWith(num)) || null;
 }
 
 /* ==================================================================
@@ -910,22 +928,34 @@ async function enviar(payload){
   let out;
   try{ out = JSON.parse(txt); }
   catch(e){ throw new Error("resposta inesperada do Apps Script"); }
-  if(!out.ok) throw new Error(out.erro || "erro no Apps Script");
+  // "já gravado" não é falha de envio, é uma pergunta para o líder — quem
+  // decide é ele, então volta para quem chamou em vez de virar erro
+  if(!out.ok && out.erro !== "ja_gravado") throw new Error(out.erro || "erro no Apps Script");
   return out;
 }
+
 async function despacharFila(){
   const fila = lerFila();
   if(!fila.length) return { enviados:0 };
-  let enviados = 0;
+  let enviados = 0, descartados = 0;
   while(fila.length){
-    try{
-      await enviar(fila[0]);
-      fila.shift(); enviados++;
-      salvarFila(fila);
-    }catch(e){ salvarFila(fila); pintarFila(); throw e; }
+    let out;
+    try{ out = await enviar(fila[0]); }
+    catch(e){ salvarFila(fila); pintarFila(); throw e; }
+
+    if(out.erro === "ja_gravado"){
+      const sim = confirm(
+        `O lote ${out.lote} · ${out.cod_produto} já foi gravado ` +
+        `(${out.linhas_antigas} linhas).\n\n` +
+        `Substituir pelo que está na tela agora?\n\n` +
+        `OK substitui. Cancelar descarta este envio e mantém o que já está gravado.`);
+      if(sim){ fila[0].substituir = true; salvarFila(fila); continue; }
+      fila.shift(); descartados++; salvarFila(fila); continue;
+    }
+    fila.shift(); enviados++; salvarFila(fila);
   }
   salvarFila(fila); pintarFila();
-  return { enviados };
+  return { enviados, descartados };
 }
 
 function linhasDoMapa(){
@@ -977,7 +1007,8 @@ async function enfileirarEEnviar(payload, okTxt){
   salvarFila(fila); pintarFila();
   setMsg("", "Enviando…");
   try{
-    await despacharFila();
+    const r = await despacharFila();
+    if(r.descartados && !r.enviados){ setMsg("", "Mantido o que já estava gravado."); return false; }
     setMsg("ok", okTxt);
     return true;
   }catch(e){
@@ -1015,10 +1046,17 @@ async function salvarLote(){
 /* ==================================================================
    EVENTOS
    ================================================================== */
-$("selLote").addEventListener("change", ev=>{
-  const i = parseInt(ev.target.value, 10);
-  S.lote = Number.isInteger(i) ? S.lotes[i] : null;
+function escolherLote(txt){
+  S.lote = acharLote(txt);
   S.prod = null;
+  const el = $("achouLote");
+  if(!String(txt || "").trim()) el.textContent = "";
+  else if(!S.lote){ el.className = "achou err"; el.textContent = "não achei esse lote na programação"; }
+  else{
+    el.className = "achou ok";
+    el.textContent = (S.lote.cor ? S.lote.cor + " · " : "") + (S.lote.emb || "") +
+      " · " + S.lote.itens.length + (S.lote.itens.length === 1 ? " produto" : " produtos");
+  }
   const sp = $("selProd");
   sp.innerHTML = '<option value="">—</option>';
   if(S.lote) S.lote.itens.forEach((it,j)=>{
@@ -1029,7 +1067,10 @@ $("selLote").addEventListener("change", ev=>{
   });
   if(S.lote && S.lote.itens.length === 1){ sp.value = "0"; sp.dispatchEvent(new Event("change")); }
   else render();
-});
+}
+// "input" pega a escolha no datalist, que não dispara change em todo navegador
+$("inLote").addEventListener("input", ev=> escolherLote(ev.target.value));
+$("inLote").addEventListener("change", ev=> escolherLote(ev.target.value));
 
 $("selProd").addEventListener("change", ev=>{
   const j = parseInt(ev.target.value, 10);
