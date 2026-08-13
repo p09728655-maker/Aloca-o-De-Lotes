@@ -68,7 +68,6 @@
 
   .work{display:grid; grid-template-columns:minmax(300px,1fr) minmax(340px,1.1fr);
     gap:14px; margin-top:14px; align-items:start}
-  /* tablet em retrato e telefone: uma coluna */
   @media(max-width:1000px){ .work{grid-template-columns:1fr} }
 
   .box{background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
@@ -79,6 +78,11 @@
   .box h2 em{font-style:normal; font-family:"IBM Plex Mono"; font-size:11px;
     letter-spacing:.04em; text-transform:none; color:var(--amber); margin-left:auto}
   .rolagem{max-height:min(62vh,720px); overflow-y:auto; -webkit-overflow-scrolling:touch}
+  /* Tablet em retrato: as duas caixas empilham, e aí precisam caber juntas na
+     tela. A interação é tocar no trilho e depois no item — se a lista de itens
+     ocupar a altura toda, o líder rola para cima e para baixo a cada peça.
+     Cada caixa rola por dentro, em pouco mais de um terço da altura. */
+  @media(max-width:1000px){ .rolagem{max-height:34vh} }
 
   /* ---------- itens do produto ---------- */
   .item{display:flex; align-items:center; gap:11px; padding:10px 13px;
