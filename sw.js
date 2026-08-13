@@ -9,7 +9,7 @@
  * Ao publicar uma versão nova, mude VERSAO aqui e em index.html. É a troca
  * de bytes deste arquivo que faz o navegador procurar atualização.
  */
-const VERSAO = "1.2.0";
+const VERSAO = "1.3.0";
 const CACHE = "trilhos-" + VERSAO;
 
 const CASCA = [

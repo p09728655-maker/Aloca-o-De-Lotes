@@ -264,6 +264,8 @@
   </div>
   <div class="actions">
     <span class="fila" id="fila" hidden></span>
+    <button class="gho" id="btnImportar">Importar Excel</button>
+    <input type="file" id="arqExcel" accept=".xlsx" hidden>
     <button class="gho" id="btnInstalar" hidden>Instalar no tablet</button>
     <span class="msg" id="msg"></span>
     <button class="gho" id="btnReenviar" hidden>Reenviar pendentes</button>
@@ -294,6 +296,15 @@
   </div>
 </dialog>
 
+<dialog id="dlgImp">
+  <h3>Importar mapa do Excel</h3>
+  <div class="body" id="impCorpo" style="max-height:60vh; overflow-y:auto"></div>
+  <div class="foot">
+    <button class="gho" id="impCancel">Cancelar</button>
+    <button class="pri" id="impOk">Salvar mapas</button>
+  </div>
+</dialog>
+
 <dialog id="dlgColab">
   <h3>Cadastrar colaborador</h3>
   <div class="body">
@@ -316,7 +327,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.2.0";
+const VERSAO = "1.3.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1099,6 +1110,415 @@ $("colOk").addEventListener("click", async ()=>{
     render(); linhaStatus();
   }catch(e){ setMsg("err", "Não cadastrou: "+e.message); }
 });
+
+/* ==================================================================
+   IMPORTAR O MAPA DE UM EXCEL
+   Um .xlsx é um ZIP com XML dentro, e o Chrome infla sozinho pelo
+   DecompressionStream. Ler aqui em vez de pedir para colar na planilha
+   evita o líder digitar código de peça nenhum — e mantém o app sem
+   depender de biblioteca externa, que a rede da fábrica não baixaria.
+   ================================================================== */
+async function lerZip(buf){
+  const dv = new DataView(buf), U8 = new Uint8Array(buf);
+  // o fim do diretório central fica no rodapé, depois de um comentário de
+  // tamanho variável — por isso a varredura de trás para frente
+  let fim = -1;
+  for(let i = U8.length - 22; i >= 0 && i > U8.length - 66000; i--){
+    if(dv.getUint32(i, true) === 0x06054b50){ fim = i; break; }
+  }
+  if(fim < 0) throw new Error("não parece um arquivo .xlsx");
+  const total = dv.getUint16(fim + 10, true);
+  let p = dv.getUint32(fim + 16, true);
+  const arquivos = {};
+  for(let i = 0; i < total; i++){
+    if(dv.getUint32(p, true) !== 0x02014b50) break;
+    const metodo = dv.getUint16(p + 10, true), compTam = dv.getUint32(p + 20, true);
+    const nomeTam = dv.getUint16(p + 28, true), extraTam = dv.getUint16(p + 30, true);
+    const comTam = dv.getUint16(p + 32, true), desloc = dv.getUint32(p + 42, true);
+    const nome = new TextDecoder().decode(U8.subarray(p + 46, p + 46 + nomeTam));
+    // o cabeçalho local repete os tamanhos, que podem diferir do central
+    const ini = desloc + 30 + dv.getUint16(desloc + 26, true) + dv.getUint16(desloc + 28, true);
+    const bruto = U8.subarray(ini, ini + compTam);
+    arquivos[nome] = metodo === 0 ? bruto
+      : new Uint8Array(await new Response(
+          new Blob([bruto]).stream().pipeThrough(new DecompressionStream("deflate-raw"))
+        ).arrayBuffer());
+    p += 46 + nomeTam + extraTam + comTam;
+  }
+  return arquivos;
+}
+
+function colDe(ref){
+  let n = 0;
+  for(const ch of ref){
+    const c = ch.charCodeAt(0);
+    if(c < 65 || c > 90) break;
+    n = n * 26 + (c - 64);
+  }
+  return n;
+}
+
+async function lerXlsx(buf){
+  const arq = await lerZip(buf), dp = new DOMParser();
+  const td = new TextDecoder("utf-8");
+  const doc = n => arq[n] ? dp.parseFromString(td.decode(arq[n]), "application/xml") : null;
+
+  const comp = [];
+  const ss = doc("xl/sharedStrings.xml");
+  if(ss) for(const si of ss.getElementsByTagName("si")){
+    let s = ""; for(const t of si.getElementsByTagName("t")) s += t.textContent;
+    comp.push(s);
+  }
+  const alvo = {};
+  const rels = doc("xl/_rels/workbook.xml.rels");
+  if(rels) for(const r of rels.getElementsByTagName("Relationship")){
+    alvo[r.getAttribute("Id")] = r.getAttribute("Target").replace(/^\/?xl\//, "");
+  }
+  const wb = doc("xl/workbook.xml");
+  if(!wb) throw new Error("planilha sem workbook.xml");
+
+  const abas = {};
+  for(const sh of wb.getElementsByTagName("sheet")){
+    const rid = sh.getAttribute("r:id") ||
+      sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+    const d = doc("xl/" + (alvo[rid] || ("worksheets/sheet" + sh.getAttribute("sheetId") + ".xml")));
+    if(!d) continue;
+    const linhas = [];
+    for(const row of d.getElementsByTagName("row")){
+      const linha = [];
+      for(const c of row.getElementsByTagName("c")){
+        const tipo = c.getAttribute("t");
+        let v = "";
+        if(tipo === "inlineStr"){ for(const t of c.getElementsByTagName("t")) v += t.textContent; }
+        else{
+          const vn = c.getElementsByTagName("v")[0];
+          if(vn) v = tipo === "s" ? (comp[parseInt(vn.textContent, 10)] ?? "") : vn.textContent;
+        }
+        if(v !== "") linha[colDe(c.getAttribute("r") || "") - 1] = String(v);
+      }
+      linhas[parseInt(row.getAttribute("r"), 10) - 1] = linha;
+    }
+    abas[sh.getAttribute("name")] = linhas;
+  }
+  return abas;
+}
+
+/* ---------- casar o item escrito com o código do ERP ---------- */
+const semAcento = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+
+/* Palavras que não distinguem item nenhum dentro do mesmo produto: cor,
+   material e o nome da família aparecem em quase toda descrição. */
+const RUIDO = new Set(["DE","DA","DO","E","COM","SEM","MM","CM","MDP","MDF","HDF","N",
+  "BRANCO","ROSA","ALECRIM","PRETO","CINZA","OFF","WHITE","CUMARU","CINAMOMO","MEL",
+  "NATURAL","ACETINADO","BRILHO","PENT","PENTEADEIRA","CAMARIM","STRASS"]);
+/* A folha abrevia o que o ERP escreve por extenso; sem isto "FUNDO TRASEIRO
+   S/ PINTURA" nunca acharia "F TRAS ... SEM PINTURA". */
+const SINONIMOS = { "S":"SEM","FUNDO":"F","FUNDOS":"F","TRASEIRO":"TRAS","TRASEIRA":"TRAS",
+  "GAVETA":"GAV","GAVETAS":"GAV","CAV":"GAV","LATERAL":"LAT","LATERAIS":"LAT","CAIXA":"CX",
+  "PES":"PE","CONTRA":"C","MOLDURA":"MOLD","TRAVESSA":"TRAV","FRENTE":"FRT","EXTERNA":"EXT",
+  "DIREITA":"DIR","ESQUERDA":"ESQ","SUPERIOR":"SUP","INFERIOR":"INF" };
+const canon = t => SINONIMOS[t] || t;
+const fichas = s => semAcento(s).replace(/[^A-Z0-9]+/g, " ").trim().split(" ")
+  .filter(t => t && !RUIDO.has(t)).map(canon);
+
+const numDaDesc = d => { const m = semAcento(d).match(/\b(?:MDP|MDF)\s+(\d+)\b/); return m ? +m[1] : 0; };
+const dimsDaDesc = d => (semAcento(d).match(/\b\d{2,4}\s*X\s*\d{2,4}(?:\s*X\s*\d{1,3})?\b/g) || [])
+  .map(x => x.replace(/\s/g, ""));
+
+/* 450X95X88 e 445X95X88 são a mesma peça arredondada de outro jeito: duas
+   medidas batem e a terceira fica a menos de 2% de distância. */
+function dimParecida(a, b){
+  const A = a.split("X").map(Number), B = b.split("X").map(Number);
+  if(A.length !== B.length) return false;
+  let iguais = 0, perto = 0;
+  for(let i = 0; i < A.length; i++){
+    if(A[i] === B[i]) iguais++;
+    else if(Math.abs(A[i] - B[i]) / Math.max(A[i], B[i]) < 0.02) perto++;
+  }
+  return iguais >= A.length - 1 && iguais + perto === A.length;
+}
+
+/** "2 LATERAL DA MOLDURA Nº 11" -> { qtd:2, num:11, desc:"LATERAL DA MOLDURA" } */
+function lerItemTxt(txt){
+  let s = String(txt || "").replace(/\s+/g, " ").trim();
+  let qtd = 0;
+  const mq = s.match(/^(\d+)\s+(.+)$/);
+  if(mq){ qtd = parseInt(mq[1], 10); s = mq[2]; }
+  let num = 0;
+  const mn = s.match(/N[ºO°]\s*(\d+)/i);
+  if(mn){ num = parseInt(mn[1], 10); s = s.replace(mn[0], " "); }
+  return { qtd, num, desc: s.replace(/\s+/g, " ").trim() };
+}
+
+function casarItem(item, lista){
+  // via exata: o Nº é o mesmo número que vem depois de MDP/MDF no ERP, e não
+  // muda de cor — Nº 12 é 478012001 no branco e 478012111 no alecrim
+  if(item.num){
+    const achou = lista.filter(p => numDaDesc(p.desc) === item.num);
+    if(achou.length === 1){
+      return { cod: achou[0].peca, desc: achou[0].desc, qtd: item.qtd || achou[0].qtd,
+               certeza: "exata", candidatos: [] };
+    }
+  }
+  const alvo = new Set(fichas(item.desc));
+  const dimAlvo = dimsDaDesc(item.desc);
+  const notas = lista.map(p => {
+    const dele = new Set(fichas(p.desc));
+    let iguais = 0; for(const t of alvo) if(dele.has(t)) iguais++;
+    // cobertura do que foi escrito no mapa, não Jaccard: a folha é sempre
+    // mais curta que o cadastro do ERP e seria punida à toa
+    let nota = alvo.size ? iguais / alvo.size : 0;
+    const dims = dimsDaDesc(p.desc);
+    if(dimAlvo.length && dims.length){
+      if(dimAlvo.some(d => dims.includes(d))) nota += 0.5;
+      else if(dimAlvo.some(a => dims.some(b => dimParecida(a, b)))) nota += 0.25;
+    }
+    // a quantidade escrita é a da peça inteira, a mesma do cadastro: desempata
+    // "CONTRA FUNDO MAIOR" de "CONTRA FUNDO MENOR", gêmeos no texto
+    if(item.qtd && p.qtd === item.qtd) nota += 0.3;
+    return { peca: p.peca, desc: p.desc, qtd: p.qtd, nota };
+  }).filter(x => x.nota > 0).sort((a, b) => b.nota - a.nota);
+
+  if(!notas.length) return { cod: "", desc: "", qtd: item.qtd, certeza: "nenhuma", candidatos: [] };
+  /* migalha de tolerância: 2/3 + 0,3 menos 2/3 dá 0,29999999999999993, e sem
+     isso um caso folgado cairia na escolha manual por arredondamento */
+  const EPS = 1e-9, pri = notas[0], seg = notas[1];
+  const folgado = pri.nota >= 0.75 - EPS && (!seg || pri.nota - seg.nota >= 0.3 - EPS);
+  return { cod: folgado ? pri.peca : "", desc: folgado ? pri.desc : "",
+           qtd: item.qtd || pri.qtd, certeza: folgado ? "provavel" : "nenhuma",
+           candidatos: notas.slice(0, 6) };
+}
+
+/* ---------- ler o modelo e montar os mapas ---------- */
+const cel = (linha, i) => String((linha || [])[i] || "").replace(/\s+/g, " ").trim();
+
+function acharCab(linhas, obrig){
+  for(let i = 0; i < Math.min(linhas.length, 12); i++){
+    const l = (linhas[i] || []).map(x => norm(x));
+    const idx = {};
+    for(const k in obrig){
+      const j = l.findIndex(t => obrig[k].includes(t));
+      if(j >= 0) idx[k] = j;
+    }
+    if(Object.keys(idx).length === Object.keys(obrig).length) return { h: i, idx };
+  }
+  return null;
+}
+
+function lerModelo(abas){
+  const pr = abas["PRODUTOS"];
+  if(!pr) throw new Error("o arquivo não tem a aba PRODUTOS");
+  const cp = acharCab(pr, { aba:["abamapa","aba","mapa"], cod:["codproduto","codigo","cod"] });
+  if(!cp) throw new Error("a aba PRODUTOS precisa de ABA_MAPA e COD_PRODUTO");
+  const ext = acharCab(pr, { cor:["cor"], ntr:["ntrilhos","trilhos"],
+                             vel:["velocidade"], esq:["nesquema","esquema"] }) || { idx:{} };
+
+  const produtos = [];
+  for(let r = cp.h + 1; r < pr.length; r++){
+    const cod = normCod(cel(pr[r], cp.idx.cod));
+    const aba = cel(pr[r], cp.idx.aba);
+    if(!cod || !aba) continue;
+    produtos.push({ cod, aba, cor: cel(pr[r], ext.idx.cor),
+      nTrilhos: parseInt(cel(pr[r], ext.idx.ntr), 10) || 0,
+      vel: cel(pr[r], ext.idx.vel), esq: cel(pr[r], ext.idx.esq) });
+  }
+  if(!produtos.length) throw new Error("a aba PRODUTOS está sem linhas");
+
+  const mapas = {};
+  for(const nome of new Set(produtos.map(p => p.aba))){
+    const linhas = abas[nome];
+    if(!linhas) throw new Error(`a aba ${nome} não existe no arquivo`);
+    const c = acharCab(linhas, { trilho:["trilho","ntrilho"], item:["item","peca","pea"] });
+    if(!c) throw new Error(`a aba ${nome} precisa das colunas TRILHO e ITEM`);
+    const op = acharCab(linhas, { op:["op","operacao","operao"] });
+    const ins = acharCab(linhas, { ins:["insumo","embalagem"] });
+
+    const trilhos = [];
+    for(let r = c.h + 1; r < linhas.length; r++){
+      const t = parseInt(cel(linhas[r], c.idx.trilho), 10);
+      if(!(t > 0)) continue;
+      const itens = [];
+      const i1 = ins ? cel(linhas[r], ins.idx.ins) : "";
+      const i2 = cel(linhas[r], c.idx.item);
+      if(i1) itens.push(i1);
+      if(i2) itens.push(i2);
+      trilhos.push({ trilho: t, rotuloOp: op ? cel(linhas[r], op.idx.op) : "", itens });
+    }
+    if(!trilhos.length) throw new Error(`a aba ${nome} está sem trilhos preenchidos`);
+    mapas[nome] = trilhos;
+  }
+  return { produtos, mapas };
+}
+
+/* A OP muda quando o rótulo aparece; entre um rótulo e o próximo é a mesma
+   faixa, como no mapa impresso. */
+function numerarOps(trilhos){
+  let op = 0, visto = false;
+  return trilhos.map(t => {
+    if(t.rotuloOp){ op++; visto = true; }
+    return { ...t, op: visto ? op : 1 };
+  });
+}
+
+const IMP = { produtos: [], mapas: {}, pendencias: [], escolhas: {} };
+
+async function importarExcel(arquivo){
+  setMsg("", "Lendo " + arquivo.name + "…");
+  const abas = await lerXlsx(await arquivo.arrayBuffer());
+  const { produtos, mapas } = lerModelo(abas);
+
+  const semEstrutura = produtos.filter(p => !S.estrutura.get(normCod(p.cod)));
+  if(semEstrutura.length === produtos.length){
+    throw new Error("nenhum dos códigos da aba PRODUTOS está na ESTRUTURA");
+  }
+
+  IMP.produtos = produtos.filter(p => S.estrutura.get(normCod(p.cod)));
+  IMP.mapas = mapas;
+  IMP.escolhas = {};
+  IMP.pendencias = [];
+  IMP.avisos = semEstrutura.map(p => p.cod + " não está na ESTRUTURA");
+
+  /* A dúvida é a mesma para todas as cores, então pergunta uma vez por texto
+     usando a primeira cor daquela aba — depois cada cor resolve o código dela. */
+  for(const aba in mapas){
+    const primeiro = IMP.produtos.find(p => p.aba === aba);
+    if(!primeiro) continue;
+    const lista = S.estrutura.get(normCod(primeiro.cod));
+    const vistos = new Set();
+    for(const t of mapas[aba]){
+      for(const txt of t.itens){
+        const chave = aba + "|" + txt;
+        if(vistos.has(chave)) continue;
+        vistos.add(chave);
+        const m = casarItem(lerItemTxt(txt), lista);
+        if(m.certeza === "nenhuma"){
+          IMP.pendencias.push({ chave, aba, txt, trilho: t.trilho, candidatos: m.candidatos });
+        }
+      }
+    }
+  }
+  mostrarImportacao();
+}
+
+function mostrarImportacao(){
+  const corpo = $("impCorpo");
+  const nProd = IMP.produtos.length;
+  const nTr = Object.values(IMP.mapas).reduce((a, t) => a + t.length, 0);
+  let html = `<p class="hint"><b>${nProd}</b> ${nProd === 1 ? "produto" : "produtos"} · ` +
+    `<b>${Object.keys(IMP.mapas).length}</b> ${Object.keys(IMP.mapas).length === 1 ? "mapa" : "mapas"} · ` +
+    `<b>${nTr}</b> trilhos no total.</p>`;
+  if(IMP.avisos && IMP.avisos.length){
+    html += `<p class="hint" style="color:var(--amber)">${IMP.avisos.map(escapa).join("<br>")}</p>`;
+  }
+  if(!IMP.pendencias.length){
+    html += `<p class="hint" style="color:var(--green)">Todos os itens foram reconhecidos.</p>`;
+  }else{
+    html += `<p class="hint">${IMP.pendencias.length} ${IMP.pendencias.length === 1
+      ? "item ficou ambíguo. Escolha qual é" : "itens ficaram ambíguos. Escolha quais são"} —
+      o resto já entrou sozinho.</p>`;
+    IMP.pendencias.forEach((p, i) => {
+      const opts = ['<option value="">— não colocar no mapa —</option>'].concat(
+        p.candidatos.map(c => `<option value="${escapa(c.peca)}">${escapa(c.peca)} · ${escapa(c.desc)}</option>`)
+      ).join("");
+      html += `<div class="fld"><label>trilho ${p.trilho} · ${escapa(p.txt)}</label>
+        <select data-imp="${i}">${opts}</select></div>`;
+    });
+  }
+  corpo.innerHTML = html;
+  corpo.querySelectorAll("[data-imp]").forEach(sel=>{
+    sel.addEventListener("change", ev=>{
+      IMP.escolhas[IMP.pendencias[+sel.dataset.imp].chave] = ev.target.value;
+    });
+  });
+  $("dlgImp").showModal();
+}
+
+/** Monta as linhas do mapa de um produto, resolvendo item por item. */
+function trilhosDoProduto(prod){
+  const lista = S.estrutura.get(normCod(prod.cod)) || [];
+  const linhas = [];
+  numerarOps(IMP.mapas[prod.aba] || []).forEach(t => {
+    let seq = 0;
+    t.itens.forEach(txt => {
+      const it = lerItemTxt(txt);
+      let m = casarItem(it, lista);
+      if(!m.cod){
+        // a escolha do líder foi feita na primeira cor; nas outras, procura o
+        // equivalente pela descrição escolhida — é a mesma peça noutra cor
+        const esc = IMP.escolhas[prod.aba + "|" + txt];
+        if(esc){
+          const aqui = lista.find(p => p.peca === esc);
+          if(aqui) m = { cod: aqui.peca, desc: aqui.desc, qtd: it.qtd || aqui.qtd };
+          else{
+            const base = (S.estrutura.get(normCod(
+              (IMP.produtos.find(p => p.aba === prod.aba) || {}).cod)) || []).find(p => p.peca === esc);
+            if(base) m = casarItem(Object.assign({}, it, { num: numDaDesc(base.desc),
+              desc: base.desc }), lista);
+          }
+        }
+      }
+      if(!m.cod) return;
+      seq++;
+      const doErp = lista.find(p => p.peca === m.cod) || {};
+      linhas.push({ trilho: t.trilho, op: t.op, seq,
+        cod_item: m.cod, desc_item: doErp.desc || m.desc || "",
+        qtd: m.qtd || doErp.qtd || 1, tipo: doErp.tipo || "" });
+    });
+  });
+  return linhas;
+}
+
+/* A descrição boa é a da Programação — a mesma que o líder vê no seletor de
+   produto. A cor do modelo só entra se o código ainda não apareceu em lote. */
+function descDoProduto(prod){
+  for(const l of S.lotes){
+    const it = l.itens.find(i => normCod(i.cod) === normCod(prod.cod));
+    if(it && it.desc) return it.desc;
+  }
+  return prod.cor ? "COR " + prod.cor : "";
+}
+
+async function aplicarImportacao(){
+  $("dlgImp").close();
+  let enviados = 0, semItem = [];
+  for(const prod of IMP.produtos){
+    const linhas = trilhosDoProduto(prod);
+    if(!linhas.length){ semItem.push(prod.cod); continue; }
+    const nTr = Math.max(prod.nTrilhos || 0, ...linhas.map(l => l.trilho));
+    const payload = { acao:"salvar_mapa", id_envio:novoId(), ts_local:new Date().toISOString(),
+      cod_produto: prod.cod, desc_produto: descDoProduto(prod),
+      n_trilhos: nTr, velocidade: prod.vel || "", n_esquema: prod.esq || "", trilhos: linhas };
+    const fila = lerFila(); fila.push(payload); salvarFila(fila);
+    S.mapas.set(normCod(prod.cod), { nTrilhos: nTr, vel: prod.vel || "", esq: prod.esq || "",
+      linhas: linhas.map(l => ({ trilho:l.trilho, op:l.op, item:l.cod_item, qtd:l.qtd })) });
+    enviados++;
+  }
+  pintarFila();
+  setMsg("", `Enviando ${enviados} ${enviados === 1 ? "mapa" : "mapas"}…`);
+  try{
+    await despacharFila();
+    setMsg("ok", `${enviados} ${enviados === 1 ? "mapa gravado" : "mapas gravados"}` +
+      (semItem.length ? ` · ${semItem.join(", ")} ficou sem item reconhecido` : "."));
+  }catch(e){
+    setMsg("err", "Importou, mas não enviou: " + e.message + " — está na fila, use “Reenviar pendentes”.");
+  }
+  // se o produto aberto na tela é um dos importados, recarrega para conferência
+  if(S.prod && IMP.produtos.some(p => normCod(p.cod) === normCod(S.prod.cod))){
+    carregarProduto(); render();
+  }
+  linhaStatus();
+}
+
+$("btnImportar").addEventListener("click", ()=> $("arqExcel").click());
+$("arqExcel").addEventListener("change", async ev=>{
+  const f = ev.target.files && ev.target.files[0];
+  ev.target.value = "";
+  if(!f) return;
+  try{ await importarExcel(f); }
+  catch(e){ setMsg("err", "Não importei: " + e.message); }
+});
+$("impCancel").addEventListener("click", ()=> $("dlgImp").close());
+$("impOk").addEventListener("click", aplicarImportacao);
 
 /* ==================================================================
    INSTALAÇÃO NO TABLET E ATUALIZAÇÃO
