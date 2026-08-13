@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Trilhos">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -133,14 +136,31 @@
   .chip button{min-height:34px; min-width:34px; padding:0; font-size:16px; line-height:1;
     border-radius:6px; flex:none}
 
-  .actions{position:fixed; left:0; right:0; bottom:0; z-index:60;
-    background:linear-gradient(180deg,rgba(0,0,0,.4),var(--bg) 40%);
+  /* Rodapé único: o aviso de atualização e os botões de salvar empilham em vez
+     de disputarem o mesmo bottom:0. Dois position:fixed no mesmo canto viram
+     um por cima do outro, e o que fica escondido é sempre o mais importante. */
+  .rodape{position:fixed; left:0; right:0; bottom:0; z-index:60;
+    display:flex; flex-direction:column}
+  .actions{background:linear-gradient(180deg,rgba(0,0,0,.4),var(--bg) 40%);
     border-top:1px solid var(--line); padding:10px 16px;
     display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .actions .msg{flex:1 1 auto; font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--mut)}
   .actions .msg.err{color:var(--red)} .actions .msg.ok{color:var(--green)}
   .fila{font-family:"IBM Plex Mono"; font-size:11px; color:var(--amber);
     border:1px solid var(--amber); border-radius:6px; padding:5px 9px}
+
+  .atualiza{background:var(--amber); color:#000; padding:11px 16px;
+    display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+    box-shadow:0 -8px 20px -8px rgba(0,0,0,.9)}
+  .atualiza[hidden]{display:none}
+  .atualiza span{flex:1 1 auto; font-family:"Oswald"; font-weight:600;
+    font-size:14.5px; letter-spacing:.03em}
+  .atualiza button{background:#000; color:var(--amber); border-color:#000}
+  .atualiza button.dep{background:transparent; border-color:rgba(0,0,0,.45); color:#000}
+  body.tem-aviso{padding-bottom:150px}
+
+  .versao{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut2);
+    letter-spacing:.06em}
 
   dialog{background:var(--panel); color:var(--ink); border:1px solid var(--line);
     border-radius:14px; padding:0; max-width:480px; width:92%}
@@ -212,12 +232,20 @@
   </div>
 </div>
 
-<div class="actions">
-  <span class="fila" id="fila" hidden></span>
-  <span class="msg" id="msg"></span>
-  <button class="gho" id="btnReenviar" hidden>Reenviar pendentes</button>
-  <button class="gho" id="btnSalvarLote" disabled>Gravar lote</button>
-  <button class="pri" id="btnSalvarMapa" disabled>Salvar mapa</button>
+<div class="rodape">
+  <div class="atualiza" id="barraAtualiza" hidden>
+    <span id="txtAtualiza">Versão nova disponível.</span>
+    <button class="dep" id="btnDepois">Depois</button>
+    <button id="btnAtualizar">Atualizar agora</button>
+  </div>
+  <div class="actions">
+    <span class="fila" id="fila" hidden></span>
+    <button class="gho" id="btnInstalar" hidden>Instalar no tablet</button>
+    <span class="msg" id="msg"></span>
+    <button class="gho" id="btnReenviar" hidden>Reenviar pendentes</button>
+    <button class="gho" id="btnSalvarLote" disabled>Gravar lote</button>
+    <button class="pri" id="btnSalvarMapa" disabled>Salvar mapa</button>
+  </div>
 </div>
 
 <dialog id="dlgCfg">
@@ -233,8 +261,10 @@
       <input type="text" id="cfgApi" placeholder="https://script.google.com/macros/s/.../exec"></div>
     <p class="hint">Sem a URL do Apps Script o app funciona, mas não grava — o mapa
       fica na fila local até você configurar.</p>
+    <p class="hint versao" id="cfgVersao"></p>
   </div>
   <div class="foot">
+    <button class="gho" id="cfgProcurar">Procurar atualização</button>
     <button class="gho" id="cfgCancel">Cancelar</button>
     <button class="pri" id="cfgOk">Salvar</button>
   </div>
@@ -257,6 +287,12 @@
 
 <script>
 "use strict";
+
+/* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
+   sw.js que faz o navegador procurar atualização; este número é o que o
+   líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
+   está aí?”. */
+const VERSAO = "1.1.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -557,6 +593,7 @@ function linhaStatus(){
                         : `<span style="color:var(--amber)">${S.erroColab}</span>`);
   p.push(S.mapas.size ? `${S.mapas.size} produtos com mapa salvo` : `nenhum mapa salvo ainda`);
   if(!CFG.api) p.push(`<span style="color:var(--amber)">Apps Script não configurado — não grava</span>`);
+  p.push(`<span class="versao">v${VERSAO}</span>`);
   setStatus("", p.join(" · "));
 }
 
@@ -1001,6 +1038,8 @@ $("btnReenviar").addEventListener("click", async ()=>{
 $("btnCfg").addEventListener("click", ()=>{
   $("cfgSheet").value = CFG.sheet; $("cfgGid").value = CFG.gid;
   $("cfgEstr").value = CFG.estr;   $("cfgApi").value = CFG.api;
+  $("cfgVersao").textContent = `Versão ${VERSAO}` +
+    (window.matchMedia("(display-mode: standalone)").matches ? " · instalado no aparelho" : "");
   $("dlgCfg").showModal();
 });
 $("cfgCancel").addEventListener("click", ()=> $("dlgCfg").close());
@@ -1033,6 +1072,101 @@ $("colOk").addEventListener("click", async ()=>{
     render(); linhaStatus();
   }catch(e){ setMsg("err", "Não cadastrou: "+e.message); }
 });
+
+/* ==================================================================
+   INSTALAÇÃO NO TABLET E ATUALIZAÇÃO
+   O app fica aberto o dia inteiro na linha. Sem isto, o líder continuaria
+   meses numa versão velha sem nunca saber que saiu outra.
+   ================================================================== */
+let swReg = null, swEsperando = null, convite = null;
+
+function mostrarAtualiza(worker, txt){
+  swEsperando = worker;
+  $("txtAtualiza").textContent = txt || "Versão nova disponível.";
+  $("barraAtualiza").hidden = false;
+  document.body.classList.add("tem-aviso");
+}
+function esconderAtualiza(){
+  $("barraAtualiza").hidden = true;
+  document.body.classList.remove("tem-aviso");
+}
+
+$("btnAtualizar").addEventListener("click", ()=>{
+  const pendentes = lerFila().length;
+  if(pendentes && !confirm(
+      `Há ${pendentes} envio(s) na fila deste aparelho. Eles continuam guardados ` +
+      `depois de atualizar, mas o ideal é tocar em “Reenviar pendentes” antes. Atualizar mesmo assim?`)){
+    return;
+  }
+  if(swEsperando) swEsperando.postMessage({ tipo:"ATUALIZAR" });
+  else location.reload();
+});
+$("btnDepois").addEventListener("click", esconderAtualiza);
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./sw.js").then(reg=>{
+      swReg = reg;
+      // já havia uma versão nova instalada e parada esperando de um acesso anterior
+      if(reg.waiting && navigator.serviceWorker.controller) mostrarAtualiza(reg.waiting);
+      reg.addEventListener("updatefound", ()=>{
+        const novo = reg.installing;
+        if(!novo) return;
+        novo.addEventListener("statechange", ()=>{
+          // sem controller é a primeira instalação, não é atualização
+          if(novo.state === "installed" && navigator.serviceWorker.controller) mostrarAtualiza(novo);
+        });
+      });
+      // o app passa o turno aberto: procura sozinho de meia em meia hora
+      setInterval(()=> reg.update().catch(()=>{}), 30*60*1000);
+    }).catch(()=>{ /* http sem https, ou navegador sem suporte — o app funciona igual */ });
+
+    /* Na primeira instalação o clients.claim() também dispara controllerchange,
+       e recarregar ali jogaria fora o mapa que o líder acabou de começar a
+       montar. Só recarrega quando já havia um controlador — aí a troca é
+       mesmo uma atualização, pedida no botão. */
+    const tinhaControle = !!navigator.serviceWorker.controller;
+    let recarregando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+      if(!tinhaControle || recarregando) return;
+      recarregando = true;
+      location.reload();
+    });
+  });
+  // voltar para o app depois de um tempo fora é boa hora para conferir
+  document.addEventListener("visibilitychange", ()=>{
+    if(!document.hidden && swReg) swReg.update().catch(()=>{});
+  });
+}
+
+$("cfgProcurar").addEventListener("click", async ()=>{
+  const el = $("cfgVersao");
+  if(!swReg){ el.textContent = `Versão ${VERSAO} · atualização automática indisponível aqui.`; return; }
+  el.textContent = "Procurando…";
+  try{
+    await swReg.update();
+    el.textContent = swReg.waiting
+      ? `Versão ${VERSAO} · versão nova pronta, toque em Atualizar agora.`
+      : `Versão ${VERSAO} · esta é a mais recente.`;
+    if(swReg.waiting) mostrarAtualiza(swReg.waiting);
+  }catch(e){ el.textContent = `Versão ${VERSAO} · não consegui verificar (sem rede?).`; }
+});
+
+/* O navegador só oferece instalar quando quer; o botão aparece nessa hora e
+   some depois de instalado, para não ficar ocupando espaço à toa. */
+window.addEventListener("beforeinstallprompt", ev=>{
+  ev.preventDefault();
+  convite = ev;
+  $("btnInstalar").hidden = false;
+});
+$("btnInstalar").addEventListener("click", async ()=>{
+  if(!convite) return;
+  $("btnInstalar").hidden = true;
+  convite.prompt();
+  await convite.userChoice;
+  convite = null;
+});
+window.addEventListener("appinstalled", ()=>{ $("btnInstalar").hidden = true; convite = null; });
 
 /* ---------- início ---------- */
 pintarFila();

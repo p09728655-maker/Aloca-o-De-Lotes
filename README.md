@@ -49,8 +49,13 @@ Execute `garantirAbas()` uma vez (autoriza e cria as três abas).
 Depois `Implantar > Nova implantação > Aplicativo da Web`, executar como **Eu**,
 acesso para **Qualquer pessoa**. Copie a URL que termina em `/exec`.
 
-**2. App** — publique `index.html` na Vercel apontando para o repositório (sem build).
+**2. App** — publique o repositório na Vercel (sem build, tudo estático).
 Abra, toque no ⚙ e cole a URL do `/exec`.
+
+**2b. Instalar no tablet** — com o app aberto, toque em *Instalar no tablet* no
+rodapé. Ele passa a abrir pelo ícone, em tela cheia, sem barra de navegador. O
+botão só aparece quando o navegador oferece a instalação; no iPad o caminho é
+*Compartilhar > Adicionar à Tela de Início*.
 
 **3. Colaboradores** — para cadastrar a equipe de uma vez, preencha a lista em
 `cadastrarEquipe()` no Apps Script e rode. Para incluir alguém no meio do turno,
@@ -102,6 +107,24 @@ e OP 07 no 25 — mas no PDF as etiquetas de OP 02, 04 e 06 estão desenhadas *e
 duas linhas, e não sobre uma. Se isso significa que esses operadores ficam do outro
 lado da esteira e a faixa deles é outra, o app não sabe: as fronteiras são definidas
 no tablet, pelo botão *+ OP aqui*.
+
+## Versões e atualização
+
+A versão fica no rodapé do status (`v1.1.0`) e no ⚙. Quando alguém pergunta por
+telefone qual versão está no tablet, é esse número.
+
+O `sw.js` guarda o app no próprio aparelho, então ele abre e funciona sem rede —
+o que muda é só a leitura da planilha, que sempre vai à rede porque servir uma
+programação velha faria o líder montar o mapa do produto errado.
+
+**Para publicar uma versão nova:** mude `VERSAO` em `index.html` **e** em `sw.js`,
+e publique. É a troca de bytes do `sw.js` que faz o navegador perceber que há
+versão nova. O app procura sozinho de meia em meia hora e toda vez que volta ao
+primeiro plano; quando acha, mostra uma faixa laranja com *Atualizar agora*.
+
+Quem decide a hora de trocar é o líder, não o navegador: trocar sozinho no meio
+de um mapa pela metade jogaria fora o trabalho dele. Se houver envio na fila do
+aparelho, o app avisa antes de atualizar.
 
 ## Volume e limites
 
