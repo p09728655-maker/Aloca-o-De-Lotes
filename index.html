@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alocação da Embalagem — PPCP Patrimar</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alocação">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000; --panel:#111316; --panel2:#17191d; --line:#2b2f36;
+    --ink:#f2f4f7; --mut:#8a929c; --mut2:#5b636e;
+    --amber:#ff5a1f; --amber-dim:#5a2410; --green:#3fd15f; --green-dim:#184f2b;
+    --steel:#5b8bb0; --red:#ff3b30;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg); color:var(--ink); font-family:"Inter",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; padding:10px 16px 90px;}
+
+  header.top{position:sticky; top:0; z-index:50; background:var(--bg);
+    display:flex; flex-wrap:wrap; align-items:flex-end; gap:6px 18px;
+    border-bottom:2px solid var(--amber); padding:6px 0; margin-top:-10px;
+    box-shadow:0 8px 16px -6px rgba(0,0,0,.9)}
+  .brand{display:flex; flex-direction:column; gap:2px; flex:1 1 0}
+  .brand .eyebrow{font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--mut)}
+  .brand h1{font-family:"Oswald"; font-weight:600; font-size:19px; letter-spacing:.02em; margin:0; line-height:1}
+  .brand h1 span{color:var(--amber)}
+  .headmeta{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px 18px; align-items:flex-end}
+  .kpi{display:flex; flex-direction:column; align-items:flex-end; line-height:1}
+  .kpi b{font-family:"Oswald"; font-size:22px; font-weight:600}
+  .kpi small{font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut);
+    margin-top:3px; white-space:nowrap}
+
+  .status{font-family:"IBM Plex Mono"; font-size:11.5px; letter-spacing:.05em;
+    color:var(--mut); padding:7px 0 3px; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .status.err{color:var(--red)} .status.ok{color:var(--green)}
+
+  /* ---------- barra de escolha do lote ---------- */
+  .setup{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-top:10px}
+  .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
+  .fld label{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--mut)}
+  select,input[type=text],input[type=number]{background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:10px 11px;
+    font-family:"Inter"; font-size:14px; min-height:42px}
+  select:focus,input:focus{outline:2px solid var(--amber); outline-offset:1px}
+  .fld.grow{flex:1 1 260px}
+
+  button{font-family:"Oswald"; font-weight:600; letter-spacing:.04em; font-size:14px;
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:9px; padding:11px 16px; cursor:pointer; min-height:42px}
+  button:hover{border-color:var(--mut)}
+  button:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  button.pri{background:var(--amber); border-color:var(--amber); color:#000}
+  button.gho{background:transparent}
+  button:disabled{opacity:.4; cursor:not-allowed}
+
+  /* ---------- área de trabalho ---------- */
+  .work{display:grid; grid-template-columns:minmax(300px,1fr) minmax(320px,1.15fr);
+    gap:14px; margin-top:14px; align-items:start}
+  @media(max-width:900px){ .work{grid-template-columns:1fr} }
+
+  .box{background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  .box h2{font-family:"Oswald"; font-weight:600; font-size:14px; letter-spacing:.1em;
+    text-transform:uppercase; margin:0; padding:11px 14px; border-bottom:1px solid var(--line);
+    color:var(--mut); display:flex; align-items:center; gap:10px}
+  .box h2 em{font-style:normal; font-family:"IBM Plex Mono"; font-size:11px;
+    letter-spacing:.04em; text-transform:none; color:var(--mut2); margin-left:auto}
+
+  /* peças */
+  .peca{display:flex; align-items:center; gap:10px; padding:9px 13px;
+    border-bottom:1px solid var(--line); cursor:pointer; user-select:none}
+  .peca:last-child{border-bottom:none}
+  .peca:hover{background:var(--panel2)}
+  .peca .pnum{font-family:"Oswald"; font-weight:600; font-size:15px; min-width:30px;
+    height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+    background:var(--amber-dim); color:var(--amber); flex:none}
+  .peca.na .pnum{background:#1c1f24; color:var(--mut2)}
+  .peca .pinfo{flex:1 1 0; min-width:0}
+  .peca .pdesc{font-size:13px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .peca .pcod{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut); letter-spacing:.04em}
+  .peca .pqtd{font-family:"Oswald"; font-weight:600; font-size:16px; color:var(--ink); flex:none}
+  .peca .pqtd small{font-size:9.5px; color:var(--mut); letter-spacing:.1em; margin-left:3px}
+  .peca.hi{background:rgba(255,90,31,.10)}
+
+  /* postos */
+  .posto{border-bottom:1px solid var(--line); padding:10px 13px}
+  .posto:last-child{border-bottom:none}
+  .posto.sel{background:rgba(255,90,31,.09); box-shadow:inset 3px 0 0 var(--amber)}
+  .posto .phead{display:flex; align-items:center; gap:10px}
+  .posto .badge{font-family:"Oswald"; font-weight:700; font-size:17px; width:34px; height:34px;
+    border-radius:8px; display:flex; align-items:center; justify-content:center;
+    background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none; cursor:pointer}
+  .posto.sel .badge{background:var(--amber); border-color:var(--amber); color:#000}
+  .posto select{flex:1 1 0; min-width:0; font-size:13px; min-height:38px; padding:8px 9px}
+  .posto .carga{font-family:"IBM Plex Mono"; font-size:11px; color:var(--mut); flex:none; text-align:right;
+    line-height:1.3}
+  .posto .carga b{font-family:"Oswald"; font-size:15px; color:var(--ink); font-weight:600}
+  .posto .lista{margin:8px 0 0 44px; display:flex; flex-wrap:wrap; gap:5px}
+  .chip{font-family:"IBM Plex Mono"; font-size:10.5px; letter-spacing:.03em;
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    padding:4px 7px; color:var(--mut); white-space:nowrap; max-width:100%;
+    overflow:hidden; text-overflow:ellipsis}
+  .chip b{color:var(--ink); font-family:"Oswald"; font-size:12px}
+  .posto .vazio{margin:7px 0 0 44px; font-size:11.5px; color:var(--mut2); font-style:italic}
+  .posto.semop .badge{border-color:var(--red)}
+
+  /* barra de carga */
+  .bar{height:4px; background:#1c1f24; border-radius:2px; margin:7px 0 0 44px; overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--steel)}
+  .bar i.over{background:var(--amber)}
+
+  /* rodapé fixo de ação */
+  .actions{position:fixed; left:0; right:0; bottom:0; z-index:60;
+    background:linear-gradient(180deg,rgba(0,0,0,.4),var(--bg) 40%);
+    border-top:1px solid var(--line); padding:10px 16px;
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .actions .msg{flex:1 1 auto; font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--mut)}
+  .actions .msg.err{color:var(--red)} .actions .msg.ok{color:var(--green)}
+
+  .fila{font-family:"IBM Plex Mono"; font-size:11px; color:var(--amber);
+    border:1px solid var(--amber); border-radius:6px; padding:4px 8px}
+
+  dialog{background:var(--panel); color:var(--ink); border:1px solid var(--line);
+    border-radius:14px; padding:0; max-width:460px; width:92%}
+  dialog::backdrop{background:rgba(0,0,0,.72)}
+  dialog h3{font-family:"Oswald"; font-size:15px; letter-spacing:.08em; text-transform:uppercase;
+    margin:0; padding:14px 16px; border-bottom:1px solid var(--line); color:var(--mut)}
+  dialog .body{padding:14px 16px; display:flex; flex-direction:column; gap:11px}
+  dialog .foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:9px; justify-content:flex-end}
+  dialog p.hint{font-size:12px; color:var(--mut); line-height:1.5; margin:0}
+
+  .vazio-tela{padding:26px 16px; color:var(--mut); font-size:13.5px; line-height:1.6}
+  @media(prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="eyebrow">PPCP · Patrimar Móveis</div>
+    <h1>Alocação da <span>Embalagem</span></h1>
+  </div>
+  <div class="headmeta">
+    <div class="kpi"><b id="kPecas">–</b><small>peças</small></div>
+    <div class="kpi"><b id="kPostos">–</b><small>postos</small></div>
+    <div class="kpi"><b id="kDesbal">–</b><small>desbalanço</small></div>
+    <button class="gho" id="btnCfg" title="Configurações" style="padding:8px 11px">⚙</button>
+  </div>
+</header>
+
+<div class="status" id="status">Carregando…</div>
+
+<div class="setup">
+  <div class="fld grow">
+    <label for="selLote">Lote</label>
+    <select id="selLote"><option value="">—</option></select>
+  </div>
+  <div class="fld grow">
+    <label for="selProd">Produto do lote</label>
+    <select id="selProd"><option value="">—</option></select>
+  </div>
+  <div class="fld" style="min-width:110px">
+    <label for="inPostos">Postos ativos</label>
+    <input type="number" id="inPostos" min="2" max="14" value="8" inputmode="numeric">
+  </div>
+  <button class="gho" id="btnAuto">Distribuir automático</button>
+  <button class="gho" id="btnLimpar">Limpar</button>
+</div>
+
+<div class="work">
+  <div class="box">
+    <h2>Peças do produto <em id="ordemTxt">ordem da esteira</em></h2>
+    <div id="listaPecas"><div class="vazio-tela">Escolha um lote e um produto.</div></div>
+  </div>
+  <div class="box">
+    <h2>Postos <em>toque no posto, depois nas peças</em></h2>
+    <div id="listaPostos"><div class="vazio-tela">Escolha um lote e um produto.</div></div>
+    <div style="padding:11px 13px; border-top:1px solid var(--line)">
+      <button class="gho" id="btnNovoColab" style="width:100%">+ Cadastrar colaborador</button>
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <span class="fila" id="fila" hidden></span>
+  <span class="msg" id="msg"></span>
+  <button class="gho" id="btnReenviar" hidden>Reenviar pendentes</button>
+  <button class="pri" id="btnSalvar" disabled>Salvar alocação do lote</button>
+</div>
+
+<!-- ---------- configurações ---------- -->
+<dialog id="dlgCfg">
+  <h3>Configurações</h3>
+  <div class="body">
+    <div class="fld"><label for="cfgSheet">ID da planilha</label>
+      <input type="text" id="cfgSheet" placeholder="cole o ID ou a URL"></div>
+    <div class="fld"><label for="cfgGid">gid da aba de programação</label>
+      <input type="text" id="cfgGid"></div>
+    <div class="fld"><label for="cfgEstr">gid da aba ESTRUTURA</label>
+      <input type="text" id="cfgEstr"></div>
+    <div class="fld"><label for="cfgApi">URL do Apps Script (/exec)</label>
+      <input type="text" id="cfgApi" placeholder="https://script.google.com/macros/s/.../exec"></div>
+    <p class="hint">Sem a URL do Apps Script o app funciona, mas não grava — as
+      alocações ficam na fila local até você configurar.</p>
+  </div>
+  <div class="foot">
+    <button class="gho" id="cfgCancel">Cancelar</button>
+    <button class="pri" id="cfgOk">Salvar</button>
+  </div>
+</dialog>
+
+<!-- ---------- novo colaborador ---------- -->
+<dialog id="dlgColab">
+  <h3>Cadastrar colaborador</h3>
+  <div class="body">
+    <div class="fld"><label for="colMat">Matrícula</label>
+      <input type="text" id="colMat" inputmode="numeric"></div>
+    <div class="fld"><label for="colNome">Nome</label>
+      <input type="text" id="colNome"></div>
+    <p class="hint">Grava na aba COLABORADORES e já fica disponível nos postos.</p>
+  </div>
+  <div class="foot">
+    <button class="gho" id="colCancel">Cancelar</button>
+    <button class="pri" id="colOk">Cadastrar</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+
+/* ==================================================================
+   CONFIGURAÇÃO
+   A planilha e os gids são os mesmos do painel Lotes em Elaboração.
+   As abas novas (COLABORADORES, ALOCACAO_PADRAO, REGISTRO) são lidas
+   pelo NOME, então basta criá-las — não precisa descobrir o gid.
+   ================================================================== */
+const CFG_PADRAO = {
+  sheet: "1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg",
+  gid:   "1540822534",   // aba de programação
+  estr:  "662403781",    // aba ESTRUTURA
+  api:   ""              // URL /exec do Apps Script
+};
+const CFG_KEY = "alocEmbCfg";
+const FILA_KEY = "alocEmbFila";
+
+function lerCfg(){
+  try{ return Object.assign({}, CFG_PADRAO, JSON.parse(localStorage.getItem(CFG_KEY)||"{}")); }
+  catch(e){ return Object.assign({}, CFG_PADRAO); }
+}
+let CFG = lerCfg();
+const extraiId = s => { const t=String(s||"").trim();
+  const m=t.match(/\/d\/([a-zA-Z0-9_-]{20,})/); return m?m[1]:t; };
+
+const urlGid  = gid  => `https://docs.google.com/spreadsheets/d/${CFG.sheet}/gviz/tq?tqx=out:csv&gid=${gid}`;
+const urlAba  = nome => `https://docs.google.com/spreadsheets/d/${CFG.sheet}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(nome)}`;
+
+/* ==================================================================
+   LEITURA — mesmo parser do painel Lotes em Elaboração
+   ================================================================== */
+function parseCSV(txt){
+  const rows=[]; let row=[], f="", q=false;
+  for(let i=0;i<txt.length;i++){ const c=txt[i];
+    if(q){ if(c=='"'){ if(txt[i+1]=='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else{
+      if(c=='"')q=true;
+      else if(c==','){row.push(f);f="";}
+      else if(c=='\n'){row.push(f);rows.push(row);row=[];f="";}
+      else if(c!='\r')f+=c; }
+  }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==""));
+}
+const norm    = s => String(s||"").trim().toLowerCase().replace(/[^a-z0-9]/g,"");
+const normCod = s => String(s||"").toUpperCase().replace(/[^0-9A-Z]/g,"");
+const val     = (row,i) => i===undefined ? "" : (row[i]||"").trim();
+const num     = x => parseFloat(String(x||"0").replace(/\./g,"").replace(",",".")) || 0;
+function numDec(x){ let s=String(x??"").trim(); if(!s) return 0;
+  if(s.includes(",")) s=s.replace(/\./g,"").replace(",",".");
+  return parseFloat(s)||0; }
+
+function mapHead(hrow, alias){
+  const idx={};
+  hrow.forEach((h,i)=>{ const n=norm(h);
+    for(const k in alias){ if(alias[k].includes(n) && idx[k]===undefined) idx[k]=i; } });
+  return idx;
+}
+function acharHead(rows, alias, obrig, limite){
+  for(let i=0;i<Math.min(rows.length, limite||20); i++){
+    const c = mapHead(rows[i], alias);
+    if(obrig.every(k => c[k]!==undefined)) return {h:i, idx:c};
+  }
+  return null;
+}
+
+/* ---------- lotes (aba de programação) ---------- */
+const ALIAS_LOTE = {
+  lote:["lote","nlote","numlote","n"],
+  cor:["cor","corgps","cordogps","gps","corlote","cordolote"],
+  emb:["emb","embalagem","dataprevemb","dataemb","previsaoemb","data"],
+  cod:["cod","codigo","cdigo","sku"],
+  desc:["desc","descricao","descrio","descricaocor","descriocor","produto","item"],
+  qtd:["qtd","qtde","quantidade","qtditem","qtdcx","qtcx","caixas"]
+};
+function parseLotes(rows){
+  const f = acharHead(rows, ALIAS_LOTE, ["lote"]);
+  if(!f) return [];
+  const {h, idx} = f;
+  const out=[]; let cur=null;
+  for(let r=h+1; r<rows.length; r++){
+    const row = rows[r];
+    const lote = val(row, idx.lote);
+    if(lote && (!cur || cur.lote!==lote)){
+      cur = { lote, cor:val(row,idx.cor), emb:val(row,idx.emb), itens:[] };
+      out.push(cur);
+    }
+    if(!cur) continue;
+    if(!cur.cor) cur.cor = val(row, idx.cor);
+    if(!cur.emb) cur.emb = val(row, idx.emb);
+    const cod = normCod(val(row, idx.cod));
+    const desc = val(row, idx.desc);
+    const q = num(val(row, idx.qtd));
+    if(cod && /^\d{6,}/.test(cod)) cur.itens.push({ cod, desc, qtd:q });
+  }
+  return out.filter(l => l.itens.length);
+}
+
+/* ---------- estrutura (peças por produto) ---------- */
+const ALIAS_ESTR = {
+  cod:["codigo","cdigo","cod","produto","pai","codigopai"],
+  peca:["peca","pea","codpeca","codigopeca","filho"],
+  qtd:["qtd","qtde","quantidade","qtdpeca"],
+  desc:["descricao","descrio","desc","descricaopeca"]
+};
+/* Tipo, medidas e material saem da descrição: "TAMPO 1250X450X25 MDP 1 BRANCO".
+   A área é usada para pesar o esforço de manuseio no balanceamento. */
+const RE_CHAPA = /(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)\s*X\s*(\d+(?:[.,]\d+)?)\s+(MDP|MDF)\b/i;
+const TIPOS_PECA = [
+  [/\bGAV\b/,"Gavetas"], [/\bTRAV/,"Travessas"], [/\bTAMPO/,"Tampos"],
+  [/\bLAT\b/,"Laterais"], [/\bPRAT/,"Prateleiras"], [/\bDIV\b/,"Divisórias"],
+  [/\bBASE\b/,"Bases"], [/\bFUNDO/,"Fundos"], [/\bPES?\b/,"Pés"]
+];
+/* ORDEM DA ESTEIRA — quem entra primeiro na caixa fica no posto 1.
+   ATENÇÃO: esta sequência é uma hipótese e precisa ser validada com a linha.
+   Mudar a ordem aqui muda a distribuição automática de todos os produtos. */
+const ORDEM_EMB = ["Fundos","Bases","Tampos","Laterais","Divisórias","Prateleiras",
+                   "Travessas","Gavetas","Pés","Outras"];
+function infoPeca(desc){
+  const D = String(desc||"").toUpperCase();
+  const m = D.match(RE_CHAPA);
+  let tipo = "Outras";
+  for(const [re,t] of TIPOS_PECA){ if(re.test(D)){ tipo=t; break; } }
+  if(!m) return { painel:false, tipo, area:0, dims:"" };
+  const c = parseFloat(m[1].replace(",",".")), l = parseFloat(m[2].replace(",","."));
+  return { painel:true, tipo, area:(c||0)*(l||0), dims:(c&&l)?`${m[1]}×${m[2]}`:"" };
+}
+function parseEstrutura(rows){
+  const f = acharHead(rows, ALIAS_ESTR, ["cod","peca","qtd"], 10);
+  if(!f) return null;
+  const {h, idx} = f;
+  const map = new Map(), vistos = new Set();
+  for(let r=h+1; r<rows.length; r++){
+    const row = rows[r];
+    const cod = normCod(val(row, idx.cod));
+    if(!/^\d{6,}/.test(cod)) continue;
+    const peca = normCod(val(row, idx.peca)); if(!peca) continue;
+    const k = cod+"|"+peca;
+    if(vistos.has(k)) continue; vistos.add(k);
+    const qtd = numDec(val(row, idx.qtd)); if(qtd<=0) continue;
+    const desc = val(row, idx.desc);
+    if(!map.has(cod)) map.set(cod, []);
+    map.get(cod).push(Object.assign({ peca, qtd, desc }, infoPeca(desc)));
+  }
+  return map.size ? map : null;
+}
+
+/* ---------- colaboradores ---------- */
+const ALIAS_COLAB = {
+  mat:["matricula","matrcula","mat","chapa","registro","codigo","cod"],
+  nome:["nome","colaborador","funcionario","funcionrio","operador"],
+  ativo:["ativo","situacao","situao","status"]
+};
+function parseColab(rows){
+  const f = acharHead(rows, ALIAS_COLAB, ["mat","nome"], 12);
+  if(!f) return [];
+  const {h, idx} = f;
+  const out=[], vistos=new Set();
+  for(let r=h+1; r<rows.length; r++){
+    const row = rows[r];
+    const mat = String(val(row, idx.mat)).trim();
+    const nome = val(row, idx.nome);
+    if(!mat || !nome) continue;
+    if(vistos.has(mat)) continue; vistos.add(mat);
+    const at = idx.ativo===undefined ? "SIM" : val(row, idx.ativo).toUpperCase();
+    if(/^(N|NAO|NÃO|0|FALSE|INATIVO|DEMITID)/.test(at)) continue;
+    out.push({ mat, nome });
+  }
+  out.sort((a,b)=> a.nome.localeCompare(b.nome,"pt-BR"));
+  return out;
+}
+
+/* ---------- alocação padrão por produto ---------- */
+const ALIAS_PAD = {
+  cod:["codproduto","codigoproduto","codigo","cod","produto"],
+  posto:["posto","posicao","posio","estacao","estao"],
+  peca:["codpeca","peca","pea","codigopeca"],
+  qtd:["qtd","qtde","quantidade","qtdporvolume"]
+};
+function parsePadrao(rows){
+  const f = acharHead(rows, ALIAS_PAD, ["cod","posto","peca"], 12);
+  if(!f) return new Map();
+  const {h, idx} = f;
+  const map = new Map();
+  for(let r=h+1; r<rows.length; r++){
+    const row = rows[r];
+    const cod = normCod(val(row, idx.cod)); if(!cod) continue;
+    const posto = parseInt(val(row, idx.posto), 10); if(!(posto>0)) continue;
+    const peca = normCod(val(row, idx.peca)); if(!peca) continue;
+    if(!map.has(cod)) map.set(cod, new Map());
+    map.get(cod).set(peca, posto);
+  }
+  return map;
+}
+
+/* ==================================================================
+   ESTADO
+   ================================================================== */
+const S = {
+  lotes: [],
+  estrutura: new Map(),
+  colab: [],
+  padrao: new Map(),          // cod -> Map(peca -> posto)
+  lote: null,
+  prod: null,                 // {cod, desc, qtd}
+  pecas: [],                  // peças do produto, na ordem da esteira
+  nPostos: 8,
+  postoDe: new Map(),         // cod_peca -> posto (1..n) ou 0 = não alocada
+  operador: [],               // índice 0..n-1 -> matricula
+  sel: 1,                     // posto selecionado
+  erroEstr: "", erroColab: "", erroPad: ""
+};
+
+const $ = id => document.getElementById(id);
+function setStatus(kind, txt){
+  const el = $("status");
+  el.className = "status" + (kind ? " "+kind : "");
+  el.innerHTML = txt;
+}
+function setMsg(kind, txt){
+  const el = $("msg");
+  el.className = "msg" + (kind ? " "+kind : "");
+  el.textContent = txt;
+}
+
+/* ==================================================================
+   CARGA DOS DADOS
+   ================================================================== */
+async function lerCSV(url){
+  const res = await fetch(url, { cache:"no-store" });
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const txt = await res.text();
+  if(/^\s*<html/i.test(txt)) throw new Error("sem permissão de leitura");
+  return parseCSV(txt);
+}
+
+async function carregarTudo(){
+  setStatus("", "Carregando planilha…");
+  S.erroEstr = S.erroColab = S.erroPad = "";
+
+  // lotes — obrigatório
+  try{
+    S.lotes = parseLotes(await lerCSV(urlGid(CFG.gid)));
+  }catch(e){
+    setStatus("err", "Não consegui ler a aba de programação: "+e.message+
+      " — confira o ID/gid em ⚙ e se a planilha está como “qualquer pessoa com o link: leitor”.");
+    return;
+  }
+
+  // estrutura — obrigatório para o app ter função
+  try{
+    const m = parseEstrutura(await lerCSV(urlGid(CFG.estr)));
+    if(m) S.estrutura = m; else S.erroEstr = "aba ESTRUTURA sem CODIGO/PEÇA/QTD";
+  }catch(e){ S.erroEstr = "não li a ESTRUTURA ("+e.message+")"; }
+
+  // colaboradores — opcional na 1ª execução
+  for(const nome of ["COLABORADORES","COLABORADOR","OPERADORES"]){
+    try{
+      const c = parseColab(await lerCSV(urlAba(nome)));
+      if(c.length){ S.colab = c; break; }
+    }catch(e){ /* tenta a próxima */ }
+  }
+  if(!S.colab.length) S.erroColab = "aba COLABORADORES não encontrada ou vazia";
+
+  // alocação padrão — opcional
+  try{ S.padrao = parsePadrao(await lerCSV(urlAba("ALOCACAO_PADRAO"))); }
+  catch(e){ S.erroPad = "sem ALOCACAO_PADRAO ainda"; }
+
+  montarSelects();
+  linhaStatus();
+}
+
+function linhaStatus(){
+  const p = [];
+  p.push(`<b>${S.lotes.length}</b> lotes`);
+  p.push(S.estrutura.size ? `estrutura: ${S.estrutura.size} códigos`
+                          : `<span style="color:var(--red)">${S.erroEstr}</span>`);
+  p.push(S.colab.length ? `${S.colab.length} colaboradores`
+                        : `<span style="color:var(--amber)">${S.erroColab}</span>`);
+  p.push(S.padrao.size ? `${S.padrao.size} produtos com padrão salvo` : `sem padrão salvo`);
+  if(!CFG.api) p.push(`<span style="color:var(--amber)">Apps Script não configurado — não grava</span>`);
+  setStatus("", p.join(" · "));
+}
+
+function montarSelects(){
+  const sl = $("selLote");
+  sl.innerHTML = '<option value="">—</option>';
+  S.lotes.forEach((l,i)=>{
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = l.lote + (l.cor ? " · "+l.cor : "") + (l.emb ? "  ("+l.emb+")" : "");
+    sl.appendChild(o);
+  });
+}
+
+/* ==================================================================
+   MONTAGEM DA ALOCAÇÃO
+   ================================================================== */
+const ordemIdx = t => { const i = ORDEM_EMB.indexOf(t); return i<0 ? ORDEM_EMB.length : i; };
+
+/* Fator de esforço: peça grande dá mais trabalho, mas não proporcionalmente
+   à área. Normaliza pela mediana das áreas do próprio produto e trava entre
+   0,5 e 3 para uma peça gigante não engolir um posto inteiro sozinha. */
+function calcularCargas(pecas){
+  const areas = pecas.filter(p=>p.area>0).map(p=>p.area).sort((a,b)=>a-b);
+  const med = areas.length ? areas[Math.floor(areas.length/2)] : 0;
+  pecas.forEach(p=>{
+    let f = 1;
+    if(med>0 && p.area>0) f = Math.min(3, Math.max(.5, p.area/med));
+    p.carga = p.qtd * f;
+  });
+}
+
+function carregarProduto(){
+  S.pecas = []; S.postoDe = new Map();
+  if(!S.prod) return;
+  const lista = S.estrutura.get(normCod(S.prod.cod));
+  if(!lista) return;
+  S.pecas = lista.map(p => Object.assign({}, p));
+  S.pecas.sort((a,b)=>{
+    const d = ordemIdx(a.tipo) - ordemIdx(b.tipo);
+    if(d) return d;
+    return (b.area||0) - (a.area||0);   // dentro do tipo, maior primeiro
+  });
+  calcularCargas(S.pecas);
+
+  // aplica o padrão salvo do produto, se existir
+  const pad = S.padrao.get(normCod(S.prod.cod));
+  if(pad){
+    let maxP = 0;
+    S.pecas.forEach(p=>{
+      const q = pad.get(p.peca) || 0;
+      S.postoDe.set(p.peca, q);
+      if(q > maxP) maxP = q;
+    });
+    if(maxP >= 2 && maxP <= 14){ S.nPostos = maxP; $("inPostos").value = String(maxP); }
+  }else{
+    distribuirAuto();
+  }
+}
+
+/* Partição em blocos CONTÍGUOS respeitando a ordem da esteira — o posto 1
+   embala primeiro, então a alocação não pode saltar peças. Programação
+   dinâmica minimizando a carga do posto mais carregado. */
+function distribuirAuto(){
+  const n = S.pecas.length, k = Math.min(S.nPostos, Math.max(1, n));
+  S.postoDe = new Map();
+  if(!n) return;
+  const pre = [0];
+  for(let i=0;i<n;i++) pre.push(pre[i] + S.pecas[i].carga);
+  const soma = (i,j) => pre[j] - pre[i];               // [i, j)
+
+  const INF = Infinity;
+  const dp = Array.from({length:k+1}, ()=> new Array(n+1).fill(INF));
+  const cut = Array.from({length:k+1}, ()=> new Array(n+1).fill(0));
+  dp[0][0] = 0;
+  for(let g=1; g<=k; g++){
+    for(let j=g; j<=n; j++){
+      for(let i=g-1; i<j; i++){
+        if(dp[g-1][i] === INF) continue;
+        const v = Math.max(dp[g-1][i], soma(i,j));
+        if(v < dp[g][j]){ dp[g][j] = v; cut[g][j] = i; }
+      }
+    }
+  }
+  const lim = [n];
+  let j = n;
+  for(let g=k; g>=1; g--){ j = cut[g][j]; lim.unshift(j); }
+  for(let g=0; g<k; g++)
+    for(let i=lim[g]; i<lim[g+1]; i++)
+      S.postoDe.set(S.pecas[i].peca, g+1);
+}
+
+function cargaPorPosto(){
+  const c = new Array(S.nPostos + 1).fill(0);
+  S.pecas.forEach(p=>{
+    const q = S.postoDe.get(p.peca) || 0;
+    if(q>=1 && q<=S.nPostos) c[q] += p.carga;
+  });
+  return c;
+}
+
+/* ==================================================================
+   RENDER
+   ================================================================== */
+function render(){
+  renderPecas();
+  renderPostos();
+  renderKpi();
+  atualizarSalvar();
+}
+
+/* Botão travado sem explicação é o jeito mais rápido de o líder desistir do
+   app. Sempre dizer o que falta. */
+function atualizarSalvar(){
+  $("btnSalvar").disabled = !podeSalvar();
+  if(!S.prod || !S.pecas.length){ setMsg("", ""); return; }
+  const soltas = S.pecas.filter(p => !(S.postoDe.get(p.peca)||0)).length;
+  const semOp = [];
+  for(let i=1; i<=S.nPostos; i++)
+    if(S.pecas.some(p => S.postoDe.get(p.peca)===i) && !S.operador[i-1]) semOp.push(i);
+  if(soltas)      setMsg("err", `${soltas} ${soltas===1?"peça sem posto":"peças sem posto"} — toque nelas para alocar.`);
+  else if(semOp.length) setMsg("err", `Falta o colaborador ${semOp.length===1?"do posto":"dos postos"} ${semOp.join(", ")}.`);
+  else            setMsg("", "Pronto para salvar.");
+}
+
+function renderPecas(){
+  const box = $("listaPecas");
+  if(!S.prod){ box.innerHTML = '<div class="vazio-tela">Escolha um lote e um produto.</div>'; return; }
+  if(!S.pecas.length){
+    box.innerHTML = `<div class="vazio-tela">O código <b>${S.prod.cod}</b> não está na aba
+      ESTRUTURA. Sem as peças cadastradas não há o que alocar — verifique a estrutura
+      desse produto no ERP.</div>`;
+    return;
+  }
+  box.innerHTML = "";
+  S.pecas.forEach(p=>{
+    const q = S.postoDe.get(p.peca) || 0;
+    const el = document.createElement("div");
+    el.className = "peca" + (q ? "" : " na") + (q===S.sel ? " hi" : "");
+    el.innerHTML =
+      `<span class="pnum">${q || "–"}</span>
+       <span class="pinfo">
+         <span class="pdesc">${escapa(p.desc || p.peca)}</span>
+         <span class="pcod">${escapa(p.peca)} · ${escapa(p.tipo)}${p.dims ? " · "+p.dims : ""}</span>
+       </span>
+       <span class="pqtd">${fmtQtd(p.qtd)}<small>UN</small></span>`;
+    el.addEventListener("click", ()=>{
+      // toque na peça já alocada no posto selecionado = desaloca
+      S.postoDe.set(p.peca, (S.postoDe.get(p.peca) === S.sel) ? 0 : S.sel);
+      render();
+    });
+    box.appendChild(el);
+  });
+  $("ordemTxt").textContent = "ordem da esteira · toque para alocar no posto " + S.sel;
+}
+
+function renderPostos(){
+  const box = $("listaPostos");
+  if(!S.prod || !S.pecas.length){
+    box.innerHTML = '<div class="vazio-tela">Escolha um lote e um produto.</div>';
+    return;
+  }
+  const cargas = cargaPorPosto();
+  const maxC = Math.max(1, ...cargas.slice(1));
+  const media = cargas.slice(1).reduce((a,b)=>a+b,0) / Math.max(1,S.nPostos);
+  box.innerHTML = "";
+  for(let i=1; i<=S.nPostos; i++){
+    const pecas = S.pecas.filter(p => S.postoDe.get(p.peca) === i);
+    const semOp = !S.operador[i-1];
+    const el = document.createElement("div");
+    el.className = "posto" + (i===S.sel ? " sel" : "") + (semOp ? " semop" : "");
+    const opts = ['<option value="">— escolha o colaborador —</option>']
+      .concat(S.colab.map(c =>
+        `<option value="${escapa(c.mat)}"${S.operador[i-1]===c.mat?" selected":""}>${escapa(c.nome)}</option>`))
+      .join("");
+    el.innerHTML =
+      `<div class="phead">
+         <span class="badge" data-p="${i}">${i}</span>
+         <select data-p="${i}">${opts}</select>
+         <span class="carga"><b>${pecas.length}</b> peças<br>${fmtQtd(cargas[i])} carga</span>
+       </div>
+       <div class="bar"><i class="${cargas[i] > media*1.25 ? 'over' : ''}"
+            style="width:${Math.round(100*cargas[i]/maxC)}%"></i></div>` +
+      (pecas.length
+        ? `<div class="lista">${pecas.map(p =>
+             `<span class="chip"><b>${fmtQtd(p.qtd)}×</b> ${escapa(curto(p.desc||p.peca))}</span>`).join("")}</div>`
+        : `<div class="vazio">Sem peças — toque no número e depois nas peças da lista.</div>`);
+    el.querySelector(".badge").addEventListener("click", ()=>{ S.sel = i; render(); });
+    el.querySelector("select").addEventListener("change", ev=>{
+      S.operador[i-1] = ev.target.value;
+      renderKpi(); atualizarSalvar();
+      el.classList.toggle("semop", !ev.target.value);
+    });
+    box.appendChild(el);
+  }
+}
+
+function renderKpi(){
+  $("kPecas").textContent = S.pecas.length || "–";
+  $("kPostos").textContent = S.prod ? S.nPostos : "–";
+  if(!S.pecas.length){ $("kDesbal").textContent = "–"; return; }
+  const c = cargaPorPosto().slice(1);
+  const tot = c.reduce((a,b)=>a+b,0);
+  if(tot<=0){ $("kDesbal").textContent = "–"; return; }
+  const media = tot / S.nPostos;
+  const desv = Math.max(...c.map(x => Math.abs(x-media))) / media;
+  const el = $("kDesbal");
+  el.textContent = Math.round(desv*100) + "%";
+  el.style.color = desv > .35 ? "var(--amber)" : "var(--green)";
+}
+
+const escapa = s => String(s??"").replace(/[&<>"']/g, m =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+const fmtQtd = n => Number.isInteger(n) ? String(n)
+  : (Math.round(n*10)/10).toString().replace(".",",");
+const curto = s => { s = String(s||""); return s.length>26 ? s.slice(0,25)+"…" : s; };
+
+function podeSalvar(){
+  if(!S.lote || !S.prod || !S.pecas.length) return false;
+  // todo posto com peça precisa de colaborador; posto vazio pode ficar sem
+  for(let i=1; i<=S.nPostos; i++){
+    const temPeca = S.pecas.some(p => S.postoDe.get(p.peca) === i);
+    if(temPeca && !S.operador[i-1]) return false;
+  }
+  // nenhuma peça pode ficar de fora
+  return S.pecas.every(p => (S.postoDe.get(p.peca)||0) >= 1);
+}
+
+/* ==================================================================
+   GRAVAÇÃO — Apps Script + fila local
+   Cada envio carrega um id. Se o tablet perder o Wi-Fi e reenviar, o
+   Apps Script descarta o duplicado pelo id em vez de lançar duas vezes.
+   ================================================================== */
+const lerFila = () => { try{ return JSON.parse(localStorage.getItem(FILA_KEY)||"[]"); }catch(e){ return []; } };
+const salvarFila = f => { try{ localStorage.setItem(FILA_KEY, JSON.stringify(f)); }catch(e){} };
+function pintarFila(){
+  const n = lerFila().length;
+  $("fila").hidden = !n;
+  $("fila").textContent = n + (n===1 ? " envio pendente" : " envios pendentes");
+  $("btnReenviar").hidden = !n;
+}
+
+function novoId(){
+  if(crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2,10);
+}
+
+async function enviar(payload){
+  if(!CFG.api) throw new Error("Apps Script não configurado");
+  // text/plain evita o preflight CORS, que o Apps Script não responde
+  const res = await fetch(CFG.api, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+    redirect: "follow"
+  });
+  const txt = await res.text();
+  let out;
+  try{ out = JSON.parse(txt); }
+  catch(e){ throw new Error("resposta inesperada do Apps Script"); }
+  if(!out.ok) throw new Error(out.erro || "erro no Apps Script");
+  return out;
+}
+
+async function despacharFila(){
+  const fila = lerFila();
+  if(!fila.length) return { enviados:0, restantes:0 };
+  let enviados = 0;
+  while(fila.length){
+    try{
+      await enviar(fila[0]);
+      fila.shift(); enviados++;
+      salvarFila(fila);
+    }catch(e){
+      salvarFila(fila);
+      pintarFila();
+      throw e;
+    }
+  }
+  salvarFila(fila); pintarFila();
+  return { enviados, restantes:0 };
+}
+
+function montarPayload(){
+  const nomeDe = m => (S.colab.find(c=>c.mat===m)||{}).nome || "";
+  const linhas = [];
+  S.pecas.forEach(p=>{
+    const posto = S.postoDe.get(p.peca) || 0;
+    if(!posto) return;
+    const mat = S.operador[posto-1] || "";
+    linhas.push({
+      posto, matricula:mat, nome:nomeDe(mat),
+      cod_peca:p.peca, desc_peca:p.desc||"", qtd:p.qtd, tipo:p.tipo
+    });
+  });
+  return {
+    acao: "salvar_lote",
+    id_envio: novoId(),
+    ts_local: new Date().toISOString(),
+    lote: S.lote.lote,
+    cor: S.lote.cor || "",
+    data_emb: S.lote.emb || "",
+    cod_produto: S.prod.cod,
+    desc_produto: S.prod.desc || "",
+    volumes: S.prod.qtd || 0,
+    n_postos: S.nPostos,
+    linhas
+  };
+}
+
+async function salvar(){
+  if(!podeSalvar()) return;
+  const payload = montarPayload();
+  const fila = lerFila();
+  fila.push(payload);
+  salvarFila(fila);
+  pintarFila();
+  $("btnSalvar").disabled = true;
+  setMsg("", "Enviando…");
+  try{
+    await despacharFila();
+    setMsg("ok", `Lote ${payload.lote} · ${payload.cod_produto} gravado (${payload.linhas.length} linhas).`);
+    // guarda o padrão em memória para o próximo lote do mesmo produto
+    const m = new Map();
+    payload.linhas.forEach(l => m.set(l.cod_peca, l.posto));
+    S.padrao.set(normCod(payload.cod_produto), m);
+  }catch(e){
+    setMsg("err", "Não enviou: "+e.message+" — ficou na fila, use “Reenviar pendentes”.");
+  }
+  $("btnSalvar").disabled = !podeSalvar();
+}
+
+/* ==================================================================
+   EVENTOS
+   ================================================================== */
+$("selLote").addEventListener("change", ev=>{
+  const i = parseInt(ev.target.value, 10);
+  S.lote = Number.isInteger(i) ? S.lotes[i] : null;
+  S.prod = null;
+  const sp = $("selProd");
+  sp.innerHTML = '<option value="">—</option>';
+  if(S.lote) S.lote.itens.forEach((it,j)=>{
+    const o = document.createElement("option");
+    o.value = String(j);
+    o.textContent = it.cod + " · " + (it.desc||"") + "  (" + fmtQtd(it.qtd) + " vol)";
+    sp.appendChild(o);
+  });
+  // um produto só: já seleciona
+  if(S.lote && S.lote.itens.length === 1){ sp.value = "0"; sp.dispatchEvent(new Event("change")); }
+  else render();
+});
+
+$("selProd").addEventListener("change", ev=>{
+  const j = parseInt(ev.target.value, 10);
+  S.prod = (S.lote && Number.isInteger(j)) ? S.lote.itens[j] : null;
+  S.sel = 1;
+  setMsg("", "");
+  carregarProduto();
+  render();
+});
+
+$("inPostos").addEventListener("change", ev=>{
+  const n = Math.max(2, Math.min(14, parseInt(ev.target.value,10) || 8));
+  ev.target.value = String(n);
+  S.nPostos = n;
+  if(S.sel > n) S.sel = n;
+  // peças alocadas em posto que deixou de existir voltam para a lista
+  S.pecas.forEach(p=>{ if((S.postoDe.get(p.peca)||0) > n) S.postoDe.set(p.peca, 0); });
+  render();
+});
+
+$("btnAuto").addEventListener("click", ()=>{ if(S.pecas.length){ distribuirAuto(); render(); } });
+$("btnLimpar").addEventListener("click", ()=>{
+  S.pecas.forEach(p=> S.postoDe.set(p.peca, 0));
+  render();
+});
+$("btnSalvar").addEventListener("click", salvar);
+$("btnReenviar").addEventListener("click", async ()=>{
+  setMsg("", "Reenviando…");
+  try{ const r = await despacharFila(); setMsg("ok", r.enviados + " envio(s) gravado(s)."); }
+  catch(e){ setMsg("err", "Ainda não foi: "+e.message); }
+});
+
+/* ---------- configurações ---------- */
+$("btnCfg").addEventListener("click", ()=>{
+  $("cfgSheet").value = CFG.sheet; $("cfgGid").value = CFG.gid;
+  $("cfgEstr").value = CFG.estr;   $("cfgApi").value = CFG.api;
+  $("dlgCfg").showModal();
+});
+$("cfgCancel").addEventListener("click", ()=> $("dlgCfg").close());
+$("cfgOk").addEventListener("click", async ()=>{
+  CFG = { sheet: extraiId($("cfgSheet").value), gid: $("cfgGid").value.trim(),
+          estr: $("cfgEstr").value.trim(), api: $("cfgApi").value.trim() };
+  try{ localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); }catch(e){}
+  $("dlgCfg").close();
+  await carregarTudo();
+  render();
+});
+
+/* ---------- novo colaborador ---------- */
+$("btnNovoColab").addEventListener("click", ()=>{
+  $("colMat").value = ""; $("colNome").value = "";
+  $("dlgColab").showModal();
+});
+$("colCancel").addEventListener("click", ()=> $("dlgColab").close());
+$("colOk").addEventListener("click", async ()=>{
+  const mat = $("colMat").value.trim(), nome = $("colNome").value.trim();
+  if(!mat || !nome){ setMsg("err", "Matrícula e nome são obrigatórios."); return; }
+  if(S.colab.some(c=>c.mat===mat)){ setMsg("err", "Matrícula "+mat+" já cadastrada."); $("dlgColab").close(); return; }
+  $("dlgColab").close();
+  setMsg("", "Cadastrando…");
+  try{
+    await enviar({ acao:"colaborador", id_envio:novoId(), matricula:mat, nome });
+    S.colab.push({ mat, nome });
+    S.colab.sort((a,b)=> a.nome.localeCompare(b.nome,"pt-BR"));
+    setMsg("ok", nome + " cadastrado.");
+    render(); linhaStatus();
+  }catch(e){
+    setMsg("err", "Não cadastrou: "+e.message);
+  }
+});
+
+/* ---------- início ---------- */
+pintarFila();
+carregarTudo().then(render);
+window.addEventListener("online", ()=>{ if(lerFila().length) despacharFila().then(pintarFila).catch(()=>{}); });
+</script>
+</body>
+</html>
