@@ -209,6 +209,24 @@
   .rastro .rdup{font-family:"Oswald"; font-size:12px; letter-spacing:.05em; color:#000;
     background:var(--amber); border-radius:5px; padding:2px 8px}
   .rastro .rops{flex:1 1 100%; font-family:"IBM Plex Mono"; font-size:11px; color:var(--mut)}
+  .rastro .rops i{font-style:normal; color:var(--mut2)}
+  .rastro .rtopo{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .rastro .rtopo button{min-height:36px; padding:6px 12px; font-size:13px; margin-left:auto}
+
+  /* ---------- conferência ---------- */
+  .cprod{border-top:1px solid var(--line); padding-top:10px; margin-top:4px}
+  .cprod:first-child{border-top:none; margin-top:0}
+  .cprod h4{font-family:"Oswald"; font-size:13.5px; letter-spacing:.06em; margin:0 0 8px;
+    color:var(--mut); text-transform:uppercase}
+  .cbloco{background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; margin-bottom:8px}
+  .ctit{font-size:13px; margin-bottom:5px}
+  .ctit b{font-family:"Oswald"; font-size:14px; letter-spacing:.03em; color:var(--ink)}
+  .ctit .cmat{font-family:"IBM Plex Mono"; font-size:11px; color:var(--mut); margin-left:6px}
+  .cpeca{display:flex; gap:9px; align-items:baseline; font-size:12.5px; padding:2px 0}
+  .cpeca .cq{font-family:"Oswald"; font-weight:600; color:var(--amber); min-width:30px}
+  .cpeca .cd{flex:1 1 0; min-width:0}
+  .cpeca .cc{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut2)}
 
   .vazio-tela{padding:26px 16px; color:var(--mut); font-size:13.5px; line-height:1.6}
   @media(prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
@@ -246,6 +264,10 @@
     #folha td.fop{text-align:center; font-weight:bold; font-size:11pt}
     #folha td.fins{text-align:center; font-size:8pt}
     #folha td.ftr{text-align:center; font-weight:bold; font-size:12pt}
+    /* quadradinho para o conferente marcar item a item na caixa */
+    #folha td.fok{text-align:center}
+    #folha td.fok::after{content:""; display:inline-block; width:11px; height:11px;
+      border:1px solid #000}
     #folha tr.fvazio td.fitem{color:#999}
     /* nome próprio: ".rodape" é o rodapé fixo do app, e o position:fixed dele
        vazava para cá, jogando este texto por cima da tabela */
@@ -363,6 +385,15 @@
   </div>
 </dialog>
 
+<dialog id="dlgConf">
+  <h3 id="confTit">Conferência</h3>
+  <div class="body" id="confCorpo" style="max-height:64vh; overflow-y:auto"></div>
+  <div class="foot">
+    <button class="gho" id="confFechar">Fechar</button>
+    <button class="pri" id="confImprimir">Imprimir conferência</button>
+  </div>
+</dialog>
+
 <div id="folha"></div>
 
 <dialog id="dlgImp">
@@ -396,7 +427,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.5.0";
+const VERSAO = "1.6.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1323,25 +1354,55 @@ async function lerRegistroDoLote(lote){
   return todas.filter(l => String(l[IDX_REG.lote] || "").trim() === num);
 }
 
-/** Agrupa por produto: um lote pode ter vários volumes gravados. */
+/**
+ * Agrupa por produto e, dentro dele, por OP: um lote pode ter vários volumes,
+ * e é por OP que se sabe quem pôs o quê na caixa.
+ *
+ * Quando o lote foi gravado mais de uma vez, o detalhe usa só a gravação mais
+ * recente. Somar as duas mostraria a peça em dobro e a conferência acusaria um
+ * erro que não existe — o aviso de duplicidade continua aparecendo à parte.
+ */
 function resumirRegistro(linhas){
-  const porProduto = new Map();
-  for(const l of linhas){
+  const validas = linhas.filter(l => {
     const cod = String(l[IDX_REG.cod] || "").trim();
-    if(!cod || cod.toUpperCase() === "COD_PRODUTO") continue;
+    return cod && cod.toUpperCase() !== "COD_PRODUTO";
+  });
+
+  const ultimoEnvio = new Map();   // cod_produto -> id_envio da gravação mais nova
+  const quandoDe = new Map();
+  for(const l of validas){
+    const cod = String(l[IDX_REG.cod]).trim();
+    const ts = String(l[IDX_REG.ts] || "");
+    if(!quandoDe.has(cod) || ts >= quandoDe.get(cod)){
+      quandoDe.set(cod, ts);
+      ultimoEnvio.set(cod, String(l[IDX_REG.envio] || ""));
+    }
+  }
+
+  const porProduto = new Map();
+  for(const l of validas){
+    const cod = String(l[IDX_REG.cod]).trim();
     if(!porProduto.has(cod)){
       porProduto.set(cod, { cod, desc: l[IDX_REG.desc] || "", envios: new Set(),
-                            linhas: 0, qtd: 0, ops: new Map(), quando: new Set() });
+                            linhas: 0, qtd: 0, ops: new Map(), quando: quandoDe.get(cod) });
     }
     const r = porProduto.get(cod);
     r.envios.add(String(l[IDX_REG.envio] || ""));
-    r.quando.add(String(l[IDX_REG.ts] || ""));
+    if(String(l[IDX_REG.envio] || "") !== ultimoEnvio.get(cod)) continue;
+
     r.linhas++;
     r.qtd += numDec(l[IDX_REG.qtd]);
     const op = String(l[IDX_REG.op] || "").trim();
-    const nome = String(l[IDX_REG.nome] || "").trim();
-    if(op && !r.ops.has(op)) r.ops.set(op, new Set());
-    if(op && nome) r.ops.get(op).add(nome);
+    if(!op) continue;
+    if(!r.ops.has(op)){
+      r.ops.set(op, { op, mat: String(l[IDX_REG.mat] || "").trim(),
+                      nome: String(l[IDX_REG.nome] || "").trim(), pecas: [] });
+    }
+    const o = r.ops.get(op);
+    if(!o.nome) o.nome = String(l[IDX_REG.nome] || "").trim();
+    o.pecas.push({ cod: String(l[IDX_REG.peca] || "").trim(),
+                   desc: String(l[IDX_REG.dpeca] || "").trim(),
+                   qtd: numDec(l[IDX_REG.qtd]) });
   }
   return [...porProduto.values()];
 }
@@ -1366,12 +1427,17 @@ async function rastrearLote(lote){
       cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">ainda não foi gravado.</span>`;
       return;
     }
+    CONF.lote = lote;
+    CONF.resumo = resumo;
     const dup = resumo.filter(r => r.envios.size > 1);
     if(dup.length) cx.className = "rastro alerta";
-    cx.innerHTML = `<b>Lote ${escapa(lote)}</b> · já gravado` +
+
+    cx.innerHTML = `<div class="rtopo"><b>Lote ${escapa(lote)}</b> · já gravado
+        <button class="gho" id="btnConf">Conferência — quem pôs o quê</button></div>` +
       resumo.map(r => {
-        const ops = [...r.ops.entries()].sort((a,b)=> (+a[0]) - (+b[0]))
-          .map(([op, gente]) => `OP ${String(op).padStart(2,"0")} ${escapa([...gente].join("/") || "—")}`)
+        const ops = opsOrdenadas(r)
+          .map(o => `OP ${String(o.op).padStart(2,"0")} ${escapa(o.nome || "—")}` +
+                    ` <i>${o.pecas.length} ${o.pecas.length === 1 ? "peça" : "peças"}</i>`)
           .join(" · ");
         return `<div class="rlinha">
             <span class="rcod">${escapa(r.cod)}</span>
@@ -1381,12 +1447,100 @@ async function rastrearLote(lote){
             <span class="rops">${ops}</span>
           </div>`;
       }).join("");
+    $("btnConf").addEventListener("click", abrirConferencia);
   }catch(e){
     if(meu !== rastroAtual) return;
     cx.className = "rastro";
     cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">não consegui consultar o registro (${escapa(e.message)}).</span>`;
   }
 }
+
+/* ==================================================================
+   CONFERÊNCIA — quem pôs o quê na caixa
+   O REGISTRO guarda peça, OP, matrícula e nome em cada linha; era só ninguém
+   ter perguntado ainda. Serve para apurar depois, não para acusar: peça que
+   falta sempre, na mesma OP, independentemente de quem está lá, é problema
+   de projeto de embalagem — e esse é o achado que vale.
+   ================================================================== */
+const CONF = { lote: "", resumo: [] };
+
+const opsOrdenadas = r => [...r.ops.values()].sort((a, b) => (+a.op) - (+b.op));
+
+function abrirConferencia(){
+  if(!CONF.resumo.length) return;
+  const corpo = CONF.resumo.map(r => {
+    const dup = r.envios.size > 1
+      ? `<p class="hint" style="color:var(--amber)">Este lote foi gravado ${r.envios.size}×.
+         A conferência abaixo usa a gravação mais recente.</p>` : "";
+    const blocos = opsOrdenadas(r).map(o => `
+      <div class="cbloco">
+        <div class="ctit">OP ${String(o.op).padStart(2, "0")} ·
+          <b>${escapa(o.nome || "sem operador")}</b>
+          ${o.mat ? `<span class="cmat">${escapa(o.mat)}</span>` : ""}</div>
+        ${o.pecas.map(p => `<div class="cpeca">
+            <span class="cq">${fmtQtd(p.qtd)}×</span>
+            <span class="cd">${escapa(p.desc || p.cod)}</span>
+            <span class="cc">${escapa(p.cod)}</span>
+          </div>`).join("")}
+      </div>`).join("");
+    return `<div class="cprod"><h4>${escapa(r.cod)} · ${escapa(r.desc)}</h4>${dup}${blocos}</div>`;
+  }).join("");
+  $("confTit").textContent = "Conferência do lote " + CONF.lote;
+  $("confCorpo").innerHTML = corpo;
+  $("dlgConf").showModal();
+}
+
+/** Mesma conferência, no papel — para levar até a caixa e bater item a item. */
+function montarFolhaConferencia(){
+  const f = $("folha");
+  if(!CONF.resumo.length) return false;
+  f.innerHTML = CONF.resumo.map(r => {
+    const linhas = opsOrdenadas(r).map(o => {
+      const n = o.pecas.length;
+      return o.pecas.map((p, i) => `
+        <tr>
+          ${i === 0 ? `<td class="fop" rowspan="${n}">OP ${String(o.op).padStart(2,"0")}</td>
+                       <td class="fins" rowspan="${n}">${escapa(o.nome || "—")}
+                         ${o.mat ? "<br>" + escapa(o.mat) : ""}</td>` : ""}
+          <td class="fitem">${escapa(p.desc || p.cod)}</td>
+          <td class="ftr">${fmtQtd(p.qtd)}</td>
+          <td class="fok"></td>
+        </tr>`).join("");
+    }).join("");
+    return `
+      <div class="caixa">
+        <div class="cab">
+          <img src="./logo-patrimar.png" alt="Patrimar Móveis">
+          <div class="tit">
+            <b>CONFERÊNCIA DA EMBALAGEM</b>
+            <span>${escapa(r.desc || r.cod)}</span>
+          </div>
+          <div class="vel">LOTE<br><b>${escapa(CONF.lote)}</b><br>${escapa(r.cod)}</div>
+        </div>
+        <div class="campos">
+          <span>CONFERIDO POR ______________________</span>
+          <span>DATA ____/____/______</span>
+        </div>
+        <table>
+          <colgroup><col style="width:12%"><col style="width:22%">
+            <col style="width:49%"><col style="width:9%"><col style="width:8%"></colgroup>
+          <thead><tr><th>OP</th><th>Quem embalou</th><th>Peça</th><th>Qtd</th><th>OK</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+        <div class="pe">
+          <span>${r.linhas} linhas · ${fmtQtd(r.qtd)} unidades · ${r.ops.size} OPs</span>
+          <span>PPCP · impresso pelo app v${VERSAO}</span>
+        </div>
+      </div>`;
+  }).join("");
+  return true;
+}
+
+$("confImprimir").addEventListener("click", ()=>{
+  $("dlgConf").close();
+  if(montarFolhaConferencia()) window.print();
+});
+$("confFechar").addEventListener("click", ()=> $("dlgConf").close());
 
 /* ==================================================================
    IMPORTAR O MAPA DE UM EXCEL
