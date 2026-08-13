@@ -427,7 +427,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.6.0";
+const VERSAO = "1.6.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1107,6 +1107,7 @@ async function enfileirarEEnviar(payload, okTxt){
   setMsg("", "Enviando…");
   try{
     const r = await despacharFila();
+    esquecerRegistro();   // gravou: a cópia em memória do REGISTRO envelheceu
     if(r.descartados && !r.enviados){ setMsg("", "Mantido o que já estava gravado."); return false; }
     setMsg("ok", okTxt);
     return true;
@@ -1339,20 +1340,36 @@ $("btnImprimir").addEventListener("click", ()=>{
 const IDX_REG = { ts:0, envio:1, lote:2, cor:3, emb:4, cod:5, desc:6,
                   vol:7, nops:8, op:9, mat:10, nome:11, peca:12, dpeca:13, qtd:14, tipo:15 };
 
+/* A aba inteira, guardada enquanto o app estiver aberto. Só é buscada quando a
+   consulta filtrada não devolve nada, e serve para não repetir um download
+   grande a cada lote que ainda não foi gravado. */
+let registroTodo = null;
+
 async function lerRegistroDoLote(lote){
   const num = String(lote).trim();
-  // primeiro tenta filtrar no servidor; o tipo da coluna LOTE depende de como
-  // o Sheets interpretou o número, então se a comparação como texto falhar,
-  // cai para baixar a aba e filtrar aqui
+  const doLote = linhas => linhas.filter(l => String(l[IDX_REG.lote] || "").trim() === num);
+
+  /* O tipo da coluna LOTE depende de como o Sheets interpretou o número, então
+     tenta como texto e como número. E aqui mora a armadilha: quando o gviz
+     recusa a comparação ele devolve 200 com um texto de erro, não um erro de
+     HTTP — o try/catch não dispara e o resultado vazio passaria por verdade,
+     dizendo que o lote nunca foi gravado. Por isso só um resultado com linhas
+     encerra a busca. */
   for(const tq of [`select * where C = '${num}'`, `select * where C = ${num}`]){
     try{
-      const linhas = await lerCSV(urlConsulta("REGISTRO", tq));
-      return linhas.filter(l => String(l[IDX_REG.lote] || "").trim() === num);
+      const achadas = doLote(await lerCSV(urlConsulta("REGISTRO", tq)));
+      if(achadas.length) return achadas;
     }catch(e){ /* tenta a próxima forma */ }
   }
-  const todas = await lerCSV(urlAba("REGISTRO"));
-  return todas.filter(l => String(l[IDX_REG.lote] || "").trim() === num);
+
+  // nenhuma das duas achou: ou o lote não foi gravado, ou o filtro do servidor
+  // não funciona nesta planilha. A aba inteira é a única resposta confiável.
+  if(!registroTodo) registroTodo = await lerCSV(urlAba("REGISTRO"));
+  return doLote(registroTodo);
 }
+
+/** Depois de gravar, o que está em memória envelheceu. */
+function esquecerRegistro(){ registroTodo = null; }
 
 /**
  * Agrupa por produto e, dentro dele, por OP: um lote pode ter vários volumes,
