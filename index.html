@@ -596,7 +596,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.2.2";
+const VERSAO = "2.3.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1920,7 +1920,28 @@ const HIST = { lrows: [], crows: [] };
 function htmlConferenciaLote(lote, lrows, crows){
   if(!lrows.length && !crows.length) return "";
   HIST.lrows = lrows; HIST.crows = crows;
-  return lrows.map(l => {
+
+  /* A pergunta do lote inteiro: TODOS os produtos dele já passaram?
+     Compara o que a programação diz que o lote tem com o que a aba LOTES
+     registrou como concluído. */
+  let resumoLote = "";
+  const alvo = acharLote(lote);
+  const tot = alvo ? alvo.itens.length : 0;
+  if(tot > 1){
+    const concl = lrows.filter(x =>
+      String(x[IDX_LOTES.status] || "").trim().toUpperCase() === "CONCLUIDA").length;
+    const andamento = lrows.length - concl;
+    const nemComecou = Math.max(0, tot - lrows.length);
+    const partes = [];
+    if(andamento) partes.push(`${andamento} em andamento`);
+    if(nemComecou) partes.push(`${nemComecou} nem ${nemComecou === 1 ? "iniciado" : "iniciados"}`);
+    resumoLote = `<div class="rlinha"><span class="rdesc">
+        <b>Conferência do lote: ${concl} de ${tot} produtos concluídos</b>
+        ${concl === tot ? " — 🟢 todos passaram"
+          : " — " + (partes.join(" · ") || "aguardando")}</span></div>`;
+  }
+
+  return resumoLote + lrows.map(l => {
     const cod = String(l[IDX_LOTES.cod] || "").trim();
     const minhas = crows.filter(c => normCod(c[IDX_CONF.cod]) === normCod(cod));
     const ok = minhas.filter(c => !/^DIV/i.test(String(c[IDX_CONF.res] || ""))).length;
@@ -2139,11 +2160,13 @@ const IDX_CONF  = { ts:0, envio:1, lote:2, cod:3, versao:4, trilho:5, peca:6,
    passaram inteiros. Linha antiga de CONFERENCIAS sem VOLUME vale como
    volume 1.
 
-   Conferir caixa por caixa num lote de 30 é inviável — e não é o que a
-   linha faz. A conferência é por amostragem: NO MÁXIMO 4 volumes por
-   lote × produto. Lote com 4 caixas ou menos confere todas; com mais,
-   confere 4 passadas (começo, meio e fim da rodada). */
-const MAX_VOLS = 4;
+   Os "volumes" de um lote são os próprios produtos (VOL 1/2, VOL 2/2 de
+   cada cor), e cada produto já tem a sua conferência. Marcar a mesma
+   lista de peças várias vezes é trabalho dobrado sem informação nova —
+   então é UMA conferência por lote × produto. A infraestrutura de
+   múltiplas passadas fica guardada (coluna VOLUME, faixa de botões)
+   para o dia em que a linha quiser amostrar mais de uma caixa. */
+const MAX_VOLS = 1;
 const C = {
   lote:"", prod:null, versao:0, mapa:null,
   vols:new Map(),     // volume -> [{trilho,cod,desc,qtd,estado:'pend'|'ok'|'div',nome,quando,obs}]
