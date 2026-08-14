@@ -161,8 +161,11 @@ A lista mostra todos os trilhos com três situações, as mesmas do mapa visual:
 - 🟡 **RESERVADO** — peça aguardando conferência
 - ⚪ **LIVRE** — trilho sem peça nesta versão
 
-Cada peça tem um botão **✓ Conferir**. O diálogo mostra o que é esperado
-naquele trilho e um campo opcional de código: se o código informado não é o
+O fluxo do operador é: chama o lote, escolhe o produto/volume, e em cada
+peça toca em **✓ Conferir** — o diálogo pede **quem está conferindo na
+hora** (o último usado já vem selecionado: rodízio custa um toque, rotina
+custa zero; sem conferente marcado não sai registro nenhum). O diálogo
+mostra o que é esperado naquele trilho e um campo opcional de código: se o código informado não é o
 previsto, aparece o alerta **⚠ peça não prevista neste trilho** com o esperado
 e o identificado, e o OK do operador trava — sobra **registrar divergência**
 (vira `DIVERGENTE` em `CONFERENCIAS` e o lote fica 🔴 COM PENDÊNCIA) ou o PPCP
