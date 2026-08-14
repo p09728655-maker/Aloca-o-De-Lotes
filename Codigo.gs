@@ -498,6 +498,53 @@ function limparDuplicados() {
 }
 
 /**
+ * Zera um lote para testar o fluxo de novo do começo.
+ *
+ * Apaga desse lote: a amarração e o status (LOTES), as peças conferidas
+ * (CONFERENCIAS) e o rodízio gravado (REGISTRO). NÃO toca em MAPAS nem em
+ * MAPA_TRILHOS — o mapa é do produto, não do lote, e apagá-lo obrigaria a
+ * remontar tudo. Nenhum outro lote é tocado.
+ *
+ * Como usar: escreva o número do lote em LOTE, rode, confira o log.
+ * Deixe LOTE vazio e a função não faz nada — é a trava contra rodar
+ * distraído e limpar o lote da vez anterior.
+ *
+ * ATENÇÃO: em produção isso apaga histórico de verdade, sem desfazer.
+ * É ferramenta de teste; para tirar duplicidade use limparDuplicados().
+ */
+function limparLoteParaTeste() {
+  var LOTE = '';            // ex.: '25055'
+  var COD_PRODUTO = '';     // vazio = todos os produtos do lote
+
+  var alvo = String(LOTE).trim();
+  if (!alvo) { Logger.log('escreva o numero do lote em LOTE antes de rodar'); return; }
+  var cod = String(COD_PRODUTO).trim();
+
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var contas = [];
+
+  // aba, coluna do lote (1-based), coluna do produto (0 = não filtrar)
+  [[AB_LOTES, 1, 3], [AB_CONF, 3, 4], [AB_REG, 3, 6]].forEach(function (alvoAba) {
+    var nome = alvoAba[0], colLote = alvoAba[1], colCod = alvoAba[2];
+    var sh = ss.getSheetByName(nome);
+    if (!sh || sh.getLastRow() < 2) { contas.push(nome + ': 0'); return; }
+    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+    var apagar = [];
+    for (var i = 0; i < vals.length; i++) {
+      if (String(vals[i][colLote - 1]).trim() !== alvo) continue;
+      if (cod && String(vals[i][colCod - 1]).trim() !== cod) continue;
+      apagar.push(i + 2);
+    }
+    if (apagar.length) apagarLinhas(sh, apagar);
+    contas.push(nome + ': ' + apagar.length);
+  });
+
+  Logger.log('lote ' + alvo + (cod ? ' / produto ' + cod : '') +
+             ' zerado — linhas apagadas por aba: ' + contas.join(' · ') +
+             '. Mapas preservados.');
+}
+
+/**
  * Cadastro em lote da equipe da embalagem — mais rápido que digitar um a um
  * pelo tablet. Cole os nomes aqui, rode uma vez, apague a lista.
  * Formato: 'matricula, nome' por linha.
