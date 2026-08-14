@@ -232,6 +232,9 @@
      PPCP monta e versiona o mapa; o operador só confere. O que o seletor
      garante é que a tela do operador não tem botão de editar mapa. */
   .perfil{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; flex:none}
+  /* display:flex vence o hidden do navegador — sem isto a trava do aparelho
+     da linha não escondia o seletor de perfil coisa nenhuma */
+  .perfil[hidden]{display:none}
   .perfil button{min-height:40px; border:none; border-radius:0; padding:6px 13px;
     font-size:13px; background:transparent; color:var(--mut)}
   .perfil button.on{background:var(--amber); color:#000}
@@ -295,7 +298,12 @@
   .ctrilho:last-child{border-bottom:none}
   .ctrilho .cnum{font-family:"Oswald"; font-weight:700; font-size:17px; width:76px; flex:none;
     display:flex; align-items:center; gap:9px; color:var(--mut)}
-  .ctrilho .lv{color:var(--mut2); font-size:12.5px; letter-spacing:.12em}
+  .ctrilho .lv{color:var(--mut2); font-size:11px; letter-spacing:.12em}
+  /* trilho livre é só marcação de lugar: linha fina, sem roubar tela de quem
+     está conferindo — num mapa de 28 trilhos isso corta metade da rolagem */
+  .ctrilho.vaz{padding:2px 13px}
+  .ctrilho.vaz .cnum{font-size:12px; width:64px}
+  .ctrilho.vaz .dot{width:10px; height:10px}
   .ctrilho .cpecas{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:8px}
   .cpline{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .cpline .pq{font-family:"Oswald"; font-weight:600; font-size:16px; color:var(--amber); min-width:36px}
@@ -446,7 +454,9 @@
 
 <div class="verbar so-ppcp" id="verbar" hidden></div>
 
-<div class="rastro" id="rastro" hidden></div>
+<!-- consulta do lote é leitura de escritório: no aparelho da linha ela só
+     empurrava a lista de conferir para baixo -->
+<div class="rastro so-ppcp" id="rastro" hidden></div>
 
 <div class="work so-ppcp">
   <div class="box">
@@ -513,6 +523,11 @@
       <input type="text" id="cfgApi" placeholder="https://script.google.com/macros/s/.../exec"></div>
     <p class="hint">Sem a URL do Apps Script o app funciona, mas não grava — o mapa
       fica na fila local até você configurar.</p>
+    <label class="hint" style="display:flex; gap:10px; align-items:flex-start; cursor:pointer">
+      <input type="checkbox" id="cfgTrava" style="width:22px; height:22px; margin-top:1px; flex:none">
+      <span><b>Aparelho da linha</b> — abre sempre na tela do operador e esconde
+        o seletor de perfil. Marque nos tablets da esteira; desmarque aqui mesmo
+        quando precisar do PPCP.</span></label>
     <p class="hint versao" id="cfgVersao"></p>
   </div>
   <div class="foot">
@@ -607,7 +622,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.4.0";
+const VERSAO = "2.5.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -621,6 +636,7 @@ const CFG_PADRAO = {
 const CFG_KEY = "alocEmbCfg";
 const FILA_KEY = "alocEmbFila";
 const PERFIL_KEY = "alocEmbPerfil";
+const TRAVA_KEY = "alocEmbTravaOper";
 const RESP_KEY = "alocEmbResp";
 const CONFERENTE_KEY = "alocEmbConferente";
 
@@ -1295,6 +1311,11 @@ function podeSalvarLote(){
 function atualizarBotoes(){
   $("btnSalvarMapa").disabled = !podeSalvarMapa();
   $("btnSalvarLote").disabled = !podeSalvarLote();
+  // o rodapé fala do mapa e da gravação do lote, que são assunto do PPCP —
+  // na tela do operador só polui e ele não tem botão nenhum ali.
+  // Lê do dataset e não de PERFIL: esta função roda na carga, antes de o
+  // let PERFIL lá embaixo ter sido inicializado.
+  if(document.body.dataset.perfil === "oper"){ setMsg("", ""); return; }
   if(!S.prod || !S.itens.length){ setMsg("", ""); return; }
   const fora = S.itens.filter(i => colocadoDe(i.peca) < i.qtd).length;
   const semOp = opsSemOperador();
@@ -1586,6 +1607,7 @@ $("btnReenviar").addEventListener("click", async ()=>{
 $("btnCfg").addEventListener("click", ()=>{
   $("cfgSheet").value = CFG.sheet; $("cfgGid").value = CFG.gid;
   $("cfgEstr").value = CFG.estr;   $("cfgApi").value = CFG.api;
+  $("cfgTrava").checked = TRAVADO;
   $("cfgVersao").textContent = `Versão ${VERSAO}` +
     (window.matchMedia("(display-mode: standalone)").matches ? " · instalado no aparelho" : "");
   $("dlgCfg").showModal();
@@ -1595,9 +1617,12 @@ $("cfgOk").addEventListener("click", async ()=>{
   CFG = { sheet: extraiId($("cfgSheet").value), gid: $("cfgGid").value.trim(),
           estr: $("cfgEstr").value.trim(), api: $("cfgApi").value.trim() };
   try{ localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); }catch(e){}
+  TRAVADO = $("cfgTrava").checked;
+  try{ localStorage.setItem(TRAVA_KEY, TRAVADO ? "1" : "0"); }catch(e){}
+  aplicarPerfil(TRAVADO ? "oper" : PERFIL);
   $("dlgCfg").close();
   await carregarTudo();
-  render();
+  render(); renderConf();
 });
 
 /* ---------- novo colaborador ---------- */
@@ -1874,7 +1899,7 @@ async function rastrearLote(lote){
   const meu = ++rastroAtual;
   const cx = $("rastro");
   cx.hidden = false;
-  cx.className = "rastro";
+  cx.className = "rastro so-ppcp";
   cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">consultando o registro…</span>`;
   try{
     const [linhas, lrows, crows] = await Promise.all([
@@ -1892,7 +1917,7 @@ async function rastrearLote(lote){
     CONF.lote = lote;
     CONF.resumo = resumo;
     const dup = resumo.filter(r => r.envios.size > 1);
-    if(dup.length) cx.className = "rastro alerta";
+    if(dup.length) cx.className = "rastro so-ppcp alerta";
 
     cx.innerHTML = `<div class="rtopo"><b>Lote ${escapa(lote)}</b>` +
         (resumo.length ? ` · já gravado
@@ -1920,7 +1945,7 @@ async function rastrearLote(lote){
     if(!$("telaConf").hidden && C.lote === lote && !C.carregando) renderOpsDia();
   }catch(e){
     if(meu !== rastroAtual) return;
-    cx.className = "rastro";
+    cx.className = "rastro so-ppcp";
     cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">não consegui consultar o registro (${escapa(e.message)}).</span>`;
   }
 }
@@ -2459,7 +2484,7 @@ function renderConf(){
       dot = est.every(e => e !== "pend") ? (est.includes("div") ? "div" : "ocu") : "res";
     }
     const el = document.createElement("div");
-    el.className = "ctrilho";
+    el.className = "ctrilho" + (idxs.length ? "" : " vaz");
     el.innerHTML = `<span class="cnum"><span class="dot ${dot}"></span>${String(t).padStart(2, "0")}</span>
       <div class="cpecas">${idxs.length ? "" : '<span class="lv">LIVRE</span>'}</div>`;
     const cp = el.querySelector(".cpecas");
@@ -3139,12 +3164,20 @@ window.addEventListener("appinstalled", ()=>{ $("btnInstalar").hidden = true; co
    é organizacional, não é senha.
    ================================================================== */
 let PERFIL = localStorage.getItem(PERFIL_KEY) === "oper" ? "oper" : "ppcp";
+
+/* Tablet da esteira é aparelho de uma função só. Travado, ele abre sempre
+   como Operador e o seletor de perfil some — ninguém cai no cadastro de mapa
+   por engano. A destrava fica no ⚙, que é onde o líder já vai quando precisa
+   mexer na configuração. Vale por aparelho, não por usuário. */
+let TRAVADO = localStorage.getItem(TRAVA_KEY) === "1";
+
 function aplicarPerfil(p){
-  PERFIL = p;
-  try{ localStorage.setItem(PERFIL_KEY, p); }catch(e){}
-  document.body.dataset.perfil = p;
+  PERFIL = TRAVADO ? "oper" : p;
+  try{ localStorage.setItem(PERFIL_KEY, PERFIL); }catch(e){}
+  document.body.dataset.perfil = PERFIL;
   document.querySelectorAll("#perfilSwitch button").forEach(b =>
-    b.classList.toggle("on", b.dataset.p === p));
+    b.classList.toggle("on", b.dataset.p === PERFIL));
+  $("perfilSwitch").hidden = TRAVADO;
 }
 document.querySelectorAll("#perfilSwitch button").forEach(b =>
   b.addEventListener("click", ()=>{ aplicarPerfil(b.dataset.p); render(); renderConf(); }));
