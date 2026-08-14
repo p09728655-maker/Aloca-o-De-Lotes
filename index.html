@@ -270,6 +270,14 @@
   .dot.div{background:var(--red)}
   .trilho > .dot{align-self:center}
 
+  /* uma caixa do lote por botão — a conferência é por volume */
+  .volstrip{display:flex; gap:8px; flex-wrap:wrap; padding:10px 13px;
+    border-bottom:1px solid var(--line)}
+  .volbtn{display:flex; align-items:center; gap:8px; min-height:44px;
+    padding:8px 15px; font-size:14px}
+  .volbtn.on{background:var(--amber); border-color:var(--amber); color:#000}
+  .volbtn.on .dot{border-color:#000}
+
   .ctrilho{display:flex; gap:12px; padding:9px 13px; border-bottom:1px solid var(--line);
     align-items:center}
   .ctrilho:last-child{border-bottom:none}
@@ -360,6 +368,9 @@
 
     #folha .fpe{display:flex; justify-content:space-between; gap:6mm; margin-top:2.5mm;
       padding-top:1.5mm; border-top:.3mm solid #999; font-size:7pt; color:#555}
+
+    /* folha em branco: linha alta para caber letra de mão */
+    #folha table.fbranca td{height:6.6mm; border-bottom:.25mm solid #888}
   }
 </style>
 </head>
@@ -417,7 +428,8 @@
   </div>
   <button class="gho so-ppcp" id="btnAuto">Sugerir mapa</button>
   <button class="gho so-ppcp" id="btnLimpar">Limpar</button>
-  <button class="gho" id="btnImprimir">Imprimir mapa</button>
+  <button class="gho so-ppcp" id="btnImprimir">Imprimir mapa</button>
+  <button class="gho so-ppcp" id="btnFolhaBranca">Folha em branco</button>
 </div>
 
 <div class="verbar so-ppcp" id="verbar" hidden></div>
@@ -445,12 +457,14 @@
     <span class="badge and" id="lbadge">—</span>
     <div class="prog"><i id="confProg"></i></div>
     <span class="pct" id="confPct">—</span>
+    <span class="pct" id="volsOk" style="color:var(--mut); font-size:13px"></span>
     <div class="fld" style="min-width:200px">
       <label for="selConferente">Conferente</label>
       <select id="selConferente"><option value="">— quem confere —</option></select>
     </div>
     <button class="pri" id="btnIniciarConf" hidden>Iniciar conferência</button>
   </div>
+  <div class="volstrip" id="volStrip" hidden></div>
   <div class="legenda">
     <span class="dot ocu"></span>OCUPADO — conferido
     <span class="dot res"></span>RESERVADO — aguardando conferência
@@ -504,7 +518,7 @@
   <div class="body" id="confCorpo" style="max-height:64vh; overflow-y:auto"></div>
   <div class="foot">
     <button class="gho" id="confFechar">Fechar</button>
-    <button class="pri" id="confImprimir">Imprimir conferência</button>
+    <button class="pri so-ppcp" id="confImprimir">Imprimir conferência</button>
   </div>
 </dialog>
 
@@ -556,7 +570,7 @@
   <div class="body" id="histCorpo" style="max-height:64vh; overflow-y:auto"></div>
   <div class="foot">
     <button class="gho" id="histFechar">Fechar</button>
-    <button class="pri" id="histImprimir">Imprimir histórico</button>
+    <button class="pri so-ppcp" id="histImprimir">Imprimir histórico</button>
   </div>
 </dialog>
 
@@ -582,7 +596,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.1.0";
+const VERSAO = "2.2.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1705,6 +1719,45 @@ $("btnImprimir").addEventListener("click", ()=>{
   window.print();
 });
 
+/* Folha em branco: o mapa vazio com linha alta para escrever à mão. É como
+   um mapa novo nasce quando a esteira está longe do computador — a linha
+   preenche no papel, e o PPCP digita no app ou sobe pelo Importar Excel.
+   No diálogo de impressão, "Salvar como PDF" gera o arquivo direto. */
+function montarFolhaBranca(){
+  const n = Math.max(1, Math.min(60, parseInt($("inTrilhos").value, 10) || 28));
+  const corpo = Array.from({ length: n }, (_, i) =>
+    `<tr><td class="fop"></td><td class="fins"></td><td class="fpeca"></td>
+     <td class="ftr">${i + 1}</td></tr>`).join("");
+  $("folha").innerHTML = `
+    <div class="caixa">
+      ${fCab("Mapa dos trilhos da embalagem", S.prod ? (S.prod.desc || S.prod.cod)
+             : "PRODUTO: ______________________________________",
+             "Mapa", "V ___", "para preencher na linha")}
+      <div class="fmeta">
+        <div><small>Data</small><b>___ / ___ / _____</b></div>
+        <div><small>Lote</small><b>${escapa(S.lote ? S.lote.lote : "") || "_________"}</b></div>
+        <div><small>Cor</small><b>${escapa((S.lote && S.lote.cor) || "") || "_________"}</b></div>
+        <div><small>Velocidade</small><b>_______</b></div>
+        <div><small>Preenchido por</small><b>____________________</b></div>
+      </div>
+      <table class="fbranca">
+        <colgroup>
+          <col style="width:16%"><col style="width:22%">
+          <col style="width:52%"><col style="width:10%">
+        </colgroup>
+        <thead><tr><th>OP</th><th>Insumo</th><th>Descrição da peça</th>
+          <th style="text-align:center">Trilho</th></tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+      ${fPe(`${S.prod ? escapa(S.prod.cod) + " · " : ""}${n} trilhos · preencha e suba pelo app (cadastro ou Importar Excel)`)}
+    </div>`;
+  return true;
+}
+$("btnFolhaBranca").addEventListener("click", ()=>{
+  montarFolhaBranca();
+  window.print();
+});
+
 /* ==================================================================
    RASTREIO DO LOTE
    Digitou o lote, o app vai no REGISTRO e mostra o que já foi gravado:
@@ -1875,10 +1928,12 @@ function htmlConferenciaLote(lote, lrows, crows){
     const st = String(l[IDX_LOTES.status] || "").trim().toUpperCase();
     const rot = st === "CONCLUIDA" ? "🟢 CONFERÊNCIA CONCLUÍDA"
               : st === "COM PENDENCIA" ? "🔴 COM PENDÊNCIA" : "🟡 EM CONFERÊNCIA";
+    const nvol = parseInt(l[IDX_LOTES.nvol], 10) || 0;
+    const volok = parseInt(l[IDX_LOTES.volok], 10) || 0;
     return `<div class="rlinha">
         <span class="rcod">${escapa(cod)}</span>
         <span class="rdesc">Conferência · Mapa <b>${vTag(parseInt(l[IDX_LOTES.versao],10)||0)}</b> · ${rot}</span>
-        <span class="rnum">${ok} conferida${ok===1?"":"s"}${div ? ` · ${div} divergência${div===1?"":"s"}` : ""}
+        <span class="rnum">${nvol ? `<b>${volok}/${nvol} volumes</b> · ` : ""}${ok} conferida${ok===1?"":"s"}${div ? ` · ${div} divergência${div===1?"":"s"}` : ""}
           ${l[IDX_LOTES.ini] ? " · iniciada " + escapa(l[IDX_LOTES.ini]) : ""}${l[IDX_LOTES.fim] ? " · concluída " + escapa(l[IDX_LOTES.fim]) : ""}</span>
         ${minhas.length ? `<button class="gho" data-hist="${escapa(cod)}"
           style="min-height:36px;padding:6px 12px;font-size:13px;margin-left:auto">Histórico peça a peça</button>` : ""}
@@ -1891,20 +1946,27 @@ function abrirHistorico(lote, cod){
   const l = HIST.lrows.find(x => normCod(x[IDX_LOTES.cod]) === normCod(cod)) || [];
   const rows = HIST.crows.filter(c => normCod(c[IDX_CONF.cod]) === normCod(cod));
   $("histTit").textContent = `LT ${lote} · ${cod} · Mapa ${vTag(parseInt(l[IDX_LOTES.versao],10)||0)}`;
+  // agrupado por volume: a pergunta é sempre "a caixa N passou inteira?"
+  const porVol = new Map();
+  rows.forEach(c => {
+    const v = parseInt(c[IDX_CONF.vol], 10) || 1;
+    if(!porVol.has(v)) porVol.set(v, []);
+    porVol.get(v).push(c);
+  });
   $("histCorpo").innerHTML = (rows.length
-    ? `<div class="cpeca" style="color:var(--mut)"><span class="cq">TR</span>
-         <span class="cd">Peça</span><span class="cc">qtd · operador · quando</span></div>` +
-      rows.map(c => {
-        const div = /^DIV/i.test(String(c[IDX_CONF.res] || ""));
-        return `<div class="cpeca">
-          <span class="cq">${escapa(String(c[IDX_CONF.trilho]))}</span>
-          <span class="cd">${escapa(c[IDX_CONF.dpeca] || c[IDX_CONF.peca])}` +
-          (div ? ` <b style="color:var(--red)">⚠ divergência</b>` : "") +
-          (c[IDX_CONF.obs] ? `<br><small style="color:var(--mut)">${escapa(c[IDX_CONF.obs])}</small>` : "") +
-          `</span>
-          <span class="cc">${fmtQtd(numDec(c[IDX_CONF.qtd]))} un · ${escapa(c[IDX_CONF.nome] || "—")} · ${escapa(c[IDX_CONF.ts] || "")}</span>
-        </div>`;
-      }).join("")
+    ? [...porVol.keys()].sort((a, b) => a - b).map(v => `
+        <div class="cprod"><h4>Volume ${v}</h4>` +
+        porVol.get(v).map(c => {
+          const div = /^DIV/i.test(String(c[IDX_CONF.res] || ""));
+          return `<div class="cpeca">
+            <span class="cq">${escapa(String(c[IDX_CONF.trilho]))}</span>
+            <span class="cd">${escapa(c[IDX_CONF.dpeca] || c[IDX_CONF.peca])}` +
+            (div ? ` <b style="color:var(--red)">⚠ divergência</b>` : "") +
+            (c[IDX_CONF.obs] ? `<br><small style="color:var(--mut)">${escapa(c[IDX_CONF.obs])}</small>` : "") +
+            `</span>
+            <span class="cc">${fmtQtd(numDec(c[IDX_CONF.qtd]))} un · ${escapa(c[IDX_CONF.nome] || "—")} · ${escapa(c[IDX_CONF.ts] || "")}</span>
+          </div>`;
+        }).join("") + `</div>`).join("")
     : '<p class="hint">Nenhuma peça conferida ainda.</p>');
   $("dlgHist").showModal();
 }
@@ -1924,9 +1986,17 @@ function montarFolhaHistorico(){
   const st = String(l[IDX_LOTES.status] || "").trim().toUpperCase();
   const rotSt = st === "CONCLUIDA" ? "CONCLUÍDA"
               : st === "COM PENDENCIA" ? "COM PENDÊNCIA" : "EM CONFERÊNCIA";
-  const corpo = rows.map(c => {
+  const nvol = parseInt(l[IDX_LOTES.nvol], 10) || 0;
+  const volok = parseInt(l[IDX_LOTES.volok], 10) || 0;
+  const volDe = c => parseInt(c[IDX_CONF.vol], 10) || 1;
+  const ordenadas = rows.slice().sort((x, y) => volDe(x) - volDe(y));
+  let volAnt = 0;
+  const corpo = ordenadas.map(c => {
     const div = /^DIV/i.test(String(c[IDX_CONF.res] || ""));
-    return `<tr>
+    const v = volDe(c);
+    const ini = v !== volAnt; volAnt = v;
+    return `<tr class="${ini ? "fini" : ""}">
+      <td class="fop">${ini ? "Vol " + v : ""}</td>
       <td class="ftr">${escapa(String(c[IDX_CONF.trilho]))}</td>
       <td class="fpeca">${escapa(c[IDX_CONF.dpeca] || c[IDX_CONF.peca])}` +
       (c[IDX_CONF.obs] ? `<br><span style="font-size:7.5pt;color:#333">${escapa(c[IDX_CONF.obs])}</span>` : "") +
@@ -1946,18 +2016,20 @@ function montarFolhaHistorico(){
       <div class="fmeta">
         <div><small>Mapa</small><b>${versao}</b></div>
         <div><small>Status</small><b>${rotSt}</b></div>
+        <div><small>Volumes</small><b>${nvol ? volok + " / " + nvol : "—"}</b></div>
         <div><small>Início</small><b>${escapa(l[IDX_LOTES.ini] || "—")}</b></div>
         <div><small>Conclusão</small><b>${escapa(l[IDX_LOTES.fim] || "—")}</b></div>
       </div>
       <table>
-        <colgroup><col style="width:8%"><col style="width:40%"><col style="width:7%">
-          <col style="width:13%"><col style="width:17%"><col style="width:15%"></colgroup>
-        <thead><tr><th style="text-align:center">Trilho</th><th>Peça</th>
+        <colgroup><col style="width:9%"><col style="width:8%"><col style="width:36%">
+          <col style="width:6%"><col style="width:12%"><col style="width:15%"><col style="width:14%"></colgroup>
+        <thead><tr><th>Volume</th><th style="text-align:center">Trilho</th><th>Peça</th>
           <th style="text-align:center">Qtd</th><th>Resultado</th>
           <th>Quem conferiu</th><th>Quando</th></tr></thead>
         <tbody>${corpo}</tbody>
       </table>
-      ${fPe(`${rows.length} ${rows.length === 1 ? "conferência" : "conferências"} · mapa ${versao}`)}
+      ${fPe(`${rows.length} ${rows.length === 1 ? "conferência" : "conferências"} · mapa ${versao}` +
+            (nvol ? ` · ${volok}/${nvol} volumes concluídos` : ""))}
     </div>`;
   return true;
 }
@@ -2057,15 +2129,28 @@ $("confFechar").addEventListener("click", ()=> $("dlgConf").close());
    momento em que a conferência começa e nunca é trocada — a V03 que sair
    amanhã não reescreve o que o LT de hoje conferiu na V02.
    ================================================================== */
-const IDX_LOTES = { lote:0, cor:1, cod:2, desc:3, versao:4, ini:5, fim:6, status:7 };
+const IDX_LOTES = { lote:0, cor:1, cod:2, desc:3, versao:4, ini:5, fim:6, status:7,
+                    nvol:8, volok:9 };
 const IDX_CONF  = { ts:0, envio:1, lote:2, cod:3, versao:4, trilho:5, peca:6,
-                    dpeca:7, qtd:8, mat:9, nome:10, res:11, obs:12 };
+                    dpeca:7, qtd:8, mat:9, nome:10, res:11, obs:12, vol:13 };
 
+/* Um lote tem N volumes (caixas), e CADA caixa passa pela esteira: a
+   conferência é por volume. O lote só conclui quando todos os volumes
+   passaram inteiros. Linha antiga de CONFERENCIAS sem VOLUME vale como
+   volume 1. */
 const C = {
   lote:"", prod:null, versao:0, mapa:null,
-  linhas:[],          // [{trilho,cod,desc,qtd,estado:'pend'|'ok'|'div',nome,quando,obs}]
+  vols:new Map(),     // volume -> [{trilho,cod,desc,qtd,estado:'pend'|'ok'|'div',nome,quando,obs}]
+  vol:1, nVols:1,
   iniciado:false, statusSrv:"", carregando:false, idx:-1
 };
+const volLinhas = v => C.vols.get(v) || [];
+const volCompleto = v => volLinhas(v).length > 0 && volLinhas(v).every(l => l.estado !== "pend");
+function volsConcluidos(){
+  let n = 0;
+  for(const v of C.vols.keys()) if(volCompleto(v)) n++;
+  return n;
+}
 
 const letraCol = i => String.fromCharCode(65 + i);
 
@@ -2094,8 +2179,9 @@ async function carregarConferencia(){
   if(!S.lote || !S.prod){ tela.hidden = true; C.lote = ""; return; }
   const meu = ++confSeq;
   C.lote = S.lote.lote; C.prod = S.prod;
-  C.linhas = []; C.mapa = null; C.iniciado = false; C.versao = 0;
-  C.statusSrv = ""; C.carregando = true;
+  C.vols = new Map(); C.vol = 1; C.mapa = null; C.iniciado = false;
+  C.versao = 0; C.statusSrv = ""; C.carregando = true;
+  C.nVols = Math.max(1, Math.round(numDec(S.prod.qtd)) || 1);
   tela.hidden = false;
   $("listaConf").innerHTML = '<div class="vazio-tela">Consultando o lote…</div>';
   renderConfBar();
@@ -2112,6 +2198,9 @@ async function carregarConferencia(){
     C.iniciado = true;
     C.versao = parseInt(meuLote[IDX_LOTES.versao], 10) || 0;
     C.statusSrv = String(meuLote[IDX_LOTES.status] || "").trim().toUpperCase();
+    // o total de volumes amarrado na largada vale mais que a programação de hoje
+    const nv = parseInt(meuLote[IDX_LOTES.nvol], 10);
+    if(nv > 0) C.nVols = nv;
   }
 
   let mapa = mapaDe(cod, C.versao);
@@ -2120,43 +2209,60 @@ async function carregarConferencia(){
   if(mapa && !C.versao) C.versao = mapa.versao;
 
   if(mapa){
-    C.linhas = mapa.linhas.map(l => ({
+    const molde = () => mapa.linhas.map(l => ({
       trilho: l.trilho, cod: l.item,
       desc: l.desc || (itemPorCod(l.item) || {}).desc || l.item,
       qtd: l.qtd, estado: "pend", nome: "", quando: "", obs: ""
     }));
-    // aplica o que já foi conferido, na ordem em que foi gravado
+    for(let v = 1; v <= C.nVols; v++) C.vols.set(v, molde());
+    // aplica o que já foi conferido, volume a volume, na ordem gravada
     crows
       .filter(r => normCod(r[IDX_CONF.cod]) === cod)
       .forEach(r => {
+        const vol = parseInt(r[IDX_CONF.vol], 10) || 1;
+        if(!C.vols.has(vol)){ C.vols.set(vol, molde()); C.nVols = Math.max(C.nVols, vol); }
         const t = parseInt(r[IDX_CONF.trilho], 10);
         const p = normCod(r[IDX_CONF.peca]);
-        const li = C.linhas.find(x => x.estado === "pend" && x.trilho === t && normCod(x.cod) === p);
+        const li = C.vols.get(vol).find(x => x.estado === "pend" && x.trilho === t && normCod(x.cod) === p);
         if(!li) return;
         li.estado = /^DIV/i.test(String(r[IDX_CONF.res] || "")) ? "div" : "ok";
         li.nome = String(r[IDX_CONF.nome] || "").trim();
         li.quando = String(r[IDX_CONF.ts] || "").trim();
         li.obs = String(r[IDX_CONF.obs] || "").trim();
       });
+    // abre no primeiro volume que ainda tem pendência
+    C.vol = C.nVols;
+    for(let v = 1; v <= C.nVols; v++){
+      if(!volCompleto(v)){ C.vol = v; break; }
+    }
   }
   C.carregando = false;
   renderConf();
 }
 
-/* O status do lote sai das peças, não de um botão: tudo OK = concluída,
-   alguma divergência = com pendência, o resto = em conferência. */
+/* O status do lote sai das peças de TODOS os volumes, não de um botão:
+   tudo OK em todas as caixas = concluída, alguma divergência = com
+   pendência, o resto = em conferência. */
 function statusLoteCalc(){
-  const pend = C.linhas.filter(l => l.estado === "pend").length;
-  if(C.linhas.some(l => l.estado === "div")) return "COM PENDENCIA";
-  if(C.linhas.length && !pend) return "CONCLUIDA";
+  let pend = 0, div = false, total = 0;
+  for(const linhas of C.vols.values()){
+    total += linhas.length;
+    for(const l of linhas){
+      if(l.estado === "pend") pend++;
+      if(l.estado === "div") div = true;
+    }
+  }
+  if(div) return "COM PENDENCIA";
+  if(total && !pend) return "CONCLUIDA";
   return "EM CONFERENCIA";
 }
 
 function renderConfBar(){
-  const total = C.linhas.length;
-  const feitas = C.linhas.filter(l => l.estado !== "pend").length;
+  const linhas = volLinhas(C.vol);
+  const total = linhas.length;
+  const feitas = linhas.filter(l => l.estado !== "pend").length;
   const pct = total ? Math.round(100 * feitas / total) : 0;
-  const st = total ? statusLoteCalc() : (C.statusSrv || "EM CONFERENCIA");
+  const st = C.vols.size ? statusLoteCalc() : (C.statusSrv || "EM CONFERENCIA");
   const b = $("lbadge");
   if(st === "CONCLUIDA"){ b.className = "badge ok"; b.textContent = "🟢 CONFERÊNCIA CONCLUÍDA"; }
   else if(st === "COM PENDENCIA"){ b.className = "badge pend"; b.textContent = "🔴 COM PENDÊNCIA"; }
@@ -2164,19 +2270,44 @@ function renderConfBar(){
   $("confProg").style.width = pct + "%";
   const pend = total - feitas;
   $("confPct").textContent = total
-    ? `${pct}% conferido` + (pend ? ` · ${pend} ${pend === 1 ? "peça pendente" : "peças pendentes"}` : "")
+    ? (C.nVols > 1 ? `Vol ${C.vol}: ` : "") + `${pct}% conferido` +
+      (pend ? ` · ${pend} ${pend === 1 ? "peça pendente" : "peças pendentes"}` : "")
     : "—";
+  $("volsOk").textContent = C.vols.size && C.nVols > 1
+    ? `${volsConcluidos()}/${C.nVols} volumes concluídos` : "";
   $("confMeta").textContent = C.prod
     ? `LT ${C.lote} · ${curto(C.prod.desc || C.prod.cod)} · Mapa ${vTag(C.versao)}` +
+      (C.nVols > 1 ? ` · Volume ${C.vol}/${C.nVols}` : "") +
       (C.iniciado ? "" : " · ainda não iniciada")
     : "";
-  $("btnIniciarConf").hidden = C.iniciado || !C.linhas.length;
+  $("btnIniciarConf").hidden = C.iniciado || !C.vols.size;
+}
+
+/* Um botão por caixa do lote, com a mesma bolinha da lista: verde passou,
+   amarela no meio, cinza nem começou, vermelha com divergência. */
+function renderVols(){
+  const box = $("volStrip");
+  if(C.nVols <= 1 || !C.vols.size){ box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = "";
+  for(let v = 1; v <= C.nVols; v++){
+    const linhas = volLinhas(v);
+    const comecou = linhas.some(l => l.estado !== "pend");
+    const temDiv = linhas.some(l => l.estado === "div");
+    const cls = volCompleto(v) ? (temDiv ? "div" : "ocu") : (comecou ? "res" : "livre");
+    const b = document.createElement("button");
+    b.className = "gho volbtn" + (v === C.vol ? " on" : "");
+    b.innerHTML = `<span class="dot ${cls}"></span>Vol ${v}`;
+    b.addEventListener("click", ()=>{ C.vol = v; renderConf(); });
+    box.appendChild(b);
+  }
 }
 
 function renderConf(){
   if($("telaConf").hidden) return;
   renderConfBar();
   if(C.carregando) return;
+  renderVols();
   const box = $("listaConf");
   if(!C.mapa){
     box.innerHTML = `<div class="vazio-tela">O produto <b>${escapa(C.prod ? C.prod.cod : "")}</b>
@@ -2185,17 +2316,18 @@ function renderConf(){
     return;
   }
   box.innerHTML = "";
+  const linhas = volLinhas(C.vol);
   const porTrilho = new Map();
-  C.linhas.forEach((l, i)=>{
+  linhas.forEach((l, i)=>{
     if(!porTrilho.has(l.trilho)) porTrilho.set(l.trilho, []);
     porTrilho.get(l.trilho).push(i);
   });
-  const nT = Math.max(C.mapa.nTrilhos, ...C.linhas.map(l => l.trilho));
+  const nT = Math.max(C.mapa.nTrilhos, ...linhas.map(l => l.trilho));
   for(let t = 1; t <= nT; t++){
     const idxs = porTrilho.get(t) || [];
     let dot = "livre";
     if(idxs.length){
-      const est = idxs.map(i => C.linhas[i].estado);
+      const est = idxs.map(i => linhas[i].estado);
       dot = est.every(e => e !== "pend") ? (est.includes("div") ? "div" : "ocu") : "res";
     }
     const el = document.createElement("div");
@@ -2204,7 +2336,7 @@ function renderConf(){
       <div class="cpecas">${idxs.length ? "" : '<span class="lv">LIVRE</span>'}</div>`;
     const cp = el.querySelector(".cpecas");
     idxs.forEach(i => {
-      const l = C.linhas[i];
+      const l = linhas[i];
       const p = document.createElement("div");
       p.className = "cpline";
       const st = l.estado === "ok"
@@ -2231,9 +2363,10 @@ function abrirPeca(i){
     return;
   }
   C.idx = i;
-  const l = C.linhas[i];
+  const l = volLinhas(C.vol)[i];
   $("pecaInfo").innerHTML = `<b>TRILHO ${String(l.trilho).padStart(2, "0")}</b> — ${escapa(l.desc)}
-    <br><span class="mono">${escapa(l.cod)} · ${fmtQtd(l.qtd)} un · Mapa ${vTag(C.versao)}</span>`;
+    <br><span class="mono">${escapa(l.cod)} · ${fmtQtd(l.qtd)} un · Mapa ${vTag(C.versao)}` +
+    (C.nVols > 1 ? ` · Volume ${C.vol}/${C.nVols}` : "") + `</span>`;
   $("pecaCod").value = "";
   validarPeca();
   $("dlgPeca").showModal();
@@ -2243,7 +2376,7 @@ function abrirPeca(i){
    para o trilho, o OK do operador some — sobra registrar a divergência ou o
    PPCP confirmar por cima, e as duas ações ficam gravadas. */
 function validarPeca(){
-  const l = C.linhas[C.idx]; if(!l) return;
+  const l = volLinhas(C.vol)[C.idx]; if(!l) return;
   const dig = normCod($("pecaCod").value);
   const bate = !dig || dig === normCod(l.cod);
   const al = $("pecaAlerta");
@@ -2268,7 +2401,7 @@ $("pecaOk").addEventListener("click", ()=> fecharPeca("OK"));
 $("pecaDiv").addEventListener("click", ()=> fecharPeca("DIVERGENTE"));
 
 async function fecharPeca(resultado){
-  const l = C.linhas[C.idx]; if(!l) return;
+  const l = volLinhas(C.vol)[C.idx]; if(!l) return;
   const digitado = $("pecaCod").value.trim();
   const dig = normCod(digitado);
   let obs = "";
@@ -2294,21 +2427,35 @@ async function registrarConferencia(l, resultado, obs){
   // primeira peça do lote: amarra a versão antes de registrar a conferência
   if(!C.iniciado) await iniciarConferencia(false);
 
+  const volFechou = volCompleto(C.vol);
   const payload = {
     acao: "conferir", id_envio: novoId(), ts_local: agora.toISOString(),
     lote: C.lote, cor: (S.lote && S.lote.cor) || "",
     cod_produto: C.prod.cod, desc_produto: C.prod.desc || "",
-    versao: C.versao, status_lote: statusLoteCalc(),
+    versao: C.versao, volume: C.vol,
+    n_volumes: C.nVols, vol_concluidos: volsConcluidos(),
+    status_lote: statusLoteCalc(),
     itens: [{ trilho: l.trilho, cod_peca: l.cod, desc_peca: l.desc, qtd: l.qtd,
-              matricula: mat, nome, resultado, obs }]
+              matricula: mat, nome, resultado, obs, volume: C.vol }]
   };
   const fila = lerFila(); fila.push(payload); salvarFila(fila); pintarFila();
+  const rot = (C.nVols > 1 ? `Vol ${C.vol} · ` : "") + `Trilho ${l.trilho} · ${curto(l.desc)}`;
   try{
     await despacharFila();
-    setMsg("ok", `Trilho ${l.trilho} · ${curto(l.desc)} — ` +
-      (resultado === "OK" ? "conferido." : "divergência registrada."));
+    if(volFechou && C.nVols > 1){
+      setMsg("ok", `Volume ${C.vol} concluído — ${volsConcluidos()} de ${C.nVols} caixas conferidas.`);
+    }else{
+      setMsg("ok", rot + " — " + (resultado === "OK" ? "conferido." : "divergência registrada."));
+    }
   }catch(e){
     setMsg("err", "Registrado no aparelho — sem rede, fica na fila até “Reenviar pendentes”.");
+  }
+  // caixa fechou: pula sozinho para a próxima que ainda tem pendência
+  if(volFechou){
+    for(let v = 1; v <= C.nVols; v++){
+      if(!volCompleto(v)){ C.vol = v; break; }
+    }
+    renderConf();
   }
   renderConfBar();
 }
@@ -2318,7 +2465,8 @@ async function registrarConferencia(l, resultado, obs){
 async function iniciarConferencia(avisar){
   const p = { acao: "iniciar_lote", id_envio: novoId(),
     lote: C.lote, cor: (S.lote && S.lote.cor) || "",
-    cod_produto: C.prod.cod, desc_produto: C.prod.desc || "", versao: C.versao };
+    cod_produto: C.prod.cod, desc_produto: C.prod.desc || "",
+    versao: C.versao, n_volumes: C.nVols };
   C.iniciado = true;
   try{
     const out = await enviar(p);

@@ -52,14 +52,20 @@ var CAB_MAPAS = ['COD_PRODUTO','DESC_PRODUTO','VERSAO','STATUS','DATA',
 
 /* Uma linha por lote × produto, criada quando a conferência começa. A VERSAO
    gravada aqui é a amarração que não muda mais: mapa novo vale para lote
-   novo, nunca retroage sobre lote iniciado. */
+   novo, nunca retroage sobre lote iniciado. N_VOLUMES é quantas caixas o
+   lote tem (vem da programação) e VOL_CONCLUIDOS quantas já passaram
+   inteiras pela conferência — o lote só conclui quando as duas colunas
+   se igualam. */
 var CAB_LOTES = ['LOTE','COR','COD_PRODUTO','DESC_PRODUTO','VERSAO',
-                 'DATA_INICIO','DATA_CONCLUSAO','STATUS'];
+                 'DATA_INICIO','DATA_CONCLUSAO','STATUS','N_VOLUMES',
+                 'VOL_CONCLUIDOS'];
 
 /* Append-only: cada toque em “Conferir” do operador vira uma linha, com peça,
-   trilho, quem conferiu e quando. RESULTADO é OK ou DIVERGENTE. */
+   trilho, volume (qual das caixas do lote), quem conferiu e quando.
+   RESULTADO é OK ou DIVERGENTE. Linha antiga sem VOLUME vale como volume 1. */
 var CAB_CONF = ['TS','ID_ENVIO','LOTE','COD_PRODUTO','VERSAO','TRILHO',
-                'COD_PECA','DESC_PECA','QTD','MATRICULA','NOME','RESULTADO','OBS'];
+                'COD_PECA','DESC_PECA','QTD','MATRICULA','NOME','RESULTADO',
+                'OBS','VOLUME'];
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -196,16 +202,19 @@ function iniciarLote(ss, p) {
     return { ok: false, erro: 'lote e cod_produto sao obrigatorios' };
   }
   var sh = aba(ss, AB_LOTES, CAB_LOTES);
+  garantirColunas(sh, CAB_LOTES);
   var r = acharLinhaLote(sh, p.lote, p.cod_produto);
   if (r) {
     return { ok: true, ja_iniciado: true,
              versao: parseInt(sh.getRange(r, 5).getValue(), 10) || 0,
-             status: String(sh.getRange(r, 8).getValue() || '') };
+             status: String(sh.getRange(r, 8).getValue() || ''),
+             n_volumes: parseInt(sh.getRange(r, 9).getValue(), 10) || 0 };
   }
   var versao = parseInt(p.versao, 10) || versaoAtiva(ss, p.cod_produto);
   if (!versao) return { ok: false, erro: 'produto sem mapa ativo' };
   sh.appendRow([String(p.lote), p.cor || '', String(p.cod_produto),
-                p.desc_produto || '', versao, new Date(), '', 'EM CONFERENCIA']);
+                p.desc_produto || '', versao, new Date(), '', 'EM CONFERENCIA',
+                parseInt(p.n_volumes, 10) || 1, 0]);
   return { ok: true, versao: versao, status: 'EM CONFERENCIA' };
 }
 
@@ -222,6 +231,7 @@ function conferir(ss, p) {
     return { ok: false, erro: 'nenhuma peca para registrar' };
   }
   var sh = aba(ss, AB_CONF, CAB_CONF);
+  garantirColunas(sh, CAB_CONF);
   if (p.id_envio && jaGravadoNaCol(sh, 2, p.id_envio)) {
     atualizarStatusLote(ss, p);   // o reenvio ainda pode carregar status mais novo
     return { ok: true, duplicado: true, linhas: 0 };
@@ -231,7 +241,8 @@ function conferir(ss, p) {
     return [ts, p.id_envio || '', String(p.lote), String(p.cod_produto),
             parseInt(p.versao, 10) || 0, x.trilho, x.cod_peca, x.desc_peca || '',
             x.qtd || 0, x.matricula || '', x.nome || '',
-            x.resultado || 'OK', x.obs || ''];
+            x.resultado || 'OK', x.obs || '',
+            parseInt(x.volume || p.volume, 10) || 1];
   });
   var ini = sh.getLastRow() + 1;
   garantirLinhas(sh, ini + linhas.length);
@@ -243,6 +254,7 @@ function conferir(ss, p) {
 
 function atualizarStatusLote(ss, p) {
   var sh = aba(ss, AB_LOTES, CAB_LOTES);
+  garantirColunas(sh, CAB_LOTES);
   var ts = new Date();
   var r = acharLinhaLote(sh, p.lote, p.cod_produto);
   if (!r) {
@@ -251,7 +263,9 @@ function atualizarStatusLote(ss, p) {
     sh.appendRow([String(p.lote), p.cor || '', String(p.cod_produto),
                   p.desc_produto || '', parseInt(p.versao, 10) || 0, ts,
                   p.status_lote === 'CONCLUIDA' ? ts : '',
-                  p.status_lote || 'EM CONFERENCIA']);
+                  p.status_lote || 'EM CONFERENCIA',
+                  parseInt(p.n_volumes, 10) || 1,
+                  parseInt(p.vol_concluidos, 10) || 0]);
     return;
   }
   if (p.status_lote) {
@@ -261,6 +275,12 @@ function atualizarStatusLote(ss, p) {
     } else {
       sh.getRange(r, 7).setValue('');
     }
+  }
+  if (parseInt(p.n_volumes, 10) > 0 && !sh.getRange(r, 9).getValue()) {
+    sh.getRange(r, 9).setValue(parseInt(p.n_volumes, 10));
+  }
+  if (p.vol_concluidos !== undefined) {
+    sh.getRange(r, 10).setValue(parseInt(p.vol_concluidos, 10) || 0);
   }
 }
 
@@ -346,17 +366,22 @@ function jaGravadoNaCol(sh, col, id) {
   return false;
 }
 
-/* MAPA_TRILHOS criado antes do versionamento tem 13 colunas. A 14ª (VERSAO)
-   é acrescentada aqui; linha antiga fica com a célula vazia e é lida como V1
-   tanto pelo app quanto por maxVersaoItens. */
-function garantirColunaVersao(sh) {
-  if (sh.getMaxColumns() < CAB_MAPA.length) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), CAB_MAPA.length - sh.getMaxColumns());
+/* Aba criada por uma versão antiga do script pode ter menos colunas que o
+   cabeçalho atual pede. Completa o que falta sem tocar nas linhas de dados —
+   célula vazia em linha antiga é lida com o padrão (VERSAO→1, VOLUME→1). */
+function garantirColunas(sh, cab) {
+  if (sh.getMaxColumns() < cab.length) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), cab.length - sh.getMaxColumns());
   }
-  if (String(sh.getRange(1, 14).getValue()).trim() !== 'VERSAO') {
-    sh.getRange(1, 14).setValue('VERSAO').setFontWeight('bold');
+  var atual = sh.getRange(1, 1, 1, cab.length).getValues()[0];
+  for (var c = 0; c < cab.length; c++) {
+    if (String(atual[c]).trim() !== cab[c]) {
+      sh.getRange(1, c + 1).setValue(cab[c]).setFontWeight('bold');
+    }
   }
 }
+
+function garantirColunaVersao(sh) { garantirColunas(sh, CAB_MAPA); }
 
 /** Maior versão presente nas linhas de item de um produto (sem VERSAO = 1). */
 function maxVersaoItens(sh, cod) {
@@ -430,10 +455,10 @@ function json(obj) {
 function garantirAbas() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   aba(ss, AB_REG, CAB_REG);
-  garantirColunaVersao(aba(ss, AB_MAPA, CAB_MAPA));
+  garantirColunas(aba(ss, AB_MAPA, CAB_MAPA), CAB_MAPA);
   aba(ss, AB_MAPAS, CAB_MAPAS);
-  aba(ss, AB_LOTES, CAB_LOTES);
-  aba(ss, AB_CONF, CAB_CONF);
+  garantirColunas(aba(ss, AB_LOTES, CAB_LOTES), CAB_LOTES);
+  garantirColunas(aba(ss, AB_CONF, CAB_CONF), CAB_CONF);
   aba(ss, AB_COL, CAB_COL);
   Logger.log('abas prontas');
 }

@@ -93,8 +93,8 @@ Criadas pelo Apps Script:
 |---|---|
 | `MAPAS` | COD_PRODUTO · DESC_PRODUTO · VERSAO · STATUS · DATA · RESPONSAVEL · MOTIVO · N_TRILHOS · VELOCIDADE · N_ESQUEMA · ID_ENVIO |
 | `MAPA_TRILHOS` | COD_PRODUTO · DESC_PRODUTO · N_TRILHOS · TRILHO · OP · SEQ · COD_ITEM · DESC_ITEM · QTD · TIPO · VELOCIDADE · N_ESQUEMA · ATUALIZADO_EM · VERSAO |
-| `LOTES` | LOTE · COR · COD_PRODUTO · DESC_PRODUTO · VERSAO · DATA_INICIO · DATA_CONCLUSAO · STATUS |
-| `CONFERENCIAS` | TS · ID_ENVIO · LOTE · COD_PRODUTO · VERSAO · TRILHO · COD_PECA · DESC_PECA · QTD · MATRICULA · NOME · RESULTADO · OBS |
+| `LOTES` | LOTE · COR · COD_PRODUTO · DESC_PRODUTO · VERSAO · DATA_INICIO · DATA_CONCLUSAO · STATUS · N_VOLUMES · VOL_CONCLUIDOS |
+| `CONFERENCIAS` | TS · ID_ENVIO · LOTE · COD_PRODUTO · VERSAO · TRILHO · COD_PECA · DESC_PECA · QTD · MATRICULA · NOME · RESULTADO · OBS · VOLUME |
 | `REGISTRO` | TS · ID_ENVIO · LOTE · COR · DATA_EMB · COD_PRODUTO · DESC_PRODUTO · VOLUMES · N_POSTOS · POSTO · MATRICULA · NOME · COD_PECA · DESC_PECA · QTD · TIPO |
 | `COLABORADORES` | MATRICULA · NOME · ATIVO · CADASTRADO_EM |
 
@@ -134,8 +134,9 @@ O seletor no topo alterna os dois modos e fica gravado no aparelho:
 
 - **PPCP** — monta o mapa, cria versão, ativa, importa Excel, grava lote e
   consulta histórico.
-- **Operador** — seleciona o lote, vê o mapa e confere. Os controles de edição
-  somem da tela: errar por toque deixa de ser possível.
+- **Operador** — seleciona o lote, vê o mapa e confere, e só. Edição de mapa
+  e **todas as impressões** ficam no perfil PPCP: a tela do operador é para
+  marcar peça, sem botão que desvie disso.
 
 A troca é organizacional, não é senha — o tablet da linha fica em *Operador* e
 pronto. Quem precisar de trava de verdade resolve com dois aparelhos.
@@ -144,6 +145,15 @@ pronto. Quem precisar de trava de verdade resolve com dois aparelhos.
 
 O operador digita o lote; o app identifica o produto e carrega o mapa **da
 versão amarrada ao lote** (ou a ativa, se a conferência ainda não começou).
+
+**A conferência é por volume.** Um lote de 6 caixas passa 6 vezes pela
+esteira, então cada caixa tem a própria lista: a faixa *Vol 1 · Vol 2 · …*
+mostra de relance quais caixas já passaram (bolinha verde), qual está no meio
+(amarela) e quais nem começaram (cinza). Ao fechar uma caixa o app pula
+sozinho para a próxima pendente, e o lote só fica 🟢 CONCLUÍDO quando **todos
+os volumes** passaram — o rastro responde na hora "4/6 volumes conferidos".
+O total de caixas vem da programação e fica amarrado no lote na largada.
+
 A lista mostra todos os trilhos com três situações, as mesmas do mapa visual:
 
 - 🟢 **OCUPADO** — peça conferida
@@ -269,6 +279,14 @@ O aviso de duplicidade continua aparecendo à parte.
 Isso serve para apurar padrão, não pessoa. Peça que falta sempre, na mesma OP,
 independentemente de quem está lá, é problema de projeto de embalagem ou de posição
 na esteira — e esse é o achado que vale dinheiro.
+
+## Folha em branco — o mapa que nasce no papel
+
+*Folha em branco* (perfil PPCP) imprime o mapa vazio: os trilhos numerados com
+linha alta para escrever à mão. É para quando o mapa é desenhado na própria
+esteira, longe do computador — a linha preenche no papel e o PPCP sobe depois,
+digitando no app ou pelo *Importar Excel*. Em qualquer impressão, escolher
+**Salvar como PDF** no diálogo do navegador gera o arquivo direto, sem scanner.
 
 ## Imprimir o mapa
 
