@@ -270,6 +270,18 @@
   .dot.div{background:var(--red)}
   .trilho > .dot{align-self:center}
 
+  /* operadores do dia: quem está em cada OP nesta rodada */
+  .opsdia{display:flex; flex-wrap:wrap; gap:9px 14px; align-items:center;
+    padding:10px 13px; border-bottom:1px solid var(--line)}
+  .opsdia .odtit{flex:1 1 100%; font-family:"IBM Plex Mono"; font-size:10px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--mut)}
+  .opsdia label{display:flex; align-items:center; gap:8px;
+    font-family:"Oswald"; font-weight:600; font-size:13px; color:var(--amber)}
+  .opsdia select{min-height:44px; font-size:14px; max-width:220px}
+  .opsdia .odhint{font-family:"IBM Plex Mono"; font-size:11px; color:var(--mut);
+    flex:1 1 160px}
+  .opsdia .odhint.ok{color:var(--green)} .opsdia .odhint.err{color:var(--red)}
+
   /* uma caixa do lote por botão — a conferência é por volume */
   .volstrip{display:flex; gap:8px; flex-wrap:wrap; padding:10px 13px;
     border-bottom:1px solid var(--line)}
@@ -461,6 +473,7 @@
     <button class="pri" id="btnIniciarConf" hidden>Iniciar conferência</button>
   </div>
   <div class="volstrip" id="volStrip" hidden></div>
+  <div class="opsdia" id="opsDia" hidden></div>
   <div class="legenda">
     <span class="dot ocu"></span>OCUPADO — conferido
     <span class="dot res"></span>RESERVADO — aguardando conferência
@@ -594,7 +607,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.3.1";
+const VERSAO = "2.4.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1903,6 +1916,8 @@ async function rastrearLote(lote){
     if(bc) bc.addEventListener("click", abrirConferencia);
     cx.querySelectorAll("[data-hist]").forEach(b =>
       b.addEventListener("click", ()=> abrirHistorico(lote, b.dataset.hist)));
+    // o rodízio gravado chegou agora: preenche os operadores do dia na conferência
+    if(!$("telaConf").hidden && C.lote === lote && !C.carregando) renderOpsDia();
   }catch(e){
     if(meu !== rastroAtual) return;
     cx.className = "rastro";
@@ -2170,6 +2185,7 @@ const C = {
   lote:"", prod:null, versao:0, mapa:null,
   vols:new Map(),     // volume -> [{trilho,cod,desc,qtd,estado:'pend'|'ok'|'div',nome,quando,obs}]
   vol:1, nVols:1,
+  opsDia:new Map(),   // OP -> matrícula de quem está nela nesta rodada
   iniciado:false, statusSrv:"", carregando:false, idx:-1
 };
 const volLinhas = v => C.vols.get(v) || [];
@@ -2208,6 +2224,7 @@ async function carregarConferencia(){
   const meu = ++confSeq;
   C.lote = S.lote.lote; C.prod = S.prod;
   C.vols = new Map(); C.vol = 1; C.mapa = null; C.iniciado = false;
+  C.opsDia = new Map();
   C.versao = 0; C.statusSrv = ""; C.carregando = true;
   C.nVols = Math.min(MAX_VOLS, Math.max(1, Math.round(numDec(S.prod.qtd)) || 1));
   tela.hidden = false;
@@ -2333,11 +2350,92 @@ function renderVols(){
   }
 }
 
+/* Quem está em cada OP nesta rodada. Grava no REGISTRO — o mesmo que a
+   auditoria "quem pôs o quê" lê depois. Se o lote já tem rodízio gravado,
+   os nomes vêm preenchidos e o líder só troca o que mudou no dia. */
+function renderOpsDia(){
+  const box = $("opsDia");
+  if(!C.mapa){ box.hidden = true; return; }
+  const ops = [...new Set(C.mapa.linhas.map(l => l.op))].sort((a, b) => a - b);
+  if(!ops.length){ box.hidden = true; return; }
+
+  // pré-preenche com o rodízio já gravado no REGISTRO deste lote
+  let jaGravadoEm = "";
+  if(CONF.lote === C.lote){
+    const r = CONF.resumo.find(x => normCod(x.cod) === normCod(C.prod.cod));
+    if(r){
+      jaGravadoEm = r.quando || "já";
+      if(!C.opsDia.size){
+        for(const o of r.ops.values()) if(o.mat) C.opsDia.set(parseInt(o.op, 10), o.mat);
+      }
+    }
+  }
+
+  box.hidden = false;
+  const opts = m => '<option value="">— operador —</option>' + S.colab.map(c =>
+    `<option value="${escapa(c.mat)}"${c.mat === m ? " selected" : ""}>${escapa(c.nome)}</option>`).join("");
+  box.innerHTML = `<div class="odtit">Operadores do dia — quem está em cada OP nesta rodada</div>` +
+    ops.map(op => `<label>OP ${String(op).padStart(2, "0")}
+      <select data-od="${op}">${opts(C.opsDia.get(op) || "")}</select></label>`).join("") +
+    `<button class="pri" id="btnGravarOps" style="min-height:44px">Gravar operadores</button>
+     <span class="odhint" id="odHint">${jaGravadoEm
+       ? "rodízio já gravado — troque quem mudou e regrave"
+       : "marque quem está em cada OP e grave"}</span>`;
+  box.querySelectorAll("[data-od]").forEach(sel => {
+    sel.addEventListener("change", ev => {
+      C.opsDia.set(parseInt(sel.dataset.od, 10), ev.target.value);
+    });
+  });
+  $("btnGravarOps").addEventListener("click", gravarOperadoresDia);
+}
+
+async function gravarOperadoresDia(){
+  if(!C.mapa) return;
+  const ops = [...new Set(C.mapa.linhas.map(l => l.op))].sort((a, b) => a - b);
+  const faltam = ops.filter(op => !C.opsDia.get(op));
+  const hint = $("odHint");
+  if(faltam.length){
+    hint.className = "odhint err";
+    hint.textContent = `falta operador ${faltam.length === 1 ? "da OP" : "das OPs"} ${faltam.join(", ")}`;
+    return;
+  }
+  const nomeDe = m => (S.colab.find(c => c.mat === m) || {}).nome || "";
+  const linhas = C.mapa.linhas.map(l => {
+    const it = itemPorCod(l.item) || {};
+    const mat = C.opsDia.get(l.op) || "";
+    return { posto: l.op, matricula: mat, nome: nomeDe(mat), cod_peca: l.item,
+             desc_peca: l.desc || it.desc || "", qtd: l.qtd, tipo: it.tipo || "" };
+  });
+  const payload = {
+    acao: "salvar_lote", id_envio: novoId(), ts_local: new Date().toISOString(),
+    lote: C.lote, cor: (S.lote && S.lote.cor) || "", data_emb: (S.lote && S.lote.emb) || "",
+    cod_produto: C.prod.cod, desc_produto: C.prod.desc || "",
+    volumes: C.prod.qtd || 0, n_postos: ops.length, linhas
+  };
+  hint.className = "odhint"; hint.textContent = "gravando…";
+  const fila = lerFila(); fila.push(payload); salvarFila(fila); pintarFila();
+  try{
+    const r = await despacharFila();
+    esquecerRegistro();
+    if(r.descartados && !r.enviados){
+      hint.className = "odhint"; hint.textContent = "mantido o rodízio que já estava gravado";
+    }else{
+      hint.className = "odhint ok";
+      hint.textContent = `rodízio gravado — ${ops.length} OPs`;
+    }
+    rastrearLote(C.lote);
+  }catch(e){
+    hint.className = "odhint err";
+    hint.textContent = "sem rede — ficou na fila, use “Reenviar pendentes”";
+  }
+}
+
 function renderConf(){
   if($("telaConf").hidden) return;
   renderConfBar();
   if(C.carregando) return;
   renderVols();
+  renderOpsDia();
   const box = $("listaConf");
   if(!C.mapa){
     box.innerHTML = `<div class="vazio-tela">O produto <b>${escapa(C.prod ? C.prod.cod : "")}</b>
