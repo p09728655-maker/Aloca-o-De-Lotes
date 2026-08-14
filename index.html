@@ -596,7 +596,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.2.0";
+const VERSAO = "2.2.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -2137,7 +2137,13 @@ const IDX_CONF  = { ts:0, envio:1, lote:2, cod:3, versao:4, trilho:5, peca:6,
 /* Um lote tem N volumes (caixas), e CADA caixa passa pela esteira: a
    conferência é por volume. O lote só conclui quando todos os volumes
    passaram inteiros. Linha antiga de CONFERENCIAS sem VOLUME vale como
-   volume 1. */
+   volume 1.
+
+   Conferir caixa por caixa num lote de 30 é inviável — e não é o que a
+   linha faz. A conferência é por amostragem: NO MÁXIMO 4 volumes por
+   lote × produto. Lote com 4 caixas ou menos confere todas; com mais,
+   confere 4 passadas (começo, meio e fim da rodada). */
+const MAX_VOLS = 4;
 const C = {
   lote:"", prod:null, versao:0, mapa:null,
   vols:new Map(),     // volume -> [{trilho,cod,desc,qtd,estado:'pend'|'ok'|'div',nome,quando,obs}]
@@ -2181,7 +2187,7 @@ async function carregarConferencia(){
   C.lote = S.lote.lote; C.prod = S.prod;
   C.vols = new Map(); C.vol = 1; C.mapa = null; C.iniciado = false;
   C.versao = 0; C.statusSrv = ""; C.carregando = true;
-  C.nVols = Math.max(1, Math.round(numDec(S.prod.qtd)) || 1);
+  C.nVols = Math.min(MAX_VOLS, Math.max(1, Math.round(numDec(S.prod.qtd)) || 1));
   tela.hidden = false;
   $("listaConf").innerHTML = '<div class="vazio-tela">Consultando o lote…</div>';
   renderConfBar();
@@ -2198,9 +2204,11 @@ async function carregarConferencia(){
     C.iniciado = true;
     C.versao = parseInt(meuLote[IDX_LOTES.versao], 10) || 0;
     C.statusSrv = String(meuLote[IDX_LOTES.status] || "").trim().toUpperCase();
-    // o total de volumes amarrado na largada vale mais que a programação de hoje
+    // o total amarrado na largada vale mais que a programação de hoje — mas
+    // também respeita o teto: lote amarrado com 30 (versão anterior do app)
+    // passa a conferir 4, sem perder o que já foi conferido acima disso
     const nv = parseInt(meuLote[IDX_LOTES.nvol], 10);
-    if(nv > 0) C.nVols = nv;
+    if(nv > 0) C.nVols = Math.min(nv, MAX_VOLS);
   }
 
   let mapa = mapaDe(cod, C.versao);

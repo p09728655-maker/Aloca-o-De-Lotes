@@ -146,13 +146,15 @@ pronto. Quem precisar de trava de verdade resolve com dois aparelhos.
 O operador digita o lote; o app identifica o produto e carrega o mapa **da
 versão amarrada ao lote** (ou a ativa, se a conferência ainda não começou).
 
-**A conferência é por volume.** Um lote de 6 caixas passa 6 vezes pela
-esteira, então cada caixa tem a própria lista: a faixa *Vol 1 · Vol 2 · …*
-mostra de relance quais caixas já passaram (bolinha verde), qual está no meio
-(amarela) e quais nem começaram (cinza). Ao fechar uma caixa o app pula
-sozinho para a próxima pendente, e o lote só fica 🟢 CONCLUÍDO quando **todos
-os volumes** passaram — o rastro responde na hora "4/6 volumes conferidos".
-O total de caixas vem da programação e fica amarrado no lote na largada.
+**A conferência é por volume, com teto de 4.** Cada caixa conferida tem a
+própria lista: a faixa *Vol 1 · Vol 2 · …* mostra de relance qual já passou
+(bolinha verde), qual está no meio (amarela) e qual nem começou (cinza). Ao
+fechar uma caixa o app pula sozinho para a próxima pendente, e o lote só fica
+🟢 CONCLUÍDO quando todos os volumes da amostra passaram — o rastro responde
+na hora "2/4 volumes conferidos". Lote com até 4 caixas confere todas; com
+mais (um lote de 30 caixas é comum), confere **no máximo 4 passadas** —
+conferir trinta caixas peça a peça no tablet não é conferência, é fila. O
+total fica amarrado no lote na largada.
 
 A lista mostra todos os trilhos com três situações, as mesmas do mapa visual:
 
