@@ -3374,6 +3374,15 @@ function baixar(blob, nome){
   setTimeout(()=> URL.revokeObjectURL(url), 4000);
 }
 
+/* Qual caixa é esta. O número vem do "VOL 2/6" que a programação escreve, e
+   não da ordem em que o arquivo foi montado: um produto de seis volumes com
+   mapa só no terceiro tem de sair como MAPA CX03, não como MAPA CX01. Sem o
+   VOL na descrição, sobra a posição no lote. */
+function numeroDoVolume(prod, i){
+  const m = String(prod.desc || "").match(/\bVOL\.?\s*(\d+)\s*[\/DE]+\s*(\d+)/i);
+  return m ? parseInt(m[1], 10) : i + 1;
+}
+
 /* O lote inteiro num arquivo só: uma aba por volume, na ordem da programação.
    É o mesmo arquivo que a embalagem já usa em papel, uma caixa por aba. */
 function exportarExcel(){
@@ -3383,21 +3392,28 @@ function exportarExcel(){
     if(!k || vistos.has(k)) return;
     vistos.add(k); alvos.push(p);
   };
-  if(S.prod) juntar(S.prod);
   if(S.lote) S.lote.itens.forEach(juntar);
+  if(S.prod) juntar(S.prod);   // produto aberto sem lote escolhido
 
-  const abas = [];
-  alvos.forEach(p => {
+  const abas = [], nomes = new Set();
+  alvos.forEach((p, i) => {
     const m = mapaParaExportar(p);
-    if(m) abas.push(abaDoMapa("MAPA CX" + String(abas.length + 1).padStart(2, "0"), p, m));
+    if(!m) return;
+    let nome = "MAPA CX" + String(numeroDoVolume(p, i)).padStart(2, "0");
+    // duas abas de mesmo nome não abrem no Excel: desempata pelo código
+    if(nomes.has(nome)) nome = (nome + " " + normCod(p.cod)).slice(0, 31);
+    nomes.add(nome);
+    abas.push(abaDoMapa(nome, p, m));
   });
   if(!abas.length){
     setMsg("err", "Nada para exportar — escolha um produto e monte ou abra o mapa dele.");
     return;
   }
-  const nome = "mapa-trilhos-" + (S.lote ? S.lote.lote + "-" : "") + normCod(alvos[0].cod) + ".xlsx";
+  const nome = "mapa-trilhos-" + (S.lote ? S.lote.lote : normCod(alvos[0].cod)) + ".xlsx";
   baixar(montarXlsx(abas), nome);
-  setMsg("ok", `${abas.length} ${abas.length === 1 ? "mapa exportado" : "mapas exportados"} — ${nome}`);
+  const fora = alvos.length - abas.length;
+  setMsg("ok", `${abas.length} ${abas.length === 1 ? "mapa exportado" : "mapas exportados"} — ${nome}` +
+    (fora ? ` · ${fora} ${fora === 1 ? "volume ainda sem mapa ficou de fora" : "volumes ainda sem mapa ficaram de fora"}` : ""));
 }
 $("btnExportar").addEventListener("click", exportarExcel);
 

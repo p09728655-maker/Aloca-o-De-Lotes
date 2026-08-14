@@ -230,11 +230,18 @@ chutar** — o que reconhece com folga entra, o ambíguo vira uma lista de candi
 para o líder escolher. Código escrito que a `ESTRUTURA` não tem também vira
 pergunta, com a estrutura inteira do produto para escolher.
 
-**Exportar Excel** faz o caminho de volta: baixa neste mesmo formato o mapa que
-está na tela, uma aba por volume do lote — o da tela sai como está agora, salvo ou
-não, e os outros saem da versão ativa. É por aí que se começa um produto novo:
-exporta o parecido, troca o que muda e importa de volta. Ida e volta é fiel — o
-arquivo que sai, relido, dá o mesmo mapa.
+**Exportar Excel** faz o caminho de volta: baixa o lote inteiro neste mesmo
+formato, uma aba por volume — o da tela sai como está agora, salvo ou não, e os
+outros saem da versão ativa. É por aí que se começa um produto novo: exporta o
+parecido, troca o que muda e importa de volta. Ida e volta é fiel — o arquivo que
+sai, relido, dá o mesmo mapa.
+
+**Volume é quantos forem.** A aba é numerada pelo `VOL` da programação, não pela
+ordem em que o arquivo foi montado: num produto de seis caixas com mapa só na
+terceira, a aba sai como `MAPA CX03`. Volume ainda sem mapa fica de fora e o app
+diz quantos foram, em vez de exportar aba muda. Na importação o nome da aba não
+significa nada — quem identifica o mapa é o código na primeira linha —, então
+`MAPA CX07` ou `CAIXA GRANDE` dá no mesmo.
 
 **Um mapa para todas as cores.** Os códigos escritos são de uma cor só. Para o
 mesmo mapa valer para as outras, uma aba `PRODUTOS` com `ABA_MAPA` e `COD_PRODUTO`
