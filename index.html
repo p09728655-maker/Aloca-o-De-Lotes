@@ -458,10 +458,6 @@
     <div class="prog"><i id="confProg"></i></div>
     <span class="pct" id="confPct">—</span>
     <span class="pct" id="volsOk" style="color:var(--mut); font-size:13px"></span>
-    <div class="fld" style="min-width:200px">
-      <label for="selConferente">Conferente</label>
-      <select id="selConferente"><option value="">— quem confere —</option></select>
-    </div>
     <button class="pri" id="btnIniciarConf" hidden>Iniciar conferência</button>
   </div>
   <div class="volstrip" id="volStrip" hidden></div>
@@ -554,6 +550,8 @@
   <h3>Conferir peça</h3>
   <div class="body">
     <div id="pecaInfo" style="font-size:15px; line-height:1.55"></div>
+    <div class="fld"><label for="pecaQuem">Quem está conferindo</label>
+      <select id="pecaQuem"><option value="">— escolha o conferente —</option></select></div>
     <div class="fld"><label for="pecaCod">Código da peça em mãos (opcional — confere contra o mapa)</label>
       <input type="text" id="pecaCod" inputmode="numeric" autocomplete="off"></div>
     <div id="pecaAlerta" class="alertaPeca" hidden></div>
@@ -596,7 +594,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.3.0";
+const VERSAO = "2.3.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -992,10 +990,11 @@ function montarSelects(){
     dl.appendChild(o);
   });
 
-  // conferente da embalagem — lembrado entre lotes, trocado no rodízio
-  const sc = $("selConferente");
+  // quem confere é marcado NA HORA, dentro do diálogo de conferir — o último
+  // usado já vem selecionado, então rodízio custa um toque e rotina custa zero
+  const sc = $("pecaQuem");
   const memoria = localStorage.getItem(CONFERENTE_KEY) || "";
-  sc.innerHTML = '<option value="">— quem confere —</option>' +
+  sc.innerHTML = '<option value="">— escolha o conferente —</option>' +
     S.colab.map(c => `<option value="${escapa(c.mat)}"${c.mat===memoria?" selected":""}>${escapa(c.nome)}</option>`).join("");
 }
 
@@ -2388,11 +2387,6 @@ function renderConf(){
 
 /* ---------- conferir uma peça ---------- */
 function abrirPeca(i){
-  if(!$("selConferente").value){
-    setMsg("err", "Escolha o conferente antes de conferir peça.");
-    $("selConferente").focus();
-    return;
-  }
   C.idx = i;
   const l = volLinhas(C.vol)[i];
   $("pecaInfo").innerHTML = `<b>TRILHO ${String(l.trilho).padStart(2, "0")}</b> — ${escapa(l.desc)}
@@ -2410,6 +2404,7 @@ function validarPeca(){
   const l = volLinhas(C.vol)[C.idx]; if(!l) return;
   const dig = normCod($("pecaCod").value);
   const bate = !dig || dig === normCod(l.cod);
+  const temQuem = !!$("pecaQuem").value;
   const al = $("pecaAlerta");
   if(bate){ al.hidden = true; }
   else{
@@ -2422,11 +2417,18 @@ function validarPeca(){
         ? "Confirmar mesmo assim é ação do PPCP e fica registrada como observação."
         : "O operador não confirma peça divergente — registre a divergência e chame o PPCP.");
   }
+  // sem conferente marcado não sai registro nenhum — nem OK, nem divergência
   const okBtn = $("pecaOk");
-  okBtn.disabled = !bate && PERFIL !== "ppcp";
-  okBtn.textContent = bate ? "✓ Confirmar" : "Confirmar mesmo assim (PPCP)";
+  okBtn.disabled = !temQuem || (!bate && PERFIL !== "ppcp");
+  okBtn.textContent = !temQuem ? "✓ Confirmar (escolha o conferente)"
+    : bate ? "✓ Confirmar" : "Confirmar mesmo assim (PPCP)";
+  $("pecaDiv").disabled = !temQuem;
 }
 $("pecaCod").addEventListener("input", validarPeca);
+$("pecaQuem").addEventListener("change", ev=>{
+  try{ localStorage.setItem(CONFERENTE_KEY, ev.target.value); }catch(e){}
+  validarPeca();
+});
 $("pecaCancel").addEventListener("click", ()=> $("dlgPeca").close());
 $("pecaOk").addEventListener("click", ()=> fecharPeca("OK"));
 $("pecaDiv").addEventListener("click", ()=> fecharPeca("DIVERGENTE"));
@@ -2447,7 +2449,7 @@ async function fecharPeca(resultado){
 }
 
 async function registrarConferencia(l, resultado, obs){
-  const mat = $("selConferente").value;
+  const mat = $("pecaQuem").value;
   const nome = (S.colab.find(c => c.mat === mat) || {}).nome || "";
   const agora = new Date();
   l.estado = resultado === "DIVERGENTE" ? "div" : "ok";
@@ -2517,10 +2519,6 @@ async function iniciarConferencia(avisar){
   renderConfBar();
 }
 $("btnIniciarConf").addEventListener("click", ()=> iniciarConferencia(true).then(renderConf));
-
-$("selConferente").addEventListener("change", ev=>{
-  try{ localStorage.setItem(CONFERENTE_KEY, ev.target.value); }catch(e){}
-});
 
 /* ==================================================================
    IMPORTAR O MAPA DE UM EXCEL
