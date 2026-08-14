@@ -293,50 +293,73 @@
   @media(prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
 
   /* ---------- impressão ----------
-     Sai no desenho da folha que a linha já usa: faixa de OP à esquerda,
-     número do trilho à direita, um trilho por linha. O operador não pode
-     estranhar o papel — é ele que fica pendurado na esteira. */
+     Papel também é interface. A folha sai com a cara do app, não da planilha:
+     cabeçalho com a marca e a versão do mapa, faixa de OP com QUEM EMBALA,
+     linhas finas em vez de grade — e continua um trilho por linha, que é o
+     desenho que a esteira conhece. Tudo em preto, amigo de laser.
+     Classes com prefixo f- de propósito: o app define .item e .op globais,
+     e sem o prefixo a folha herdava alvo de toque de 48px e não cabia na
+     página (as colisões anteriores foram .item e .rodape). */
   #folha{display:none}
   @media print{
     body{background:#fff; color:#000; padding:0}
     body > *{display:none !important}
     body > #folha{display:block !important}
-    @page{size:A4 portrait; margin:10mm}
+    @page{size:A4 portrait; margin:9mm 10mm}
 
-    #folha{font-family:"Times New Roman",Georgia,serif; color:#000}
-    #folha .cab{display:flex; align-items:flex-end; gap:12px; border-bottom:2px solid #000;
-      padding-bottom:4px; margin-bottom:2px}
-    #folha .cab img{height:26px; width:auto}
-    #folha .cab .tit{flex:1 1 0; text-align:center}
-    #folha .cab .tit b{display:block; font-size:13pt; text-decoration:underline; letter-spacing:.02em}
-    #folha .cab .tit span{display:block; font-size:12pt; font-weight:bold; text-decoration:underline}
-    #folha .cab .vel{font-size:9pt; text-align:right; line-height:1.4}
-
-    #folha .campos{display:flex; gap:18px; font-size:9.5pt; padding:4px 2px 5px}
-    #folha .campos span{flex:1 1 0; border-bottom:1px solid #000; padding-bottom:1px}
-
-    #folha table{width:100%; table-layout:fixed; border-collapse:collapse; font-size:10pt}
-    #folha th, #folha td{border:1px solid #000; padding:3.5px 6px; vertical-align:middle; line-height:1.25}
-    #folha th{font-size:8.5pt; text-transform:uppercase; letter-spacing:.05em; background:#eee}
-    /* Classes com prefixo f- de propósito: o app define .item e .op globais,
-       e .item carrega min-height de 48px (o alvo de toque do tablet). Sem o
-       prefixo, cada célula da folha herdava isso e a tabela nem cabia na
-       página. Foi a segunda colisão de nome aqui — a primeira foi .rodape. */
-    #folha td.fop{text-align:center; font-weight:bold; font-size:11pt}
-    #folha td.fins{text-align:center; font-size:8pt}
-    #folha td.ftr{text-align:center; font-weight:bold; font-size:12pt}
-    /* quadradinho para o conferente marcar item a item na caixa */
-    #folha td.fok{text-align:center}
-    #folha td.fok::after{content:""; display:inline-block; width:11px; height:11px;
-      border:1px solid #000}
-    #folha tr.fvazio td.fitem{color:#999}
-    /* nome próprio: ".rodape" é o rodapé fixo do app, e o position:fixed dele
-       vazava para cá, jogando este texto por cima da tabela */
-    #folha .pe{display:flex; justify-content:space-between; font-size:8pt;
-      padding-top:6px; color:#333}
+    #folha{font-family:"Inter",system-ui,sans-serif; color:#000; font-size:10pt;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact}
     /* uma caixa por página: o operador pendura uma folha por vez */
     #folha .caixa{break-after:page; page-break-after:always}
     #folha .caixa:last-child{break-after:auto; page-break-after:auto}
+
+    #folha .fcab{display:flex; align-items:center; gap:5mm;
+      border-bottom:1mm solid #000; padding-bottom:2.5mm}
+    #folha .fcab img{height:8mm; width:auto}
+    #folha .fcab .ftit{flex:1 1 0; min-width:0}
+    #folha .fcab .ftit small{display:block; font-size:6.5pt; letter-spacing:.24em;
+      text-transform:uppercase; color:#555}
+    #folha .fcab .ftit b{display:block; font-family:"Oswald","Inter",sans-serif; font-size:14.5pt;
+      font-weight:600; letter-spacing:.04em; text-transform:uppercase; line-height:1.2}
+    #folha .fcab .ftit span{display:block; font-size:10.5pt; font-weight:600; margin-top:.5mm}
+    #folha .fver{border:.4mm solid #000; padding:1.6mm 3.2mm; text-align:center; flex:none}
+    #folha .fver small{display:block; font-size:6pt; letter-spacing:.18em;
+      text-transform:uppercase; color:#444}
+    #folha .fver b{display:block; font-family:"Oswald","Inter",sans-serif; font-size:14pt; font-weight:600; line-height:1.15}
+    #folha .fver span{display:block; font-size:7pt; color:#333; margin-top:.5mm}
+
+    #folha .fmeta{display:flex; margin:2.5mm 0 3mm; border:.3mm solid #000}
+    #folha .fmeta div{flex:1 1 0; padding:1.4mm 2.5mm; border-left:.3mm solid #000; min-width:0}
+    #folha .fmeta div:first-child{border-left:none}
+    #folha .fmeta small{display:block; font-size:6pt; letter-spacing:.16em;
+      text-transform:uppercase; color:#555}
+    #folha .fmeta b{font-family:"Oswald","Inter",sans-serif; font-size:10.5pt; font-weight:600; white-space:nowrap}
+
+    #folha table{width:100%; table-layout:fixed; border-collapse:collapse}
+    #folha th{font-size:6.5pt; letter-spacing:.14em; text-transform:uppercase;
+      text-align:left; color:#444; padding:1mm 2mm; border-bottom:.5mm solid #000}
+    #folha td{padding:1.2mm 2mm; border-bottom:.2mm solid #c8c8c8; vertical-align:middle;
+      line-height:1.3; overflow:hidden}
+    /* a régua grossa marca onde começa a faixa de uma OP nova */
+    #folha tr.fini td{border-top:.55mm solid #000}
+    #folha td.fop{font-family:"Oswald","Inter",sans-serif; font-size:11pt; font-weight:600; white-space:nowrap}
+    #folha td.fop small{display:block; font-family:"Inter"; font-size:7.5pt; font-weight:400;
+      color:#222; white-space:normal; line-height:1.25}
+    #folha td.fins{font-size:7.5pt; font-style:italic; color:#333}
+    #folha td.fpeca{font-size:9.5pt}
+    #folha td.ftr{font-family:"Oswald","Inter",sans-serif; font-size:12.5pt; font-weight:700; text-align:center}
+    #folha td.fqtd{font-family:"Oswald","Inter",sans-serif; font-size:10.5pt; font-weight:600; text-align:center}
+    #folha tr.fvazio td{color:#999; padding:.7mm 2mm}
+    #folha tr.fvazio td.fpeca{font-size:7.5pt; font-style:italic; color:#aaa}
+    /* quadradinho para o conferente marcar item a item na caixa */
+    #folha td.fok{text-align:center}
+    #folha td.fok::after{content:""; display:inline-block; width:3.6mm; height:3.6mm;
+      border:.35mm solid #000; border-radius:.7mm}
+    #folha td.fres{font-size:8pt; font-weight:700; white-space:nowrap}
+    #folha td.fhora{font-size:7.5pt; color:#222}
+
+    #folha .fpe{display:flex; justify-content:space-between; gap:6mm; margin-top:2.5mm;
+      padding-top:1.5mm; border-top:.3mm solid #999; font-size:7pt; color:#555}
   }
 </style>
 </head>
@@ -531,7 +554,10 @@
 <dialog id="dlgHist">
   <h3 id="histTit">Histórico da conferência</h3>
   <div class="body" id="histCorpo" style="max-height:64vh; overflow-y:auto"></div>
-  <div class="foot"><button class="gho" id="histFechar">Fechar</button></div>
+  <div class="foot">
+    <button class="gho" id="histFechar">Fechar</button>
+    <button class="pri" id="histImprimir">Imprimir histórico</button>
+  </div>
 </dialog>
 
 <dialog id="dlgColab">
@@ -556,7 +582,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.0.0";
+const VERSAO = "2.1.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1571,11 +1597,47 @@ $("colOk").addEventListener("click", async ()=>{
 
 /* ==================================================================
    IMPRESSÃO
-   A folha impressa substitui a que está pendurada na esteira, então ela sai
-   no desenho que o operador já conhece: OP à esquerda, item no meio, número
-   do trilho à direita, e trilho vazio aparecendo como vazio — a linha em
-   branco é informação, marca que aquele trilho não recebe nada.
+   Três folhas, todas no mesmo desenho: o MAPA (pendurado na esteira, agora
+   com quem embala em cada OP, a versão do mapa e a coluna OK para marcar
+   peça a peça no papel — marcou, é só imprimir em "Salvar como PDF" para
+   subir digitalizado), a CONFERÊNCIA por OP (quem pôs o quê na caixa) e o
+   HISTÓRICO peça a peça (quem conferiu, o quê e a que horas).
    ================================================================== */
+const fCab = (titulo, sub, boxLabel, boxValor, boxSub) => `
+  <div class="fcab">
+    <img src="./logo-patrimar.png" alt="Patrimar Móveis">
+    <div class="ftit">
+      <small>PPCP · Embalagem</small>
+      <b>${titulo}</b>
+      <span>${escapa(sub)}</span>
+    </div>
+    <div class="fver">
+      <small>${boxLabel}</small>
+      <b>${escapa(boxValor)}</b>
+      ${boxSub ? `<span>${boxSub}</span>` : ""}
+    </div>
+  </div>`;
+
+const agoraTxt = () => new Date().toLocaleDateString("pt-BR") + " " +
+  new Date().toTimeString().slice(0, 5);
+const fPe = esq => `<div class="fpe"><span>${esq}</span>
+  <span>PPCP · impresso pelo app v${VERSAO} · ${agoraTxt()}</span></div>`;
+
+/** Quem embala na OP: o rodízio da tela, ou o que o REGISTRO do lote guardou. */
+function nomeDaOp(op){
+  const mat = S.operador.get(op);
+  if(mat){
+    const c = S.colab.find(x => x.mat === mat);
+    if(c) return c.nome;
+  }
+  if(S.prod && CONF.resumo.length){
+    const r = CONF.resumo.find(x => normCod(x.cod) === normCod(S.prod.cod));
+    const o = r && r.ops.get(String(op));
+    if(o && o.nome) return o.nome;
+  }
+  return "";
+}
+
 function montarFolha(){
   const f = $("folha");
   if(!S.prod || !S.itens.length){ f.innerHTML = ""; return false; }
@@ -1590,48 +1652,50 @@ function montarFolha(){
     });
     linhas.push({
       trilho: t,
-      op: S.inicioOp.has(t) ? "OP " + String(opDoTrilho(t)).padStart(2, "0") : "",
+      ini: S.inicioOp.has(t), op: opDoTrilho(t),
       insumo: nomes.filter(n => n.emb).map(n => n.txt).join(" + "),
       item: nomes.filter(n => !n.emb).map(n => n.txt).join(" + ")
     });
   }
 
-  const corpo = linhas.map(l =>
-    `<tr class="${l.item || l.insumo ? "" : "fvazio"}">
-       <td class="fop">${escapa(l.op)}</td>
+  const m = S.mapas.get(normCod(S.prod.cod));
+  const versao = m ? (S.verSel || m.ativa) : 0;
+
+  const corpo = linhas.map(l => {
+    const vazio = !l.item && !l.insumo;
+    const nome = l.ini ? nomeDaOp(l.op) : "";
+    return `<tr class="${l.ini ? "fini" : ""}${vazio ? " fvazio" : ""}">
+       <td class="fop">${l.ini ? "OP " + String(l.op).padStart(2, "0") +
+         (nome ? `<small>${escapa(nome)}</small>` : "") : ""}</td>
        <td class="fins">${escapa(l.insumo)}</td>
-       <td class="fitem">${escapa(l.item)}</td>
+       <td class="fpeca">${vazio ? "trilho livre" : escapa(l.item)}</td>
        <td class="ftr">${l.trilho}</td>
-     </tr>`).join("");
+       ${vazio ? "<td></td>" : '<td class="fok"></td>'}
+     </tr>`;
+  }).join("");
 
   f.innerHTML = `
     <div class="caixa">
-      <div class="cab">
-        <img src="./logo-patrimar.png" alt="Patrimar Móveis">
-        <div class="tit">
-          <b>MAPA DOS TRILHOS DA EMBALAGEM</b>
-          <span>${escapa(S.prod.desc || S.prod.cod)}</span>
-        </div>
-        <div class="vel">VELOCIDADE EST<br><b>${escapa(S.vel || "—")}</b>
-          <br>Nº ESQUEMA ${escapa(S.esq || "—")}</div>
-      </div>
-      <div class="campos">
-        <span>DATA ____/____/______</span>
-        <span>LOTE ${escapa(S.lote ? S.lote.lote : "____________")}</span>
-        <span>CAIXAS ${escapa(S.prod.qtd ? fmtQtd(S.prod.qtd) : "________")}</span>
+      ${fCab("Mapa dos trilhos da embalagem", S.prod.desc || S.prod.cod,
+             "Mapa", versao ? vTag(versao) : "RASCUNHO",
+             `vel. ${escapa(S.vel || "—")} · esq. ${escapa(S.esq || "—")}`)}
+      <div class="fmeta">
+        <div><small>Data</small><b>___ / ___ / _____</b></div>
+        <div><small>Lote</small><b>${escapa(S.lote ? S.lote.lote : "") || "_________"}</b></div>
+        <div><small>Cor</small><b>${escapa((S.lote && S.lote.cor) || "—")}</b></div>
+        <div><small>Caixas</small><b>${S.prod.qtd ? fmtQtd(S.prod.qtd) : "_____"}</b></div>
+        <div><small>Conferido por</small><b>____________________</b></div>
       </div>
       <table>
         <colgroup>
-          <col style="width:13%"><col style="width:19%">
-          <col style="width:54%"><col style="width:14%">
+          <col style="width:19%"><col style="width:18%">
+          <col style="width:48%"><col style="width:8%"><col style="width:7%">
         </colgroup>
-        <thead><tr><th>OP</th><th>Insumo</th><th>Descrição da peça</th><th>Nº trilho</th></tr></thead>
+        <thead><tr><th>OP · quem embala</th><th>Insumo</th><th>Descrição da peça</th>
+          <th style="text-align:center">Trilho</th><th style="text-align:center">OK</th></tr></thead>
         <tbody>${corpo}</tbody>
       </table>
-      <div class="pe">
-        <span>${escapa(S.prod.cod)} · ${S.nTrilhos} trilhos · ${totalOps()} OPs</span>
-        <span>PPCP · impresso pelo app v${VERSAO}</span>
-      </div>
+      ${fPe(`${escapa(S.prod.cod)} · ${S.nTrilhos} trilhos · ${totalOps()} OPs · mapa ${versao ? vTag(versao) : "ainda não salvo"}`)}
     </div>`;
   return true;
 }
@@ -1823,6 +1887,7 @@ function htmlConferenciaLote(lote, lrows, crows){
 }
 
 function abrirHistorico(lote, cod){
+  HIST.atual = { lote, cod };
   const l = HIST.lrows.find(x => normCod(x[IDX_LOTES.cod]) === normCod(cod)) || [];
   const rows = HIST.crows.filter(c => normCod(c[IDX_CONF.cod]) === normCod(cod));
   $("histTit").textContent = `LT ${lote} · ${cod} · Mapa ${vTag(parseInt(l[IDX_LOTES.versao],10)||0)}`;
@@ -1844,6 +1909,62 @@ function abrirHistorico(lote, cod){
   $("dlgHist").showModal();
 }
 $("histFechar").addEventListener("click", ()=> $("dlgHist").close());
+
+/** O histórico no papel: quem conferiu o quê, em qual trilho, a que horas —
+    com a versão do mapa da época. "Salvar como PDF" no diálogo de impressão
+    gera o arquivo para anexar onde a auditoria pedir. */
+function montarFolhaHistorico(){
+  const a = HIST.atual;
+  if(!a) return false;
+  const l = HIST.lrows.find(x => normCod(x[IDX_LOTES.cod]) === normCod(a.cod)) || [];
+  const rows = HIST.crows.filter(c => normCod(c[IDX_CONF.cod]) === normCod(a.cod));
+  if(!rows.length) return false;
+
+  const versao = vTag(parseInt(l[IDX_LOTES.versao], 10) || 0);
+  const st = String(l[IDX_LOTES.status] || "").trim().toUpperCase();
+  const rotSt = st === "CONCLUIDA" ? "CONCLUÍDA"
+              : st === "COM PENDENCIA" ? "COM PENDÊNCIA" : "EM CONFERÊNCIA";
+  const corpo = rows.map(c => {
+    const div = /^DIV/i.test(String(c[IDX_CONF.res] || ""));
+    return `<tr>
+      <td class="ftr">${escapa(String(c[IDX_CONF.trilho]))}</td>
+      <td class="fpeca">${escapa(c[IDX_CONF.dpeca] || c[IDX_CONF.peca])}` +
+      (c[IDX_CONF.obs] ? `<br><span style="font-size:7.5pt;color:#333">${escapa(c[IDX_CONF.obs])}</span>` : "") +
+      `</td>
+      <td class="fqtd">${fmtQtd(numDec(c[IDX_CONF.qtd]))}</td>
+      <td class="fres">${div ? "DIVERGÊNCIA" : "OK"}</td>
+      <td class="fpeca">${escapa(c[IDX_CONF.nome] || "—")}</td>
+      <td class="fhora">${escapa(c[IDX_CONF.ts] || "")}</td>
+    </tr>`;
+  }).join("");
+
+  $("folha").innerHTML = `
+    <div class="caixa">
+      ${fCab("Histórico da conferência — quem conferiu o quê",
+             String(l[IDX_LOTES.desc] || "").trim() || a.cod,
+             "Lote", a.lote, escapa(a.cod))}
+      <div class="fmeta">
+        <div><small>Mapa</small><b>${versao}</b></div>
+        <div><small>Status</small><b>${rotSt}</b></div>
+        <div><small>Início</small><b>${escapa(l[IDX_LOTES.ini] || "—")}</b></div>
+        <div><small>Conclusão</small><b>${escapa(l[IDX_LOTES.fim] || "—")}</b></div>
+      </div>
+      <table>
+        <colgroup><col style="width:8%"><col style="width:40%"><col style="width:7%">
+          <col style="width:13%"><col style="width:17%"><col style="width:15%"></colgroup>
+        <thead><tr><th style="text-align:center">Trilho</th><th>Peça</th>
+          <th style="text-align:center">Qtd</th><th>Resultado</th>
+          <th>Quem conferiu</th><th>Quando</th></tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+      ${fPe(`${rows.length} ${rows.length === 1 ? "conferência" : "conferências"} · mapa ${versao}`)}
+    </div>`;
+  return true;
+}
+$("histImprimir").addEventListener("click", ()=>{
+  $("dlgHist").close();
+  if(montarFolhaHistorico()) window.print();
+});
 
 /* ==================================================================
    CONFERÊNCIA — quem pôs o quê na caixa
@@ -1881,7 +2002,8 @@ function abrirConferencia(){
   $("dlgConf").showModal();
 }
 
-/** Mesma conferência, no papel — para levar até a caixa e bater item a item. */
+/** Quem pôs o quê, no papel — para levar até a caixa, bater item a item e,
+    se for o caso, digitalizar: no diálogo de impressão, "Salvar como PDF". */
 function montarFolhaConferencia(){
   const f = $("folha");
   if(!CONF.resumo.length) return false;
@@ -1889,40 +2011,32 @@ function montarFolhaConferencia(){
     const linhas = opsOrdenadas(r).map(o => {
       const n = o.pecas.length;
       return o.pecas.map((p, i) => `
-        <tr>
-          ${i === 0 ? `<td class="fop" rowspan="${n}">OP ${String(o.op).padStart(2,"0")}</td>
-                       <td class="fins" rowspan="${n}">${escapa(o.nome || "—")}
-                         ${o.mat ? "<br>" + escapa(o.mat) : ""}</td>` : ""}
-          <td class="fitem">${escapa(p.desc || p.cod)}</td>
-          <td class="ftr">${fmtQtd(p.qtd)}</td>
+        <tr class="${i === 0 ? "fini" : ""}">
+          ${i === 0 ? `<td class="fop" rowspan="${n}">OP ${String(o.op).padStart(2, "0")}
+                         <small>${escapa(o.nome || "—")}${o.mat ? " · " + escapa(o.mat) : ""}</small></td>` : ""}
+          <td class="fpeca">${escapa(p.desc || p.cod)}</td>
+          <td class="fqtd">${fmtQtd(p.qtd)}</td>
           <td class="fok"></td>
         </tr>`).join("");
     }).join("");
     return `
       <div class="caixa">
-        <div class="cab">
-          <img src="./logo-patrimar.png" alt="Patrimar Móveis">
-          <div class="tit">
-            <b>CONFERÊNCIA DA EMBALAGEM</b>
-            <span>${escapa(r.desc || r.cod)}</span>
-          </div>
-          <div class="vel">LOTE<br><b>${escapa(CONF.lote)}</b><br>${escapa(r.cod)}</div>
-        </div>
-        <div class="campos">
-          <span>EMBALADO EM ${escapa(r.quando || "—")}</span>
-          <span>CONFERIDO POR ______________________</span>
-          <span>DATA ____/____/______</span>
+        ${fCab("Conferência da embalagem — quem pôs o quê", r.desc || r.cod,
+               "Lote", CONF.lote, escapa(r.cod))}
+        <div class="fmeta">
+          <div><small>Embalado em</small><b>${escapa(r.quando || "—")}</b></div>
+          <div><small>Volumes</small><b>${fmtQtd(r.qtd)} un</b></div>
+          <div><small>Conferido por</small><b>____________________</b></div>
+          <div><small>Data</small><b>___ / ___ / _____</b></div>
         </div>
         <table>
-          <colgroup><col style="width:12%"><col style="width:22%">
-            <col style="width:49%"><col style="width:9%"><col style="width:8%"></colgroup>
-          <thead><tr><th>OP</th><th>Quem embalou</th><th>Peça</th><th>Qtd</th><th>OK</th></tr></thead>
+          <colgroup><col style="width:26%"><col style="width:56%">
+            <col style="width:9%"><col style="width:9%"></colgroup>
+          <thead><tr><th>OP · quem embalou</th><th>Peça</th>
+            <th style="text-align:center">Qtd</th><th style="text-align:center">OK</th></tr></thead>
           <tbody>${linhas}</tbody>
         </table>
-        <div class="pe">
-          <span>${r.linhas} linhas · ${fmtQtd(r.qtd)} unidades · ${r.ops.size} OPs</span>
-          <span>PPCP · impresso pelo app v${VERSAO}</span>
-        </div>
+        ${fPe(`${r.linhas} linhas · ${fmtQtd(r.qtd)} unidades · ${r.ops.size} OPs`)}
       </div>`;
   }).join("");
   return true;
