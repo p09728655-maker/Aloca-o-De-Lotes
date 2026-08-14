@@ -178,6 +178,20 @@ CONFERÊNCIA** — com a barra de progresso do tipo *94% conferido · 1 peça
 pendente*. Sem rede, a conferência continua: cada registro entra na fila local
 e sai por *Reenviar pendentes*, como qualquer outro envio.
 
+**O operador não espera o envio.** A peça é gravada no aparelho, o aviso sai na
+hora e o POST vai atrás. Peças tocadas em sequência no mesmo lote saem no mesmo
+pacote — o `conferir` do Apps Script sempre aceitou várias peças de uma vez, e
+30 peças que davam 30 chamadas hoje dão uma ou duas. Isso importava porque cada
+chamada pega um *lock* global do script: com dois tablets conferindo ao mesmo
+tempo, um segurava o outro, e o operador via a tela parada a cada toque.
+
+Falha passageira — Wi-Fi oscilando, o Google devolvendo 429 ou 500 por um
+instante, o *lock* preso no tablet do lado — é reenviada sozinha, até três
+vezes, sem mensagem na tela. Só o que insiste em falhar vira aviso, e com o
+motivo real: *HTTP 503*, *não respondeu em 20s*, *a implantação está pedindo
+login*. (Antes tudo isso caía na mesma frase, "resposta inesperada do Apps
+Script", que não dizia se era a rede, a cota do Google ou a implantação.)
+
 Para consultar depois: digite o lote e o rastro mostra a linha de conferência
 (mapa/versão usada, status, início e conclusão) com o botão **Histórico peça a
 peça** — quem conferiu o quê, em qual trilho, a que horas. Meses depois, a
@@ -344,6 +358,23 @@ aquele trilho não recebe nada.
 
 Cabe numa folha A4 com os 28 trilhos. Os campos de data e lote saem preenchidos
 quando o lote está escolhido no app, e em branco para preencher à mão quando não está.
+
+**O nome do arquivo já vem certo.** O navegador sugere o nome do PDF pelo título
+da página, e o título era fixo — mapa, folha em branco, conferência e histórico
+saíam todos como *Mapa dos Trilhos*, um por cima do outro na pasta de quem
+salvava. Agora cada folha leva o seu:
+
+| Folha | Nome sugerido |
+|---|---|
+| Imprimir mapa | `Mapa dos trilhos - P1000 - V02 - LT 12345 - 2026-08-14` |
+| Folha em branco | `Mapa em branco - P1000 - 28 trilhos - 2026-08-14` |
+| Imprimir conferência | `Conferência da embalagem - LT 12345 - P1000 - 2026-08-14` |
+| Imprimir histórico | `Histórico da conferência - LT 12345 - P1000 - V02 - 2026-08-14` |
+
+Data no fim e no formato `AAAA-MM-DD` para a pasta ordenar sozinha por dia.
+Campo que não existe some do nome (folha em branco sem produto escolhido não
+vira `Mapa em branco -  - 28 trilhos`), e os caracteres que o Windows recusa no
+nome de arquivo viram espaço.
 
 ## Versões e atualização
 

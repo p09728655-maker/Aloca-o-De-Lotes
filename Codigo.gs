@@ -231,7 +231,7 @@ function conferir(ss, p) {
     return { ok: false, erro: 'nenhuma peca para registrar' };
   }
   var sh = aba(ss, AB_CONF, CAB_CONF);
-  garantirColunas(sh, CAB_CONF);
+  garantirColunasUmaVez(sh, CAB_CONF);
   if (p.id_envio && jaGravadoNaCol(sh, 2, p.id_envio)) {
     atualizarStatusLote(ss, p);   // o reenvio ainda pode carregar status mais novo
     return { ok: true, duplicado: true, linhas: 0 };
@@ -252,9 +252,16 @@ function conferir(ss, p) {
   return { ok: true, linhas: linhas.length };
 }
 
+/**
+ * Antes isto custava até três leituras e quatro escritas soltas na planilha,
+ * cada uma com sua ida ao servidor do Sheets — por peça conferida. Agora as
+ * quatro colunas móveis (DATA_CONCLUSAO, STATUS, N_VOLUMES, VOL_CONCLUIDOS)
+ * são lidas de uma vez, decididas em memória e devolvidas numa escrita só, e
+ * só quando alguma mudou.
+ */
 function atualizarStatusLote(ss, p) {
   var sh = aba(ss, AB_LOTES, CAB_LOTES);
-  garantirColunas(sh, CAB_LOTES);
+  garantirColunasUmaVez(sh, CAB_LOTES);
   var ts = new Date();
   var r = acharLinhaLote(sh, p.lote, p.cod_produto);
   if (!r) {
@@ -268,19 +275,21 @@ function atualizarStatusLote(ss, p) {
                   parseInt(p.vol_concluidos, 10) || 0]);
     return;
   }
+
+  var faixa = sh.getRange(r, 7, 1, 4);          // DATA_CONCLUSAO .. VOL_CONCLUIDOS
+  var v = faixa.getValues()[0];
+  var antes = String(v[0]) + '|' + String(v[1]) + '|' + String(v[2]) + '|' + String(v[3]);
+
   if (p.status_lote) {
-    sh.getRange(r, 8).setValue(p.status_lote);
-    if (p.status_lote === 'CONCLUIDA') {
-      if (!sh.getRange(r, 7).getValue()) sh.getRange(r, 7).setValue(ts);
-    } else {
-      sh.getRange(r, 7).setValue('');
-    }
+    v[1] = p.status_lote;
+    if (p.status_lote === 'CONCLUIDA') { if (!v[0]) v[0] = ts; }
+    else v[0] = '';
   }
-  if (parseInt(p.n_volumes, 10) > 0 && !sh.getRange(r, 9).getValue()) {
-    sh.getRange(r, 9).setValue(parseInt(p.n_volumes, 10));
-  }
-  if (p.vol_concluidos !== undefined) {
-    sh.getRange(r, 10).setValue(parseInt(p.vol_concluidos, 10) || 0);
+  if (parseInt(p.n_volumes, 10) > 0 && !v[2]) v[2] = parseInt(p.n_volumes, 10);
+  if (p.vol_concluidos !== undefined) v[3] = parseInt(p.vol_concluidos, 10) || 0;
+
+  if (String(v[0]) + '|' + String(v[1]) + '|' + String(v[2]) + '|' + String(v[3]) !== antes) {
+    faixa.setValues([v]);
   }
 }
 
@@ -379,6 +388,21 @@ function garantirColunas(sh, cab) {
       sh.getRange(1, c + 1).setValue(cab[c]).setFontWeight('bold');
     }
   }
+}
+
+/**
+ * garantirColunas lê o cabeçalho toda vez que é chamada, e numa conferência
+ * isso é uma ida à planilha por peça só para reconfirmar o que já foi
+ * confirmado. A aba migrada fica marcada no cache por 6h; cache frio confere
+ * de novo, e o pior caso é o comportamento antigo.
+ */
+function garantirColunasUmaVez(sh, cab) {
+  var chave = 'cols_' + sh.getSheetId() + '_' + cab.length;
+  var c = null;
+  try { c = CacheService.getScriptCache(); } catch (err) {}
+  if (c && c.get(chave)) return;
+  garantirColunas(sh, cab);
+  if (c) c.put(chave, '1', 21600);
 }
 
 function garantirColunaVersao(sh) { garantirColunas(sh, CAB_MAPA); }

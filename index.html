@@ -638,7 +638,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.7.2";
+const VERSAO = "2.7.3";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1359,33 +1359,106 @@ function novoId(){
   if(crypto && crypto.randomUUID) return crypto.randomUUID();
   return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2,10);
 }
-async function enviar(payload){
-  if(!CFG.api) throw new Error("Apps Script não configurado");
-  // text/plain evita o preflight CORS, que o Apps Script não responde
-  const res = await fetch(CFG.api, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-    redirect: "follow"
-  });
-  const txt = await res.text();
+const ENVIO_TIMEOUT = 20000;   // o Apps Script bom responde em 1–3s
+const espera = ms => new Promise(r => setTimeout(r, ms));
+
+/* Falha transitória é a que passa sozinha: Wi-Fi da fábrica oscilando, o
+   Google devolvendo 500 por um instante, ou o lock do script preso no tablet
+   do lado. Reenviar resolve. O resto — implantação pedindo login, ação
+   desconhecida — reenviar só repete o mesmo erro. */
+class ErroEnvio extends Error{
+  constructor(msg, transitorio){ super(msg); this.transitorio = !!transitorio; }
+}
+
+async function enviarUmaVez(payload){
+  const ctrl = new AbortController();
+  const corta = setTimeout(()=> ctrl.abort(), ENVIO_TIMEOUT);
+  let res;
+  try{
+    // text/plain evita o preflight CORS, que o Apps Script não responde
+    res = await fetch(CFG.api, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      // campo _interno é controle da fila daqui, não vai para a planilha
+      body: JSON.stringify(payload, (k,v)=> k.charAt(0) === "_" ? undefined : v),
+      redirect: "follow",
+      signal: ctrl.signal
+    });
+  }catch(e){
+    throw new ErroEnvio(e.name === "AbortError"
+      ? `o Apps Script não respondeu em ${ENVIO_TIMEOUT/1000}s`
+      : "sem conexão com o Apps Script", true);
+  }finally{ clearTimeout(corta); }
+
+  const txt = (await res.text()).trim();
+  /* Aqui morava o "resposta inesperada do Apps Script": qualquer coisa que não
+     fosse JSON virava essa frase, e o Google devolve HTML em situação bem
+     comum — 429 de cota, 500/503 passageiro, execução estourando o tempo.
+     O operador levava um erro seco por um blip que sumiria no segundo
+     seguinte. Agora o status é lido antes, e o que dá para reenviar é
+     reenviado calado. */
+  if(!res.ok){
+    throw new ErroEnvio(`o Apps Script respondeu HTTP ${res.status}`,
+                        res.status === 429 || res.status >= 500);
+  }
   let out;
   try{ out = JSON.parse(txt); }
-  catch(e){ throw new Error("resposta inesperada do Apps Script"); }
+  catch(e){
+    const login = /accounts\.google\.com|<title>[^<]*(sign in|fazer login)/i.test(txt);
+    throw new ErroEnvio(login
+      ? "a implantação está pedindo login — republique com acesso “Qualquer pessoa”"
+      : "o Apps Script devolveu uma página de erro, não os dados", !login);
+  }
   // "já gravado" não é falha de envio, é uma pergunta para o líder — quem
   // decide é ele, então volta para quem chamou em vez de virar erro
-  if(!out.ok && out.erro !== "ja_gravado") throw new Error(out.erro || "erro no Apps Script");
+  if(!out.ok && out.erro !== "ja_gravado"){
+    const erro = out.erro || "erro no Apps Script";
+    throw new ErroEnvio(erro, /ocupado|tente de novo/i.test(erro));
+  }
   return out;
 }
 
-async function despacharFila(){
-  const fila = lerFila();
-  if(!fila.length) return { enviados:0 };
+/**
+ * Envia com reenvio automático do que é passageiro.
+ * `tentativas:1` para quem chama de dentro de um toque do operador e tem plano
+ * B (a fila) — ali esperar 3 rodadas de timeout seria pior que falhar rápido.
+ */
+async function enviar(payload, opt){
+  if(!CFG.api) throw new Error("Apps Script não configurado");
+  const max = (opt && opt.tentativas) || 3;
+  for(let n = 1; ; n++){
+    try{ return await enviarUmaVez(payload); }
+    catch(e){
+      if(n >= max || !e.transitorio) throw e;
+      await espera(n * 1500);   // 1,5s e 3s: dá tempo do lock do outro tablet soltar
+    }
+  }
+}
+
+/* Uma rodada de cada vez. A conferência, o botão “Reenviar pendentes”, o
+   evento "online" e a volta do app do segundo plano chamam esta função sem
+   saber uma da outra; duas rodadas em paralelo lêem e escrevem a mesma fila no
+   localStorage e uma sobrescreve a outra — o que reaparece é envio já gravado,
+   ou some envio recém-enfileirado. */
+let despachando = null;
+function despacharFila(){
+  if(!despachando) despachando = rodarFila().finally(()=>{ despachando = null; });
+  return despachando;
+}
+
+async function rodarFila(){
   let enviados = 0, descartados = 0;
-  while(fila.length){
+  for(;;){
+    // relê a cada volta: a conferência enfileira peça nova enquanto o POST
+    // anterior ainda está no ar, e a rodada em curso tem que levar essa também
+    let fila = lerFila();
+    if(!fila.length) break;
+    fila[0]._tentado = 1;   // já foi ao servidor: não pode mais receber carona
+    salvarFila(fila);
+
     let out;
     try{ out = await enviar(fila[0]); }
-    catch(e){ salvarFila(fila); pintarFila(); throw e; }
+    catch(e){ pintarFila(); throw e; }
 
     if(out.erro === "ja_gravado"){
       const sim = confirm(
@@ -1393,13 +1466,32 @@ async function despacharFila(){
         `(${out.linhas_antigas} linhas).\n\n` +
         `Substituir pelo que está na tela agora?\n\n` +
         `OK substitui. Cancelar descarta este envio e mantém o que já está gravado.`);
+      fila = lerFila();
       if(sim){ fila[0].substituir = true; salvarFila(fila); continue; }
-      fila.shift(); descartados++; salvarFila(fila); continue;
+      fila.shift(); descartados++; salvarFila(fila); pintarFila(); continue;
     }
-    fila.shift(); enviados++; salvarFila(fila);
+    fila = lerFila(); fila.shift(); enviados++; salvarFila(fila); pintarFila();
   }
-  salvarFila(fila); pintarFila();
+  pintarFila();
   return { enviados, descartados };
+}
+
+/* Espera um instante antes de mandar: é essa folga que faz as peças tocadas em
+   sequência saírem no mesmo pacote em vez de uma chamada por toque. */
+let despachoTimer = null;
+function agendarDespacho(ms = 800){
+  clearTimeout(despachoTimer);
+  despachoTimer = setTimeout(async ()=>{
+    despachoTimer = null;
+    try{
+      await despacharFila();
+      // a rodada em curso pode ter fechado antes do último toque entrar
+      if(lerFila().length) await despacharFila();
+    }catch(e){
+      setMsg("err", "Está registrado no aparelho, mas não subiu: " + e.message +
+                    " — fica na fila, use “Reenviar pendentes”.");
+    }
+  }, ms);
 }
 
 function linhasDoMapa(){
@@ -1694,6 +1786,51 @@ const agoraTxt = () => new Date().toLocaleDateString("pt-BR") + " " +
 const fPe = esq => `<div class="fpe"><span>${esq}</span>
   <span>PPCP · impresso pelo app v${VERSAO} · ${agoraTxt()}</span></div>`;
 
+/* O navegador sugere o nome do arquivo pelo título da página, e o título era
+   fixo: mapa, folha em branco, conferência e histórico saíam todos como
+   "Mapa dos Trilhos", um por cima do outro na pasta de quem salvava. Aqui o
+   título vira o nome do documento enquanto o diálogo de impressão está
+   aberto, e volta ao normal depois. */
+const TITULO_APP = document.title;
+
+function nomeArquivo(){
+  return Array.prototype.slice.call(arguments)
+    .filter(Boolean)
+    .join(" - ")
+    .replace(/[\\/:*?"<>|]+/g, " ")   // o Windows recusa estes no nome do arquivo
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+}
+
+/** Data do jeito que ordena sozinha na pasta. */
+function dataArquivo(){
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function imprimirComo(){
+  const nome = nomeArquivo.apply(null, arguments);
+  document.title = nome || TITULO_APP;
+  const voltar = ()=>{
+    clearTimeout(voltar.t);
+    window.removeEventListener("afterprint", voltar);
+    document.title = TITULO_APP;
+  };
+  window.addEventListener("afterprint", voltar);
+  // Safari e alguns Android não disparam afterprint; sem esta rede o app
+  // ficaria com o título do último PDF na aba até alguém recarregar
+  voltar.t = setTimeout(voltar, 60000);
+  window.print();
+}
+
+/** Versão do mapa que está na tela: a escolhida no seletor, ou a ativa. */
+function versaoNaTela(){
+  if(!S.prod) return 0;
+  const m = S.mapas.get(normCod(S.prod.cod));
+  return m ? (S.verSel || m.ativa) : 0;
+}
+
 function montarFolha(){
   const f = $("folha");
   if(!S.prod || !S.itens.length){ f.innerHTML = ""; return false; }
@@ -1714,8 +1851,7 @@ function montarFolha(){
     });
   }
 
-  const m = S.mapas.get(normCod(S.prod.cod));
-  const versao = m ? (S.verSel || m.ativa) : 0;
+  const versao = versaoNaTela();
 
   /* Sem nome de operador aqui: esta folha fica pendurada na esteira por
      semanas e o rodízio muda todo dia — nome impresso nasce vencido. Quem
@@ -1760,7 +1896,9 @@ function montarFolha(){
 
 $("btnImprimir").addEventListener("click", ()=>{
   if(!montarFolha()){ setMsg("err", "Escolha um lote e um produto antes de imprimir."); return; }
-  window.print();
+  const v = versaoNaTela();
+  imprimirComo("Mapa dos trilhos", S.prod.cod, v ? vTag(v) : "rascunho",
+               S.lote ? "LT " + S.lote.lote : "", dataArquivo());
 });
 
 /* Folha em branco: o mapa vazio com linha alta para escrever à mão. É como
@@ -1805,7 +1943,8 @@ function montarFolhaBranca(){
 }
 $("btnFolhaBranca").addEventListener("click", ()=>{
   montarFolhaBranca();
-  window.print();
+  const n = Math.max(1, Math.min(60, parseInt($("inTrilhos").value, 10) || 28));
+  imprimirComo("Mapa em branco", S.prod ? S.prod.cod : "", n + " trilhos", dataArquivo());
 });
 
 /* ==================================================================
@@ -2108,7 +2247,12 @@ function montarFolhaHistorico(){
 }
 $("histImprimir").addEventListener("click", ()=>{
   $("dlgHist").close();
-  if(montarFolhaHistorico()) window.print();
+  if(!montarFolhaHistorico()) return;
+  const a = HIST.atual || {};
+  const l = HIST.lrows.find(x => normCod(x[IDX_LOTES.cod]) === normCod(a.cod)) || [];
+  const v = parseInt(l[IDX_LOTES.versao], 10) || 0;
+  imprimirComo("Histórico da conferência", "LT " + a.lote, a.cod,
+               v ? vTag(v) : "", dataArquivo());
 });
 
 /* ==================================================================
@@ -2189,7 +2333,11 @@ function montarFolhaConferencia(){
 
 $("confImprimir").addEventListener("click", ()=>{
   $("dlgConf").close();
-  if(montarFolhaConferencia()) window.print();
+  if(!montarFolhaConferencia()) return;
+  // lote com mais de um produto sai numa folha por produto: aí o nome fica
+  // no lote, que é o que identifica o arquivo inteiro
+  const cod = CONF.resumo.length === 1 ? CONF.resumo[0].cod : "";
+  imprimirComo("Conferência da embalagem", "LT " + CONF.lote, cod, dataArquivo());
 });
 $("confFechar").addEventListener("click", ()=> $("dlgConf").close());
 
@@ -2584,6 +2732,34 @@ async function fecharPeca(resultado){
   await registrarConferencia(l, resultado, obs);
 }
 
+/* Uma peça = um POST era o desenho antigo, e um lote de 30 peças virava 30
+   idas ao Apps Script, cada uma pagando o lock e a varredura da aba de novo.
+   O `conferir` do servidor sempre aceitou várias peças em `itens`: peça tocada
+   em seguida da outra, no mesmo lote e na mesma versão do mapa, pega carona no
+   pacote que ainda não saiu. Trinta peças viram um ou dois envios.
+
+   Só pega carona pacote que nunca foi ao servidor: se ele já foi e a resposta
+   se perdeu no caminho, o id_envio dele pode estar gravado lá — o reenvio
+   voltaria como "duplicado" e as peças que entraram de carona sumiriam. */
+function enfileirarConferencia(payload){
+  const fila = lerFila();
+  const ult = fila[fila.length - 1];
+  const juntar = ult && !ult._tentado && ult.acao === "conferir" &&
+    ult.lote === payload.lote && ult.cod_produto === payload.cod_produto &&
+    ult.versao === payload.versao && ult.itens.length < 40;
+  if(juntar){
+    ult.itens.push(...payload.itens);
+    // o retrato do lote é o de quem chegou por último — é o mais novo
+    ult.ts_local = payload.ts_local;
+    ult.volume = payload.volume;
+    ult.vol_concluidos = payload.vol_concluidos;
+    ult.status_lote = payload.status_lote;
+  }else{
+    fila.push(payload);
+  }
+  salvarFila(fila); pintarFila();
+}
+
 async function registrarConferencia(l, resultado, obs){
   const mat = $("pecaQuem").value;
   const nome = (S.colab.find(c => c.mat === mat) || {}).nome || "";
@@ -2607,18 +2783,18 @@ async function registrarConferencia(l, resultado, obs){
     itens: [{ trilho: l.trilho, cod_peca: l.cod, desc_peca: l.desc, qtd: l.qtd,
               matricula: mat, nome, resultado, obs, volume: C.vol }]
   };
-  const fila = lerFila(); fila.push(payload); salvarFila(fila); pintarFila();
+  enfileirarConferencia(payload);
   const rot = (C.nVols > 1 ? `Vol ${C.vol} · ` : "") + `Trilho ${l.trilho} · ${curto(l.desc)}`;
-  try{
-    await despacharFila();
-    if(volFechou && C.nVols > 1){
-      setMsg("ok", `Volume ${C.vol} concluído — ${volsConcluidos()} de ${C.nVols} caixas conferidas.`);
-    }else{
-      setMsg("ok", rot + " — " + (resultado === "OK" ? "conferido." : "divergência registrada."));
-    }
-  }catch(e){
-    setMsg("err", "Registrado no aparelho — sem rede, fica na fila até “Reenviar pendentes”.");
+  /* O aviso sai na hora. Antes o operador ficava parado a cada peça esperando
+     o Apps Script inteiro responder — lock global, varredura da aba, status do
+     lote —, e com dois tablets conferindo ao mesmo tempo um segurava o outro.
+     A peça já está gravada no aparelho e na fila; o POST vai atrás. */
+  if(volFechou && C.nVols > 1){
+    setMsg("ok", `Volume ${C.vol} concluído — ${volsConcluidos()} de ${C.nVols} caixas conferidas.`);
+  }else{
+    setMsg("ok", rot + " — " + (resultado === "OK" ? "conferido." : "divergência registrada."));
   }
+  agendarDespacho();
   // caixa fechou: pula sozinho para a próxima que ainda tem pendência
   if(volFechou){
     for(let v = 1; v <= C.nVols; v++){
@@ -2638,7 +2814,9 @@ async function iniciarConferencia(avisar){
     versao: C.versao, n_volumes: C.nVols };
   C.iniciado = true;
   try{
-    const out = await enviar(p);
+    // sem reenvio automático: isto roda dentro do toque da primeira peça, e
+    // insistir aqui deixaria o operador esperando. Falhou, vai pela fila
+    const out = await enviar(p, { tentativas: 1 });
     if(out.versao && out.ja_iniciado && out.versao !== C.versao){
       C.versao = out.versao;
       const mapa = mapaDe(normCod(C.prod.cod), C.versao);
