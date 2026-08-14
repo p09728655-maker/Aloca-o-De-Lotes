@@ -164,11 +164,25 @@ tablet baixa só as linhas daquele lote em vez da aba inteira.
 Para limpar duplicidade já gravada, `limparDuplicados()` no Apps Script mantém a
 gravação mais recente de cada lote e apaga as antigas.
 
-## Conferência — quem pôs o quê na caixa
+## Auditoria — quem pôs o quê na caixa
 
-No rastreio do lote, *Conferência* abre a lista por OP: quem embalou, matrícula, e
-peça por peça com a quantidade. *Imprimir conferência* leva isso para o papel com um
-quadradinho ao lado de cada item, para bater com a caixa aberta na mesa.
+O caso de uso é a reclamação que chega dias depois: faltou peça, peça danificada.
+Digite o lote (ele está na etiqueta do volume e no lançamento de FALTAS), toque em
+*Conferência*, e sai por OP: quem embalou, matrícula, peça por peça com quantidade,
+e **quando foi embalado**. *Imprimir conferência* leva isso para o papel com um
+quadradinho ao lado de cada item.
+
+Atenção para dois pontos que valem numa auditoria:
+
+**Regravar substitui o registro.** Quando o líder regrava um lote e confirma a
+substituição, as linhas anteriores daquele lote são apagadas — o que a auditoria
+enxerga é a última gravação. Combine com a linha que regravação é para corrigir
+erro no mesmo dia, não para reescrever histórico.
+
+**O registro diz quem estava na OP, não quem pegou a peça na mão.** A peça entra na
+caixa pela OP registrada, mas rodízio não anotado, cobertura de pausa e ajuda entre
+postos não aparecem. Para responsabilizar alguém individualmente isso não basta —
+para achar padrão (a mesma peça faltando na mesma OP, semana após semana), sobra.
 
 Quando o lote foi gravado mais de uma vez, a conferência usa só a gravação mais
 recente — somar as duas mostraria a peça em dobro e acusaria um erro que não existe.

@@ -427,7 +427,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.6.1";
+const VERSAO = "1.7.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1459,7 +1459,8 @@ async function rastrearLote(lote){
         return `<div class="rlinha">
             <span class="rcod">${escapa(r.cod)}</span>
             <span class="rdesc">${escapa(r.desc)}</span>
-            <span class="rnum">${r.linhas} linhas · ${fmtQtd(r.qtd)} un · ${r.ops.size} OPs</span>
+            <span class="rnum">${r.linhas} linhas · ${fmtQtd(r.qtd)} un · ${r.ops.size} OPs
+              ${r.quando ? " · embalado em " + escapa(r.quando) : ""}</span>
             ${r.envios.size > 1 ? `<span class="rdup">gravado ${r.envios.size}× — quantidade em dobro</span>` : ""}
             <span class="rops">${ops}</span>
           </div>`;
@@ -1500,7 +1501,8 @@ function abrirConferencia(){
             <span class="cc">${escapa(p.cod)}</span>
           </div>`).join("")}
       </div>`).join("");
-    return `<div class="cprod"><h4>${escapa(r.cod)} · ${escapa(r.desc)}</h4>${dup}${blocos}</div>`;
+    return `<div class="cprod"><h4>${escapa(r.cod)} · ${escapa(r.desc)}</h4>
+      ${r.quando ? `<p class="hint">Embalado em ${escapa(r.quando)}.</p>` : ""}${dup}${blocos}</div>`;
   }).join("");
   $("confTit").textContent = "Conferência do lote " + CONF.lote;
   $("confCorpo").innerHTML = corpo;
@@ -1535,6 +1537,7 @@ function montarFolhaConferencia(){
           <div class="vel">LOTE<br><b>${escapa(CONF.lote)}</b><br>${escapa(r.cod)}</div>
         </div>
         <div class="campos">
+          <span>EMBALADO EM ${escapa(r.quando || "—")}</span>
           <span>CONFERIDO POR ______________________</span>
           <span>DATA ____/____/______</span>
         </div>
