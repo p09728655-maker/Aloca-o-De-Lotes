@@ -391,6 +391,8 @@
 
     /* folha em branco: linha alta para caber letra de mão */
     #folha table.fbranca td{height:6.6mm; border-bottom:.25mm solid #888}
+    /* onde termina a peça e começa o insumo, como no modelo do Excel */
+    #folha th.fbloco, #folha td.fbloco{border-left:.4mm solid #000}
   }
 </style>
 </head>
@@ -450,6 +452,7 @@
   <button class="gho so-ppcp" id="btnLimpar">Limpar</button>
   <button class="gho so-ppcp" id="btnImprimir">Imprimir mapa</button>
   <button class="gho so-ppcp" id="btnFolhaBranca">Folha em branco</button>
+  <button class="gho so-ppcp" id="btnModelo">Baixar modelo</button>
 </div>
 
 <div class="verbar so-ppcp" id="verbar" hidden></div>
@@ -623,7 +626,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.6.0";
+const VERSAO = "2.7.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1751,9 +1754,11 @@ $("btnImprimir").addEventListener("click", ()=>{
    No diálogo de impressão, "Salvar como PDF" gera o arquivo direto. */
 function montarFolhaBranca(){
   const n = Math.max(1, Math.min(60, parseInt($("inTrilhos").value, 10) || 28));
+  /* As mesmas colunas do modelo do Excel, na mesma ordem: quem preenche no
+     papel transcreve coluna por coluna, sem ter de traduzir nada. */
   const corpo = Array.from({ length: n }, (_, i) =>
-    `<tr><td class="fop"></td><td class="fins"></td><td class="fpeca"></td>
-     <td class="ftr">${i + 1}</td></tr>`).join("");
+    `<tr><td class="ftr">${i + 1}</td><td></td><td></td><td></td><td></td>
+     <td class="fbloco"></td><td></td><td></td></tr>`).join("");
   $("folha").innerHTML = `
     <div class="caixa">
       ${fCab("Mapa dos trilhos da embalagem", S.prod ? (S.prod.desc || S.prod.cod)
@@ -1768,14 +1773,18 @@ function montarFolhaBranca(){
       </div>
       <table class="fbranca">
         <colgroup>
-          <col style="width:16%"><col style="width:22%">
-          <col style="width:52%"><col style="width:10%">
+          <col style="width:8%"><col style="width:9%">
+          <col style="width:13%"><col style="width:26%"><col style="width:6%">
+          <col style="width:13%"><col style="width:19%"><col style="width:6%">
         </colgroup>
-        <thead><tr><th>OP</th><th>Insumo</th><th>Descrição da peça</th>
-          <th style="text-align:center">Trilho</th></tr></thead>
+        <thead><tr>
+          <th style="text-align:center">Trilho</th><th>OP</th>
+          <th>Cód.</th><th>Descrição do item</th><th style="text-align:center">Qtde</th>
+          <th class="fbloco">Cód.</th><th>Insumo do trilho</th><th style="text-align:center">Qtde</th>
+        </tr></thead>
         <tbody>${corpo}</tbody>
       </table>
-      ${fPe(`${S.prod ? escapa(S.prod.cod) + " · " : ""}${n} trilhos · preencha e suba pelo app (cadastro ou Importar Excel)`)}
+      ${fPe(`${S.prod ? escapa(S.prod.cod) + " · " : ""}${n} trilhos · mesmas colunas do modelo do Excel — preencha e suba pelo app (cadastro ou Importar Excel)`)}
     </div>`;
   return true;
 }
@@ -2933,21 +2942,30 @@ function lerModelo(abas){
 
   /* A aba PRODUTOS é opcional, e só serve para o mapa valer para mais de uma
      cor: uma linha por código. Sem ela, cada aba responde por si. */
-  const produtos = [];
+  const produtos = [], avisos = [];
   const pr = abas["PRODUTOS"];
   if(pr){
     const cp = acharCab(pr, { aba:["abamapa","aba","mapa"], cod:["codproduto","codigo","cod"] });
     if(!cp) throw new Error("a aba PRODUTOS precisa de ABA_MAPA e COD_PRODUTO");
-    const ext = acharCab(pr, { cor:["cor"], ntr:["ntrilhos","trilhos"],
-                               vel:["velocidade"], esq:["nesquema","esquema"] }) || { idx:{} };
+    /* Coluna opcional é opcional uma por uma. Procurar as quatro de uma vez
+       fazia a falta de N_ESQUEMA derrubar COR e N_TRILHOS junto — e calada. */
+    const cab = (pr[cp.h] || []).map(x => norm(x));
+    const opc = alias => { const j = cab.findIndex(t => alias.includes(t)); return j < 0 ? -1 : j; };
+    const iCor = opc(["cor"]), iNtr = opc(["ntrilhos","trilhos"]),
+          iVel = opc(["velocidade"]), iEsq = opc(["nesquema","esquema"]);
     for(let r = cp.h + 1; r < pr.length; r++){
       const cod = normCod(cel(pr[r], cp.idx.cod));
       const aba = cel(pr[r], cp.idx.aba);
       if(!cod || !aba) continue;
-      if(!mapas[aba]) throw new Error(`a aba ${aba}, da PRODUTOS, não existe ou está vazia`);
-      produtos.push({ cod, aba, cor: cel(pr[r], ext.idx.cor), desc: "",
-        nTrilhos: parseInt(cel(pr[r], ext.idx.ntr), 10) || 0,
-        vel: cel(pr[r], ext.idx.vel), esq: cel(pr[r], ext.idx.esq) });
+      /* Linha da PRODUTOS para uma caixa que o líder ainda não preencheu é
+         trabalho em andamento, não erro: as outras cores entram assim mesmo. */
+      if(!mapas[aba]){
+        avisos.push(`a aba ${aba}, listada na PRODUTOS, está vazia ou não existe — ${cod} ficou de fora`);
+        continue;
+      }
+      produtos.push({ cod, aba, cor: cel(pr[r], iCor), desc: "",
+        nTrilhos: parseInt(cel(pr[r], iNtr), 10) || 0,
+        vel: cel(pr[r], iVel), esq: cel(pr[r], iEsq) });
     }
   }
 
@@ -2959,6 +2977,10 @@ function lerModelo(abas){
     if(doCab && !produtos.some(p => p.aba === nome)){
       produtos.push({ cod: doCab.cod, aba: nome, cor: "", desc: doCab.desc,
                       nTrilhos: 0, vel: "", esq: "" });
+    }else if(doCab){
+      // a cor dona dos códigos também está na PRODUTOS: aproveita a descrição
+      const dono = produtos.find(p => p.aba === nome && normCod(p.cod) === doCab.cod);
+      if(dono && !dono.desc) dono.desc = doCab.desc;
     }
     const primeiro = produtos.find(p => p.aba === nome);
     base[nome] = doCab ? doCab.cod : (primeiro ? normCod(primeiro.cod) : "");
@@ -2967,13 +2989,17 @@ function lerModelo(abas){
     throw new Error("nenhuma aba diz de que produto é o mapa — escreva o código do volume na primeira linha da aba");
   }
   // aba preenchida que não diz de quem é ficaria de fora sem ninguém notar
-  const semDono = Object.keys(mapas).filter(a => !produtos.some(p => p.aba === a));
+  for(const a of Object.keys(mapas)){
+    if(!produtos.some(p => p.aba === a)){
+      avisos.push(`a aba ${a} tem itens mas não diz o código do produto — ficou de fora`);
+    }
+  }
   /* O último trilho é o do modelo, não o do último item: trilho vazio no fim
      continua sendo trilho, e a esteira não encolhe por causa disso. */
   for(const p of produtos){
     if(!p.nTrilhos) p.nTrilhos = Math.max(0, ...mapas[p.aba].map(t => t.trilho));
   }
-  return { produtos, mapas, base, semDono };
+  return { produtos, mapas, base, avisos };
 }
 
 /* A OP muda quando o rótulo MUDA, não quando aparece: um modelo escreve
@@ -3018,7 +3044,7 @@ const IMP = { produtos: [], mapas: {}, base: {}, pendencias: [], escolhas: {} };
 async function importarExcel(arquivo){
   setMsg("", "Lendo " + arquivo.name + "…");
   const abas = await lerXlsx(await arquivo.arrayBuffer());
-  const { produtos, mapas, base, semDono } = lerModelo(abas);
+  const { produtos, mapas, base, avisos } = lerModelo(abas);
 
   const semEstrutura = produtos.filter(p => !S.estrutura.get(normCod(p.cod)));
   if(semEstrutura.length === produtos.length){
@@ -3030,8 +3056,7 @@ async function importarExcel(arquivo){
   IMP.base = base;
   IMP.escolhas = {};
   IMP.pendencias = [];
-  IMP.avisos = semEstrutura.map(p => p.cod + " não está na ESTRUTURA")
-    .concat(semDono.map(a => `a aba ${a} tem itens mas não diz o código do produto — ficou de fora`));
+  IMP.avisos = semEstrutura.map(p => p.cod + " não está na ESTRUTURA").concat(avisos);
 
   /* A dúvida é a mesma para todas as cores, então pergunta uma vez por item
      usando a primeira cor daquela aba — depois cada cor resolve o código dela. */
@@ -3416,6 +3441,113 @@ function exportarExcel(){
     (fora ? ` · ${fora} ${fora === 1 ? "volume ainda sem mapa ficou de fora" : "volumes ainda sem mapa ficaram de fora"}` : ""));
 }
 $("btnExportar").addEventListener("click", exportarExcel);
+
+/* ------------------------------------------------------------------
+   O MODELO EM BRANCO, ESCRITO PELO APP
+   O líder não devia depender de achar o anexo num e-mail de meses atrás,
+   nem de ter rede para baixar o arquivo do repositório: o modelo sai do
+   próprio app, com o número de trilhos que está na tela e as instruções
+   junto. É a mesma planilha que o Importar espera e a mesma coluna da
+   folha em branco impressa.
+   ------------------------------------------------------------------ */
+const COMO_USAR = [
+  "MAPA DOS TRILHOS — MODELO PARA O APP",
+  "",
+  "Uma aba por caixa. O app lê este arquivo direto: o código da peça está",
+  "escrito aqui, então ele não precisa adivinhar nada.",
+  "",
+  "MAIS CAIXAS: copie a aba, troque o código em A1 e o nome da aba (MAPA CX03,",
+  "MAPA CX04, e por aí). O app lê quantas abas houver — quem identifica o mapa",
+  "é o código em A1, não o nome da aba.",
+  "",
+  "NO EXCEL",
+  "",
+  "Linha 1        A1  o código do volume, o mesmo da programação",
+  "               B1  a descrição do volume — só para quem lê a planilha",
+  "",
+  "Linha 2        o cabeçalho, sempre nesta ordem:",
+  "               TRILHO | OP | COD | DESCRIÇÃO ITEM | QTDE | COD | DESCRIÇÃO ITEM | QTDE",
+  "               O bloco COD/DESCRIÇÃO/QTDE repete: o primeiro é a peça, o",
+  "               segundo é o insumo que vai junto no trilho. Se um trilho",
+  "               precisar de um terceiro, copie mais três colunas à direita.",
+  "",
+  "Da linha 3     uma linha por trilho, do 1 até o último:",
+  "em diante",
+  "               TRILHO  o número, em ordem",
+  "               OP      a OP daquele trilho, escrita em toda linha com item",
+  "               COD     o código da peça, como o ERP escreve",
+  "               QTDE    quantas peças daquele código vão no trilho",
+  "",
+  "               Trilho vazio: deixe a linha só com o número. Não apague a",
+  "               linha — trilho vazio também é trilho na esteira.",
+  "",
+  "NO APP",
+  "",
+  "1. IMPORTAR EXCEL no rodapé e escolha este arquivo.",
+  "2. Com o código escrito, o item entra direto. Item sem código o app procura",
+  "   pelo texto, e pergunta em vez de chutar quando fica em dúvida.",
+  "3. Confira o mapa na tela e toque em SALVAR MAPA.",
+  "",
+  "EXPORTAR EXCEL faz o caminho de volta: baixa o lote inteiro neste mesmo",
+  "formato, uma aba por volume, numerada pelo VOL da programação — o VOL 3/6",
+  "sai como MAPA CX03. Volume ainda sem mapa fica de fora, e o app diz quantos",
+  "foram. É por aí que se começa um produto novo: exporta o parecido, troca o",
+  "que muda e importa de volta.",
+  "",
+  "O MESMO MAPA PARA VÁRIAS CORES",
+  "",
+  "Os códigos escritos na aba do mapa são de uma cor só. Para o mesmo mapa",
+  "valer para as outras, use a aba PRODUTOS: uma linha por cor, com a aba do",
+  "mapa e o código do volume daquela cor.",
+  "",
+  "     ABA_MAPA    | COD_PRODUTO | COR",
+  "     MAPA CX01   | 501139001   | BRANCO",
+  "     MAPA CX01   | 501139004   | ROSA",
+  "     MAPA CX01   | 501139007   | ALECRIM",
+  "",
+  "Uma importação só grava o mapa das três, cada uma com o código dela. O app",
+  "acha a mesma peça na outra cor pelo Nº que vem depois de MDP/MDF na",
+  "descrição do ERP — esse número não muda de cor. Insumo que não muda de cor,",
+  "como a isomanta, sai com o mesmo código nas três.",
+  "",
+  "Colunas opcionais na PRODUTOS: COR, N_TRILHOS, VELOCIDADE, N_ESQUEMA — pode",
+  "usar só as que interessarem.",
+  "",
+  "Cor que só existe no papel ainda: linha da PRODUTOS apontando para aba",
+  "vazia não derruba a importação, só avisa e fica de fora."
+];
+
+const CAB_MAPA = ["TRILHO", "OP", "COD", "DESCRIÇÃO ITEM", "QTDE", "COD", "DESCRIÇÃO ITEM", "QTDE"];
+const COLS_MAPA = [9, 9, 15, 48, 8, 15, 48, 8];
+
+/** Uma aba de mapa vazia, com os trilhos numerados esperando item. */
+function abaEmBranco(nome, cod, desc, n){
+  return { nome, cols: COLS_MAPA, negrito: [0, 1],
+    linhas: [[cod || "", desc || ""], CAB_MAPA]
+      .concat(Array.from({ length: n }, (_, i) => [i + 1])) };
+}
+
+function baixarModelo(){
+  const n = Math.max(1, Math.min(60, parseInt($("inTrilhos").value, 10) || 28));
+  // com um produto aberto, o modelo já sai com o nome e o código dele
+  const cod = S.prod ? normCod(S.prod.cod) : "";
+  const desc = S.prod ? (S.prod.desc || "") : "";
+  const produtos = { nome: "PRODUTOS", cols: [14, 14, 12, 11, 12, 11], negrito: [0],
+    linhas: [["ABA_MAPA", "COD_PRODUTO", "COR", "N_TRILHOS", "VELOCIDADE", "N_ESQUEMA"],
+             ["MAPA CX01", cod, (S.lote && S.lote.cor) || "", n, S.vel || "", S.esq || ""],
+             [],
+             ["acrescente uma linha por cor — mesma ABA_MAPA, o código daquela cor"]] };
+  const arquivo = montarXlsx([
+    { nome: "COMO USAR", cols: [92], negrito: [0], linhas: COMO_USAR.map(l => [l]) },
+    abaEmBranco("MAPA CX01", cod, desc, n),
+    abaEmBranco("MAPA CX02", "", "", n),
+    produtos
+  ]);
+  baixar(arquivo, "modelo-mapa-trilhos.xlsx");
+  setMsg("ok", `Modelo em branco com ${n} trilhos baixado` +
+    (cod ? ` — já com o código de ${cod} na aba MAPA CX01.` : "."));
+}
+$("btnModelo").addEventListener("click", baixarModelo);
 
 /* ==================================================================
    INSTALAÇÃO NO TABLET E ATUALIZAÇÃO

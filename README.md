@@ -132,8 +132,8 @@ tablets salvando ao mesmo tempo não geram duas V03.
 
 O seletor no topo alterna os dois modos e fica gravado no aparelho:
 
-- **PPCP** — monta o mapa, cria versão, ativa, importa e exporta Excel, grava
-  lote e consulta histórico.
+- **PPCP** — monta o mapa, cria versão, ativa, baixa o modelo, importa e exporta
+  Excel, grava lote e consulta histórico.
 - **Operador** — seleciona o lote, vê o mapa e confere, e só. Edição de mapa
   e **todas as impressões** ficam no perfil PPCP: a tela do operador é para
   marcar peça, sem botão que desvie disso.
@@ -319,6 +319,21 @@ linha alta para escrever à mão. É para quando o mapa é desenhado na própria
 esteira, longe do computador — a linha preenche no papel e o PPCP sobe depois,
 digitando no app ou pelo *Importar Excel*. Em qualquer impressão, escolher
 **Salvar como PDF** no diálogo do navegador gera o arquivo direto, sem scanner.
+
+As colunas são **as mesmas do modelo do Excel**, na mesma ordem — `Trilho`, `OP`,
+`Cód.`, `Descrição do item`, `Qtde` e o segundo bloco para o insumo do trilho. Quem
+digita depois transcreve coluna por coluna, sem traduzir nada no meio do caminho.
+
+## Baixar o modelo
+
+*Baixar modelo* (perfil PPCP) escreve o `.xlsx` em branco na hora, com o número de
+trilhos que está na tela e, se houver produto aberto, já com o código dele em `A1` e
+a linha da cor na aba `PRODUTOS`. Vem com a aba `COMO USAR` junto.
+
+O líder não deveria depender de achar o anexo num e-mail de meses atrás nem de ter
+rede para buscar o arquivo do repositório — o modelo sai do próprio app, que é a
+mesma coisa que o *Importar* espera. O `modelo-mapa-trilhos.xlsx` do repositório é
+esse mesmo arquivo com o mapa do ARMÁRIO ENCANTO preenchido, para servir de exemplo.
 
 ## Imprimir o mapa
 
