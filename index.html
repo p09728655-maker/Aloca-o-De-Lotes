@@ -1648,11 +1648,12 @@ $("colOk").addEventListener("click", async ()=>{
 
 /* ==================================================================
    IMPRESSÃO
-   Três folhas, todas no mesmo desenho: o MAPA (pendurado na esteira, agora
-   com quem embala em cada OP, a versão do mapa e a coluna OK para marcar
-   peça a peça no papel — marcou, é só imprimir em "Salvar como PDF" para
-   subir digitalizado), a CONFERÊNCIA por OP (quem pôs o quê na caixa) e o
-   HISTÓRICO peça a peça (quem conferiu, o quê e a que horas).
+   Três folhas, todas no mesmo desenho: o MAPA (pendurado na esteira, com a
+   versão e a coluna OK para marcar peça a peça no papel — marcou, é só
+   imprimir em "Salvar como PDF" para subir digitalizado), a CONFERÊNCIA
+   por OP (quem pôs o quê na caixa) e o HISTÓRICO peça a peça (quem
+   conferiu, o quê e a que horas). Nome de gente só nas duas últimas: o
+   mapa fica pendurado por semanas e o rodízio muda todo dia.
    ================================================================== */
 const fCab = (titulo, sub, boxLabel, boxValor, boxSub) => `
   <div class="fcab">
@@ -1673,21 +1674,6 @@ const agoraTxt = () => new Date().toLocaleDateString("pt-BR") + " " +
   new Date().toTimeString().slice(0, 5);
 const fPe = esq => `<div class="fpe"><span>${esq}</span>
   <span>PPCP · impresso pelo app v${VERSAO} · ${agoraTxt()}</span></div>`;
-
-/** Quem embala na OP: o rodízio da tela, ou o que o REGISTRO do lote guardou. */
-function nomeDaOp(op){
-  const mat = S.operador.get(op);
-  if(mat){
-    const c = S.colab.find(x => x.mat === mat);
-    if(c) return c.nome;
-  }
-  if(S.prod && CONF.resumo.length){
-    const r = CONF.resumo.find(x => normCod(x.cod) === normCod(S.prod.cod));
-    const o = r && r.ops.get(String(op));
-    if(o && o.nome) return o.nome;
-  }
-  return "";
-}
 
 function montarFolha(){
   const f = $("folha");
@@ -1712,12 +1698,14 @@ function montarFolha(){
   const m = S.mapas.get(normCod(S.prod.cod));
   const versao = m ? (S.verSel || m.ativa) : 0;
 
+  /* Sem nome de operador aqui: esta folha fica pendurada na esteira por
+     semanas e o rodízio muda todo dia — nome impresso nasce vencido. Quem
+     embalou fica na folha de conferência e no histórico, que são tirados
+     por lote. */
   const corpo = linhas.map(l => {
     const vazio = !l.item && !l.insumo;
-    const nome = l.ini ? nomeDaOp(l.op) : "";
     return `<tr class="${l.ini ? "fini" : ""}${vazio ? " fvazio" : ""}">
-       <td class="fop">${l.ini ? "OP " + String(l.op).padStart(2, "0") +
-         (nome ? `<small>${escapa(nome)}</small>` : "") : ""}</td>
+       <td class="fop">${l.ini ? "OP " + String(l.op).padStart(2, "0") : ""}</td>
        <td class="fins">${escapa(l.insumo)}</td>
        <td class="fpeca">${vazio ? "trilho livre" : escapa(l.item)}</td>
        <td class="ftr">${l.trilho}</td>
@@ -1739,10 +1727,10 @@ function montarFolha(){
       </div>
       <table>
         <colgroup>
-          <col style="width:19%"><col style="width:18%">
-          <col style="width:48%"><col style="width:8%"><col style="width:7%">
+          <col style="width:12%"><col style="width:20%">
+          <col style="width:53%"><col style="width:8%"><col style="width:7%">
         </colgroup>
-        <thead><tr><th>OP · quem embala</th><th>Insumo</th><th>Descrição da peça</th>
+        <thead><tr><th>OP</th><th>Insumo</th><th>Descrição da peça</th>
           <th style="text-align:center">Trilho</th><th style="text-align:center">OK</th></tr></thead>
         <tbody>${corpo}</tbody>
       </table>
