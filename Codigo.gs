@@ -468,7 +468,8 @@ function garantirAbas() {
 /**
  * Tira a duplicidade já gravada, mantendo a gravação mais recente de cada lote
  * e produto — que é a que o líder quis deixar valendo quando salvou de novo.
- * Rode relatorioLotes() antes para ver o que vai sair, e depois para conferir.
+ * O log diz quantas linhas saíram; para ver o antes e o depois de um lote
+ * específico, digite o número dele no app.
  */
 function limparDuplicados() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
