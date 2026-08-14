@@ -56,6 +56,14 @@
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
     padding:12px 14px; margin-top:10px}
   .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
+  /* A dica do lote ("PRETO · 22/7 · 2 produtos") fica numa faixa reservada
+     embaixo do campo. Solta no fluxo, ela deixava o campo do lote mais alto
+     que os outros e — como a barra alinha por baixo — o seletor de produto ao
+     lado descia meia linha, desencontrado do lote. A faixa existe em todos os
+     campos, com dica ou sem, e os botões descontam a mesma altura. */
+  .setup .fld{position:relative; padding-bottom:18px}
+  .setup .achou{position:absolute; left:0; bottom:0}
+  .setup > button{margin-bottom:18px}
   .fld label{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--mut)}
   select,input[type=text],input[type=number]{background:var(--panel2); color:var(--ink);
@@ -487,9 +495,13 @@
   </div>
   <div class="volstrip" id="volStrip" hidden></div>
   <div class="opsdia" id="opsDia" hidden></div>
+  <!-- Esta legenda é da conferência, e aqui a bolinha fala do que já foi
+       conferido — não de trilho "ocupado", que é vocabulário de prateleira e
+       dizia outra coisa na tela de cadastro. A vermelha faltava. -->
   <div class="legenda">
-    <span class="dot ocu"></span>OCUPADO — conferido
-    <span class="dot res"></span>RESERVADO — aguardando conferência
+    <span class="dot ocu"></span>CONFERIDO
+    <span class="dot res"></span>FALTA CONFERIR
+    <span class="dot div"></span>DIVERGÊNCIA — conferido com ressalva
     <span class="dot livre"></span>LIVRE — trilho sem peça
   </div>
   <div id="listaConf"><div class="vazio-tela">Escolha um lote e um produto.</div></div>
@@ -626,7 +638,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.7.0";
+const VERSAO = "2.7.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1239,10 +1251,13 @@ function linhaTrilho(t){
   const el = document.createElement("div");
   el.className = "trilho" + (t===S.sel ? " sel" : "") + (vazio ? " vazia" : "");
 
-  // situação do trilho de relance: ocupado tem peça, livre não tem
+  /* Aqui é a tela de cadastro: a bolinha só diz se o trilho tem peça ou não.
+     Verde na conferência quer dizer outra coisa — lá é peça conferida —, então
+     não repetir "OCUPADO" nas duas telas evita a bolinha significar duas
+     coisas com o mesmo nome. */
   const dot = document.createElement("span");
   dot.className = "dot " + (vazio ? "livre" : "ocu");
-  dot.title = vazio ? "LIVRE" : "OCUPADO";
+  dot.title = vazio ? "trilho sem peça" : "trilho com peça";
 
   const num = document.createElement("span");
   num.className = "num"; num.textContent = t;
