@@ -596,7 +596,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.2.1";
+const VERSAO = "2.2.2";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -2935,8 +2935,15 @@ $("btnAtualizar").addEventListener("click", ()=>{
       `depois de atualizar, mas o ideal é tocar em “Reenviar pendentes” antes. Atualizar mesmo assim?`)){
     return;
   }
-  if(swEsperando) swEsperando.postMessage({ tipo:"ATUALIZAR" });
-  else location.reload();
+  /* Duas publicações seguidas deixam o aviso órfão: o worker guardado no
+     swEsperando já pode ter sido ativado (ou substituído) entre o aviso e o
+     toque, e mandar mensagem para ele não faz nada — o botão parecia morto.
+     Pega o que estiver esperando AGORA e, se o controllerchange não vier em
+     seguida, recarrega mesmo assim: a navegação é rede-primeiro, então o
+     reload já entrega a versão mais nova de qualquer jeito. */
+  const esperando = (swReg && swReg.waiting) || swEsperando;
+  if(esperando) esperando.postMessage({ tipo:"ATUALIZAR" });
+  setTimeout(()=> location.reload(), 1600);
 });
 $("btnDepois").addEventListener("click", esconderAtualiza);
 
