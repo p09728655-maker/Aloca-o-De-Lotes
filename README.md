@@ -132,8 +132,8 @@ tablets salvando ao mesmo tempo não geram duas V03.
 
 O seletor no topo alterna os dois modos e fica gravado no aparelho:
 
-- **PPCP** — monta o mapa, cria versão, ativa, importa Excel, grava lote e
-  consulta histórico.
+- **PPCP** — monta o mapa, cria versão, ativa, importa e exporta Excel, grava
+  lote e consulta histórico.
 - **Operador** — seleciona o lote, vê o mapa e confere, e só. Edição de mapa
   e **todas as impressões** ficam no perfil PPCP: a tela do operador é para
   marcar peça, sem botão que desvie disso.
@@ -200,37 +200,65 @@ duas linhas, e não sobre uma. Se isso significa que esses operadores ficam do o
 lado da esteira e a faixa deles é outra, o app não sabe: as fronteiras são definidas
 no tablet, pelo botão *+ OP aqui*.
 
-## Importar o mapa de um Excel
+## Importar e exportar o mapa em Excel
 
 Montar 28 trilhos de dezenas de produtos na tela é lento. `modelo-mapa-trilhos.xlsx`
-é o mesmo mapa que a embalagem já desenha, só que plano — uma linha por trilho, sem
-célula mesclada:
+é o mesmo mapa que a embalagem já desenha, só que plano — uma aba por caixa, uma
+linha por trilho, sem célula mesclada. A primeira linha diz de quem é o mapa e a
+segunda é o cabeçalho:
 
-| TRILHO | OP | INSUMO | ITEM |
-|---|---|---|---|
-| 3 | OP 01 | ISOMANTA | TAMPO Nº 1 |
-| 6 |  |  | 2 LATERAL DA MOLDURA Nº 11 |
+| | | | | | | | |
+|---|---|---|---|---|---|---|---|
+| **501139001** | VOL 1/1 ARMARIO ENCANTO BRANCO | | | | | | |
+| **TRILHO** | **OP** | **COD** | **DESCRIÇÃO ITEM** | **QTDE** | **COD** | **DESCRIÇÃO ITEM** | **QTDE** |
+| 1 | OP 01 | 607.001.809 | CX 1/1 KRAFT 1875X360X93 ARMARIO ENCANTO | 1 | | | |
+| 2 | | | | | | | |
+| 5 | OP 02 | 797.003.001 | ARM ENCANTO PRAT 600X318X15 MDP 3 BCO | 2 | 607.005.215 | ISOMANTA 1/1 1900X370X0.05 | 2 |
 
-O item é escrito como a embalagem já escreve. O número na frente é a quantidade e
-o `Nº` é a peça. Trilho vazio fica com a linha em branco, sem apagar.
+O bloco `COD / DESCRIÇÃO ITEM / QTDE` repete: o primeiro é a peça, o segundo é o
+insumo que vai junto naquele trilho. Precisa de um terceiro? São mais três colunas
+à direita. Trilho vazio fica só com o número — não se apaga a linha, porque trilho
+vazio também é trilho na esteira. A `OP` acompanha cada linha com item.
 
 No app: **Importar Excel** no rodapé, escolhe o arquivo, e ele lê ali mesmo — sem
-colar nada na planilha e sem digitar código de peça. Confere na tela e salva.
+colar nada na planilha. Confere na tela e salva.
 
-**Um mapa serve para todas as cores.** O `Nº` é o número que vem depois de MDP/MDF
-na descrição do ERP, e ele não muda de cor: a peça Nº 1 é `478001001` no branco e
-`478001111` no alecrim. A aba `PRODUTOS` do modelo lista um código por cor, e o app
-resolve cada um contra a `ESTRUTURA` daquela cor. Insumo que não muda de cor — a
-isomanta, por exemplo — sai com o mesmo código nas três.
+**Com o código escrito não há o que adivinhar.** O item entra direto, sem casamento
+por texto e sem pergunta nenhuma: no mapa do ARMÁRIO ENCANTO os 21 itens entram
+sozinhos. O que não tiver código o app procura pelo texto e **pergunta em vez de
+chutar** — o que reconhece com folga entra, o ambíguo vira uma lista de candidatos
+para o líder escolher. Código escrito que a `ESTRUTURA` não tem também vira
+pergunta, com a estrutura inteira do produto para escolher.
 
-Item sem `Nº`, como isopor e kit, é achado pelo texto. Aí o app **pergunta em vez de
-chutar**: o que ele reconhece com folga entra sozinho, o ambíguo aparece numa lista
-com os candidatos para o líder escolher. No mapa da PENTEADEIRA CAMARIM STRASS, 35
-dos 38 itens entram sem intervenção.
+**Exportar Excel** faz o caminho de volta: baixa o lote inteiro neste mesmo
+formato, uma aba por volume — o da tela sai como está agora, salvo ou não, e os
+outros saem da versão ativa. É por aí que se começa um produto novo: exporta o
+parecido, troca o que muda e importa de volta. Ida e volta é fiel — o arquivo que
+sai, relido, dá o mesmo mapa.
 
-O `.xlsx` é lido no próprio navegador — um `.xlsx` é um ZIP com XML dentro, e o
-Chrome infla sozinho pelo `DecompressionStream`. Sem biblioteca externa, que a rede
-da fábrica não baixaria mesmo.
+**Volume é quantos forem.** A aba é numerada pelo `VOL` da programação, não pela
+ordem em que o arquivo foi montado: num produto de seis caixas com mapa só na
+terceira, a aba sai como `MAPA CX03`. Volume ainda sem mapa fica de fora e o app
+diz quantos foram, em vez de exportar aba muda. Na importação o nome da aba não
+significa nada — quem identifica o mapa é o código na primeira linha —, então
+`MAPA CX07` ou `CAIXA GRANDE` dá no mesmo.
+
+**Um mapa para todas as cores.** Os códigos escritos são de uma cor só. Para o
+mesmo mapa valer para as outras, uma aba `PRODUTOS` com `ABA_MAPA` e `COD_PRODUTO`
+lista um código por cor (`COR`, `N_TRILHOS`, `VELOCIDADE` e `N_ESQUEMA` são
+opcionais). O app acha a mesma peça na outra cor pelo `Nº` que vem depois de
+MDP/MDF na descrição do ERP, que não muda de cor: a peça Nº 1 é `478001001` no
+branco e `478001111` no alecrim. Insumo que não muda de cor sai com o mesmo código
+nas três. O modelo antigo, só com texto (`TRILHO | OP | INSUMO | ITEM`, com a
+quantidade na frente e o `Nº` no fim), continua entrando igual.
+
+Aba que não é mapa — `COMO USAR`, rascunho — passa batido. Aba preenchida que não
+diz de que produto é fica de fora, mas **com aviso na tela**, não em silêncio.
+
+O `.xlsx` é lido e escrito no próprio navegador — um `.xlsx` é um ZIP com XML
+dentro; na leitura o Chrome infla sozinho pelo `DecompressionStream` e, na escrita,
+os arquivos vão guardados sem compactar, o que cabe em poucas linhas de ZIP. Sem
+biblioteca externa, que a rede da fábrica não baixaria mesmo.
 
 Importar um produto substitui o mapa que ele já tinha; os outros não são tocados.
 
