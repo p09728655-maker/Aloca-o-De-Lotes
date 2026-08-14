@@ -20,6 +20,9 @@ var SHEET_ID = '1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg';
 var AB_REG   = 'REGISTRO';
 var AB_COL   = 'COLABORADORES';
 var AB_MAPA  = 'MAPA_TRILHOS';
+var AB_MAPAS = 'MAPAS';
+var AB_LOTES = 'LOTES';
+var AB_CONF  = 'CONFERENCIAS';
 
 /* POSTO guarda o número da OP e COD_PECA o código do item — nomes herdados de
    quando o app pensava em postos, mantidos para não quebrar o que já leu a aba. */
@@ -31,10 +34,32 @@ var CAB_COL = ['MATRICULA','NOME','ATIVO','CADASTRADO_EM'];
 /* O mapa dos trilhos é o desenho da esteira para um produto: qual item entra
    em qual trilho, em que ordem, e qual OP cobre aquele trilho. Uma linha por
    item — trilho com dois itens ocupa duas linhas, trilho vazio não ocupa
-   nenhuma (o número dele volta pelo N_TRILHOS do cabeçalho). */
+   nenhuma (o número dele volta pelo N_TRILHOS do cabeçalho).
+   VERSAO amarra a linha a uma versão do mapa: salvar de novo não apaga mais
+   nada, acrescenta as linhas da versão nova. Linha antiga sem VERSAO é da
+   época pré-versionamento e vale como V1. */
 var CAB_MAPA = ['COD_PRODUTO','DESC_PRODUTO','N_TRILHOS','TRILHO','OP','SEQ',
                 'COD_ITEM','DESC_ITEM','QTD','TIPO','VELOCIDADE','N_ESQUEMA',
-                'ATUALIZADO_EM'];
+                'ATUALIZADO_EM','VERSAO'];
+
+/* Cabeçalho de cada versão do mapa: quem criou, quando, por quê, e qual está
+   ATIVA. Só uma versão fica ATIVA por produto — as demais viram INATIVA mas
+   nunca são apagadas: é o que permite mostrar, meses depois, que o LT 123
+   foi conferido no mapa V02 mesmo que hoje a vigente seja a V03. */
+var CAB_MAPAS = ['COD_PRODUTO','DESC_PRODUTO','VERSAO','STATUS','DATA',
+                 'RESPONSAVEL','MOTIVO','N_TRILHOS','VELOCIDADE','N_ESQUEMA',
+                 'ID_ENVIO'];
+
+/* Uma linha por lote × produto, criada quando a conferência começa. A VERSAO
+   gravada aqui é a amarração que não muda mais: mapa novo vale para lote
+   novo, nunca retroage sobre lote iniciado. */
+var CAB_LOTES = ['LOTE','COR','COD_PRODUTO','DESC_PRODUTO','VERSAO',
+                 'DATA_INICIO','DATA_CONCLUSAO','STATUS'];
+
+/* Append-only: cada toque em “Conferir” do operador vira uma linha, com peça,
+   trilho, quem conferiu e quando. RESULTADO é OK ou DIVERGENTE. */
+var CAB_CONF = ['TS','ID_ENVIO','LOTE','COD_PRODUTO','VERSAO','TRILHO',
+                'COD_PECA','DESC_PECA','QTD','MATRICULA','NOME','RESULTADO','OBS'];
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -52,6 +77,8 @@ function doPost(e) {
 
     if (p.acao === 'salvar_lote')  return json(salvarLote(ss, p));
     if (p.acao === 'salvar_mapa')  return json(salvarMapa(ss, p));
+    if (p.acao === 'iniciar_lote') return json(iniciarLote(ss, p));
+    if (p.acao === 'conferir')     return json(conferir(ss, p));
     if (p.acao === 'colaborador')  return json(salvarColaborador(ss, p));
     return json({ ok: false, erro: 'acao desconhecida: ' + p.acao });
 
@@ -106,43 +133,135 @@ function salvarLote(ss, p) {
 }
 
 /**
- * Grava o mapa dos trilhos de um produto. Sobrescreve o mapa anterior daquele
- * código: o mapa é o desenho vigente da esteira, não histórico. O que aconteceu
- * em cada lote fica em REGISTRO, que é append-only.
- *
- * Apagar linha a linha ficaria lento num mapa de 28 trilhos, então reescreve a
- * aba inteira sem as linhas do produto e devolve as novas de uma vez só.
+ * Grava o mapa de um produto como uma VERSÃO NOVA, sem apagar as anteriores.
+ * O cabeçalho da versão (data, responsável, motivo, status) vai para MAPAS;
+ * as linhas item→trilho vão para MAPA_TRILHOS com o número da versão. Só uma
+ * versão fica ATIVA por produto — as anteriores viram INATIVA mas continuam
+ * gravadas: lote que começou a conferência na V02 mostra V02 para sempre.
  */
 function salvarMapa(ss, p) {
   if (!p.cod_produto) return { ok: false, erro: 'cod_produto obrigatorio' };
   if (!p.trilhos || !p.trilhos.length) return { ok: false, erro: 'mapa vazio' };
 
-  var sh = aba(ss, AB_MAPA, CAB_MAPA);
-  var cod = String(p.cod_produto);
-  var ts = new Date();
-  var ult = sh.getLastRow();
+  var cab = aba(ss, AB_MAPAS, CAB_MAPAS);
+  var itens = aba(ss, AB_MAPA, CAB_MAPA);
+  garantirColunaVersao(itens);
 
-  var mantidas = [];
+  var cod = String(p.cod_produto);
+  if (p.id_envio && jaGravadoNaCol(cab, 11, p.id_envio)) {
+    return { ok: true, duplicado: true };
+  }
+
+  // próxima versão: 1 + a maior já vista, no cabeçalho ou nas linhas de item
+  // (linha antiga sem VERSAO conta como V1)
+  var versao = maxVersaoItens(itens, cod);
+  var ult = cab.getLastRow();
   if (ult > 1) {
-    var vals = sh.getRange(2, 1, ult - 1, CAB_MAPA.length).getValues();
+    var vals = cab.getRange(2, 1, ult - 1, CAB_MAPAS.length).getValues();
     for (var i = 0; i < vals.length; i++) {
-      if (String(vals[i][0]) !== cod) mantidas.push(vals[i]);
+      if (String(vals[i][0]) !== cod) continue;
+      versao = Math.max(versao, parseInt(vals[i][2], 10) || 0);
+      if (String(vals[i][3]).toUpperCase() === 'ATIVA') {
+        cab.getRange(i + 2, 4).setValue('INATIVA');
+      }
     }
   }
+  versao++;
+
+  var ts = new Date();
+  cab.appendRow([cod, p.desc_produto || '', versao, 'ATIVA', ts,
+                 p.responsavel || '', p.motivo || '', p.n_trilhos || 0,
+                 p.velocidade || '', p.n_esquema || '', p.id_envio || '']);
 
   var novas = p.trilhos.map(function (t) {
     return [cod, p.desc_produto || '', p.n_trilhos || 0, t.trilho, t.op || '',
             t.seq || 1, t.cod_item, t.desc_item || '', t.qtd || 0, t.tipo || '',
-            p.velocidade || '', p.n_esquema || '', ts];
+            p.velocidade || '', p.n_esquema || '', ts, versao];
   });
+  var ini = itens.getLastRow() + 1;
+  garantirLinhas(itens, ini + novas.length);
+  itens.getRange(ini, 1, novas.length, CAB_MAPA.length).setValues(novas);
 
-  var todas = mantidas.concat(novas);
-  if (ult > 1) sh.getRange(2, 1, ult - 1, CAB_MAPA.length).clearContent();
-  if (todas.length) {
-    garantirLinhas(sh, todas.length + 1);
-    sh.getRange(2, 1, todas.length, CAB_MAPA.length).setValues(todas);
+  return { ok: true, versao: versao, linhas: novas.length };
+}
+
+/**
+ * Amarra o lote à versão vigente do mapa no momento em que a conferência
+ * começa. Se o lote já foi iniciado, devolve a amarração que existe — trocar
+ * a versão de um lote iniciado reescreveria o histórico, e isso não acontece
+ * por aqui em hipótese nenhuma.
+ */
+function iniciarLote(ss, p) {
+  if (!p.lote || !p.cod_produto) {
+    return { ok: false, erro: 'lote e cod_produto sao obrigatorios' };
   }
-  return { ok: true, trilhos: p.n_trilhos || 0, linhas: novas.length };
+  var sh = aba(ss, AB_LOTES, CAB_LOTES);
+  var r = acharLinhaLote(sh, p.lote, p.cod_produto);
+  if (r) {
+    return { ok: true, ja_iniciado: true,
+             versao: parseInt(sh.getRange(r, 5).getValue(), 10) || 0,
+             status: String(sh.getRange(r, 8).getValue() || '') };
+  }
+  var versao = parseInt(p.versao, 10) || versaoAtiva(ss, p.cod_produto);
+  if (!versao) return { ok: false, erro: 'produto sem mapa ativo' };
+  sh.appendRow([String(p.lote), p.cor || '', String(p.cod_produto),
+                p.desc_produto || '', versao, new Date(), '', 'EM CONFERENCIA']);
+  return { ok: true, versao: versao, status: 'EM CONFERENCIA' };
+}
+
+/**
+ * Registra as peças conferidas (append-only, idempotente por id_envio) e
+ * atualiza o status do lote. O status vem calculado do tablet, que é quem
+ * sabe quantas peças o mapa daquela versão tem.
+ */
+function conferir(ss, p) {
+  if (!p.lote || !p.cod_produto) {
+    return { ok: false, erro: 'lote e cod_produto sao obrigatorios' };
+  }
+  if (!p.itens || !p.itens.length) {
+    return { ok: false, erro: 'nenhuma peca para registrar' };
+  }
+  var sh = aba(ss, AB_CONF, CAB_CONF);
+  if (p.id_envio && jaGravadoNaCol(sh, 2, p.id_envio)) {
+    atualizarStatusLote(ss, p);   // o reenvio ainda pode carregar status mais novo
+    return { ok: true, duplicado: true, linhas: 0 };
+  }
+  var ts = new Date();
+  var linhas = p.itens.map(function (x) {
+    return [ts, p.id_envio || '', String(p.lote), String(p.cod_produto),
+            parseInt(p.versao, 10) || 0, x.trilho, x.cod_peca, x.desc_peca || '',
+            x.qtd || 0, x.matricula || '', x.nome || '',
+            x.resultado || 'OK', x.obs || ''];
+  });
+  var ini = sh.getLastRow() + 1;
+  garantirLinhas(sh, ini + linhas.length);
+  sh.getRange(ini, 1, linhas.length, CAB_CONF.length).setValues(linhas);
+
+  atualizarStatusLote(ss, p);
+  return { ok: true, linhas: linhas.length };
+}
+
+function atualizarStatusLote(ss, p) {
+  var sh = aba(ss, AB_LOTES, CAB_LOTES);
+  var ts = new Date();
+  var r = acharLinhaLote(sh, p.lote, p.cod_produto);
+  if (!r) {
+    // conferência chegou antes do iniciar_lote (fila offline fora de ordem):
+    // cria a amarração aqui mesmo, com a versão que o tablet estava usando
+    sh.appendRow([String(p.lote), p.cor || '', String(p.cod_produto),
+                  p.desc_produto || '', parseInt(p.versao, 10) || 0, ts,
+                  p.status_lote === 'CONCLUIDA' ? ts : '',
+                  p.status_lote || 'EM CONFERENCIA']);
+    return;
+  }
+  if (p.status_lote) {
+    sh.getRange(r, 8).setValue(p.status_lote);
+    if (p.status_lote === 'CONCLUIDA') {
+      if (!sh.getRange(r, 7).getValue()) sh.getRange(r, 7).setValue(ts);
+    } else {
+      sh.getRange(r, 7).setValue('');
+    }
+  }
 }
 
 function salvarColaborador(ss, p) {
@@ -212,17 +331,75 @@ function apagarLinhas(sh, linhas) {
   }
 }
 
-function jaGravado(sh, id) {
+function jaGravado(sh, id) { return jaGravadoNaCol(sh, 2, id); }
+
+function jaGravadoNaCol(sh, col, id) {
   var ult = sh.getLastRow();
   if (ult < 2) return false;
   // olha só as últimas 5.000 linhas: reenvio é sempre recente e varrer a
   // aba inteira ficaria lento conforme o histórico cresce
   var ini = Math.max(2, ult - 5000);
-  var vals = sh.getRange(ini, 2, ult - ini + 1, 1).getValues();
+  var vals = sh.getRange(ini, col, ult - ini + 1, 1).getValues();
   for (var i = 0; i < vals.length; i++) {
     if (String(vals[i][0]) === String(id)) return true;
   }
   return false;
+}
+
+/* MAPA_TRILHOS criado antes do versionamento tem 13 colunas. A 14ª (VERSAO)
+   é acrescentada aqui; linha antiga fica com a célula vazia e é lida como V1
+   tanto pelo app quanto por maxVersaoItens. */
+function garantirColunaVersao(sh) {
+  if (sh.getMaxColumns() < CAB_MAPA.length) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), CAB_MAPA.length - sh.getMaxColumns());
+  }
+  if (String(sh.getRange(1, 14).getValue()).trim() !== 'VERSAO') {
+    sh.getRange(1, 14).setValue('VERSAO').setFontWeight('bold');
+  }
+}
+
+/** Maior versão presente nas linhas de item de um produto (sem VERSAO = 1). */
+function maxVersaoItens(sh, cod) {
+  var ult = sh.getLastRow();
+  if (ult < 2) return 0;
+  var max = 0;
+  var vals = sh.getRange(2, 1, ult - 1, Math.min(sh.getMaxColumns(), 14)).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][0]) !== cod) continue;
+    max = Math.max(max, parseInt(vals[i][13], 10) || 1);
+  }
+  return max;
+}
+
+/** Versão ATIVA de um produto pela aba MAPAS; mapa antigo sem cabeçalho cai
+    na maior versão das linhas de item. */
+function versaoAtiva(ss, cod) {
+  var sh = ss.getSheetByName(AB_MAPAS);
+  var melhor = 0;
+  if (sh && sh.getLastRow() > 1) {
+    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();
+    for (var i = 0; i < vals.length; i++) {
+      if (String(vals[i][0]) === String(cod) &&
+          String(vals[i][3]).toUpperCase() === 'ATIVA') {
+        melhor = Math.max(melhor, parseInt(vals[i][2], 10) || 0);
+      }
+    }
+  }
+  if (melhor) return melhor;
+  var itens = ss.getSheetByName(AB_MAPA);
+  return itens ? maxVersaoItens(itens, String(cod)) : 0;
+}
+
+/** Linha (1-based) do lote × produto na aba LOTES, ou 0. */
+function acharLinhaLote(sh, lote, cod) {
+  var ult = sh.getLastRow();
+  if (ult < 2) return 0;
+  var vals = sh.getRange(2, 1, ult - 1, 3).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][0]).trim() === String(lote).trim() &&
+        String(vals[i][2]).trim() === String(cod).trim()) return i + 2;
+  }
+  return 0;
 }
 
 /**
@@ -247,11 +424,16 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Rode uma vez pelo editor para autorizar o script e criar as abas. */
+/** Rode uma vez pelo editor para autorizar o script e criar as abas.
+    Rodar de novo depois de atualizar o script é seguro: aba que já existe
+    não é tocada, só ganha a coluna VERSAO se ainda não tiver. */
 function garantirAbas() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   aba(ss, AB_REG, CAB_REG);
-  aba(ss, AB_MAPA, CAB_MAPA);
+  garantirColunaVersao(aba(ss, AB_MAPA, CAB_MAPA));
+  aba(ss, AB_MAPAS, CAB_MAPAS);
+  aba(ss, AB_LOTES, CAB_LOTES);
+  aba(ss, AB_CONF, CAB_CONF);
   aba(ss, AB_COL, CAB_COL);
   Logger.log('abas prontas');
 }

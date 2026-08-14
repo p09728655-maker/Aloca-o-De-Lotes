@@ -228,6 +228,67 @@
   .cpeca .cd{flex:1 1 0; min-width:0}
   .cpeca .cc{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut2)}
 
+  /* ---------- perfis ----------
+     PPCP monta e versiona o mapa; o operador só confere. O que o seletor
+     garante é que a tela do operador não tem botão de editar mapa. */
+  .perfil{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; flex:none}
+  .perfil button{min-height:40px; border:none; border-radius:0; padding:6px 13px;
+    font-size:13px; background:transparent; color:var(--mut)}
+  .perfil button.on{background:var(--amber); color:#000}
+  body[data-perfil="oper"] .so-ppcp{display:none !important}
+
+  /* ---------- versão do mapa ---------- */
+  .verbar{margin-top:10px; background:var(--panel); border:1px solid var(--line);
+    border-left:4px solid var(--roxo); border-radius:10px; padding:9px 13px;
+    font-size:12.5px; line-height:1.6; color:var(--mut)}
+  .verbar b{color:var(--ink)}
+  .verbar .vtag{font-family:"Oswald"; font-size:13px; letter-spacing:.05em;
+    background:var(--roxo); color:#000; border-radius:5px; padding:1px 8px; margin-right:8px}
+  .verbar.antiga{border-left-color:var(--amber)}
+  .verbar.antiga .vtag{background:var(--amber)}
+
+  /* ---------- conferência do lote (peça a peça) ---------- */
+  .cbar{display:flex; gap:10px 16px; align-items:center; flex-wrap:wrap;
+    padding:10px 13px; border-bottom:1px solid var(--line)}
+  .badge{font-family:"Oswald"; font-size:13.5px; letter-spacing:.05em; border-radius:6px;
+    padding:5px 11px; flex:none; white-space:nowrap}
+  .badge.and{background:#3d2f0a; color:#eab308}
+  .badge.ok{background:var(--green-dim); color:var(--green)}
+  .badge.pend{background:#3b1210; color:var(--red)}
+  .prog{flex:1 1 140px; height:12px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:7px; overflow:hidden; min-width:100px}
+  .prog i{display:block; height:100%; background:var(--green); width:0; transition:width .2s}
+  .cbar .pct{font-family:"Oswald"; font-size:16px; white-space:nowrap}
+  .legenda{font-size:12px; color:var(--mut); padding:8px 13px; border-bottom:1px solid var(--line)}
+  .legenda .dot{display:inline-block; vertical-align:-3px; margin:0 4px 0 10px}
+  .legenda .dot:first-child{margin-left:0}
+
+  .dot{width:15px; height:15px; border-radius:50%; flex:none; border:1px solid var(--line)}
+  .dot.livre{background:#20242a}
+  .dot.res{background:#eab308}
+  .dot.ocu{background:var(--green)}
+  .dot.div{background:var(--red)}
+  .trilho > .dot{align-self:center}
+
+  .ctrilho{display:flex; gap:12px; padding:9px 13px; border-bottom:1px solid var(--line);
+    align-items:center}
+  .ctrilho:last-child{border-bottom:none}
+  .ctrilho .cnum{font-family:"Oswald"; font-weight:700; font-size:17px; width:76px; flex:none;
+    display:flex; align-items:center; gap:9px; color:var(--mut)}
+  .ctrilho .lv{color:var(--mut2); font-size:12.5px; letter-spacing:.12em}
+  .ctrilho .cpecas{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:8px}
+  .cpline{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .cpline .pq{font-family:"Oswald"; font-weight:600; font-size:16px; color:var(--amber); min-width:36px}
+  .cpline .pd{flex:1 1 200px; min-width:0; font-size:14.5px; line-height:1.3}
+  .cpline .pd small{display:block; font-family:"IBM Plex Mono"; font-size:10px; color:var(--mut2)}
+  .cpline .pst{font-size:12.5px; color:var(--mut)}
+  .cpline .pst.ok{color:var(--green)} .cpline .pst.div{color:var(--red)}
+  .cpline button{min-height:44px; padding:8px 16px; font-size:14px}
+
+  .alertaPeca{background:#2a1210; border:1px solid var(--red); border-radius:9px;
+    padding:10px 12px; font-size:13.5px; line-height:1.6}
+  .mono{font-family:"IBM Plex Mono"; font-size:12px; color:var(--mut)}
+
   .vazio-tela{padding:26px 16px; color:var(--mut); font-size:13.5px; line-height:1.6}
   @media(prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
 
@@ -290,9 +351,13 @@
     <h1>Mapa dos <span>Trilhos</span></h1>
   </div>
   <div class="headmeta">
-    <div class="kpi"><b id="kItens">–</b><small>itens</small></div>
-    <div class="kpi"><b id="kTrilhos">–</b><small>trilhos</small></div>
-    <div class="kpi"><b id="kOps">–</b><small>ops</small></div>
+    <div class="kpi so-ppcp"><b id="kItens">–</b><small>itens</small></div>
+    <div class="kpi so-ppcp"><b id="kTrilhos">–</b><small>trilhos</small></div>
+    <div class="kpi so-ppcp"><b id="kOps">–</b><small>ops</small></div>
+    <div class="perfil" id="perfilSwitch">
+      <button data-p="ppcp">PPCP</button>
+      <button data-p="oper">Operador</button>
+    </div>
     <button class="gho" id="btnCfg" title="Configurações" style="padding:9px 13px">⚙</button>
   </div>
 </header>
@@ -311,26 +376,32 @@
     <label for="selProd">Produto do lote</label>
     <select id="selProd"><option value="">—</option></select>
   </div>
-  <div class="fld mini">
+  <div class="fld mini so-ppcp">
     <label for="inTrilhos">Trilhos</label>
     <input type="number" id="inTrilhos" min="1" max="60" value="28" inputmode="numeric">
   </div>
-  <div class="fld mini">
+  <div class="fld mini so-ppcp">
     <label for="inVel">Velocidade</label>
     <input type="text" id="inVel" placeholder="8,50" inputmode="decimal">
   </div>
-  <div class="fld mini">
+  <div class="fld mini so-ppcp">
     <label for="inEsq">Nº esquema</label>
     <input type="text" id="inEsq" inputmode="numeric">
   </div>
-  <button class="gho" id="btnAuto">Sugerir mapa</button>
-  <button class="gho" id="btnLimpar">Limpar</button>
+  <div class="fld mini so-ppcp">
+    <label for="selVersao">Versão do mapa</label>
+    <select id="selVersao"><option value="">—</option></select>
+  </div>
+  <button class="gho so-ppcp" id="btnAuto">Sugerir mapa</button>
+  <button class="gho so-ppcp" id="btnLimpar">Limpar</button>
   <button class="gho" id="btnImprimir">Imprimir mapa</button>
 </div>
 
+<div class="verbar so-ppcp" id="verbar" hidden></div>
+
 <div class="rastro" id="rastro" hidden></div>
 
-<div class="work">
+<div class="work so-ppcp">
   <div class="box">
     <h2>Itens do produto <em id="faltaTxt"></em></h2>
     <div class="rolagem" id="listaItens"><div class="vazio-tela">Escolha um lote e um produto.</div></div>
@@ -345,6 +416,26 @@
   </div>
 </div>
 
+<div class="box" id="telaConf" hidden style="margin-top:14px">
+  <h2>Conferência do lote <em id="confMeta"></em></h2>
+  <div class="cbar">
+    <span class="badge and" id="lbadge">—</span>
+    <div class="prog"><i id="confProg"></i></div>
+    <span class="pct" id="confPct">—</span>
+    <div class="fld" style="min-width:200px">
+      <label for="selConferente">Conferente</label>
+      <select id="selConferente"><option value="">— quem confere —</option></select>
+    </div>
+    <button class="pri" id="btnIniciarConf" hidden>Iniciar conferência</button>
+  </div>
+  <div class="legenda">
+    <span class="dot ocu"></span>OCUPADO — conferido
+    <span class="dot res"></span>RESERVADO — aguardando conferência
+    <span class="dot livre"></span>LIVRE — trilho sem peça
+  </div>
+  <div id="listaConf"><div class="vazio-tela">Escolha um lote e um produto.</div></div>
+</div>
+
 <div class="rodape">
   <div class="atualiza" id="barraAtualiza" hidden>
     <span id="txtAtualiza">Versão nova disponível.</span>
@@ -353,13 +444,13 @@
   </div>
   <div class="actions">
     <span class="fila" id="fila" hidden></span>
-    <button class="gho" id="btnImportar">Importar Excel</button>
+    <button class="gho so-ppcp" id="btnImportar">Importar Excel</button>
     <input type="file" id="arqExcel" accept=".xlsx" hidden>
     <button class="gho" id="btnInstalar" hidden>Instalar no tablet</button>
     <span class="msg" id="msg"></span>
     <button class="gho" id="btnReenviar" hidden>Reenviar pendentes</button>
-    <button class="gho" id="btnSalvarLote" disabled>Gravar lote</button>
-    <button class="pri" id="btnSalvarMapa" disabled>Salvar mapa</button>
+    <button class="gho so-ppcp" id="btnSalvarLote" disabled>Gravar lote</button>
+    <button class="pri so-ppcp" id="btnSalvarMapa" disabled>Salvar mapa</button>
   </div>
 </div>
 
@@ -405,6 +496,44 @@
   </div>
 </dialog>
 
+<dialog id="dlgVersao">
+  <h3>Salvar versão do mapa</h3>
+  <div class="body">
+    <p class="hint" id="verHint"></p>
+    <div class="fld"><label for="verResp">Responsável (PPCP)</label>
+      <input type="text" id="verResp" placeholder="quem está salvando"></div>
+    <div class="fld"><label for="verMotivo">Motivo da alteração</label>
+      <input type="text" id="verMotivo" placeholder="ex.: base mudou do trilho 1 para o 3"></div>
+    <p class="hint">A versão anterior continua guardada. Lote que já começou a
+      conferência permanece na versão em que começou — o histórico não muda.</p>
+  </div>
+  <div class="foot">
+    <button class="gho" id="verCancel">Cancelar</button>
+    <button class="pri" id="verOk">Salvar versão</button>
+  </div>
+</dialog>
+
+<dialog id="dlgPeca">
+  <h3>Conferir peça</h3>
+  <div class="body">
+    <div id="pecaInfo" style="font-size:15px; line-height:1.55"></div>
+    <div class="fld"><label for="pecaCod">Código da peça em mãos (opcional — confere contra o mapa)</label>
+      <input type="text" id="pecaCod" inputmode="numeric" autocomplete="off"></div>
+    <div id="pecaAlerta" class="alertaPeca" hidden></div>
+  </div>
+  <div class="foot">
+    <button class="gho" id="pecaCancel">Cancelar</button>
+    <button class="gho" id="pecaDiv" style="color:var(--red)">⚠ Divergência</button>
+    <button class="pri" id="pecaOk">✓ Confirmar</button>
+  </div>
+</dialog>
+
+<dialog id="dlgHist">
+  <h3 id="histTit">Histórico da conferência</h3>
+  <div class="body" id="histCorpo" style="max-height:64vh; overflow-y:auto"></div>
+  <div class="foot"><button class="gho" id="histFechar">Fechar</button></div>
+</dialog>
+
 <dialog id="dlgColab">
   <h3>Cadastrar colaborador</h3>
   <div class="body">
@@ -427,7 +556,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "1.7.0";
+const VERSAO = "2.0.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -440,6 +569,9 @@ const CFG_PADRAO = {
 };
 const CFG_KEY = "alocEmbCfg";
 const FILA_KEY = "alocEmbFila";
+const PERFIL_KEY = "alocEmbPerfil";
+const RESP_KEY = "alocEmbResp";
+const CONFERENTE_KEY = "alocEmbConferente";
 
 function lerCfg(){
   try{ return Object.assign({}, CFG_PADRAO, JSON.parse(localStorage.getItem(CFG_KEY)||"{}")); }
@@ -623,7 +755,10 @@ function parseColab(rows){
   return out;
 }
 
-/* ---------- mapa salvo ---------- */
+/* ---------- mapa salvo (com versões) ----------
+   O mapa é do PRODUTO e cada alteração vira uma versão nova; a antiga fica
+   guardada. Linha de MAPA_TRILHOS sem coluna VERSAO é de antes do
+   versionamento e vale como V1. */
 const ALIAS_MAPA = {
   cod:["codproduto","codigoproduto","codigo","cod","produto"],
   ntr:["ntrilhos","qtdtrilhos","totaltrilhos"],
@@ -634,28 +769,88 @@ const ALIAS_MAPA = {
   desc:["descitem","descricaoitem","descricao","descrio","desc"],
   qtd:["qtd","qtde","quantidade"],
   vel:["velocidade","vel"],
-  esq:["nesquema","esquema"]
+  esq:["nesquema","esquema"],
+  versao:["versao","verso","ver"]
 };
 function parseMapa(rows){
   const f = acharHead(rows, ALIAS_MAPA, ["cod","trilho","item"], 12);
   if(!f) return new Map();
   const {h, idx} = f;
-  const map = new Map();
+  const map = new Map();            // cod -> Map(versao -> {nTrilhos,vel,esq,linhas})
   for(let r=h+1; r<rows.length; r++){
     const row = rows[r];
     const cod = normCod(val(row, idx.cod)); if(!cod) continue;
     const trilho = parseInt(val(row, idx.trilho), 10); if(!(trilho>0)) continue;
     const item = normCod(val(row, idx.item)); if(!item) continue;
-    if(!map.has(cod)) map.set(cod, { nTrilhos:0, vel:"", esq:"", linhas:[] });
-    const m = map.get(cod);
+    const versao = parseInt(val(row, idx.versao), 10) || 1;
+    if(!map.has(cod)) map.set(cod, new Map());
+    const vs = map.get(cod);
+    if(!vs.has(versao)) vs.set(versao, { nTrilhos:0, vel:"", esq:"", linhas:[] });
+    const m = vs.get(versao);
     m.nTrilhos = Math.max(m.nTrilhos, trilho, parseInt(val(row, idx.ntr),10) || 0);
     if(!m.vel) m.vel = val(row, idx.vel);
     if(!m.esq) m.esq = val(row, idx.esq);
     m.linhas.push({ trilho, op: parseInt(val(row, idx.op),10) || 1,
-                    item, qtd: numDec(val(row, idx.qtd)) });
+                    item, desc: val(row, idx.desc), qtd: numDec(val(row, idx.qtd)) });
   }
   return map;
 }
+
+/* Cabeçalhos das versões (aba MAPAS): data, responsável, motivo e qual é a
+   ATIVA. Planilha de antes do versionamento não tem a aba — segue em frente. */
+const ALIAS_MAPAS = {
+  cod:["codproduto","codigoproduto","codigo","cod"],
+  versao:["versao","verso","ver"],
+  status:["status","situacao","situao"],
+  data:["data","datacriacao","criadoem"],
+  resp:["responsavel","responsvel","usuario","usurio","criadopor"],
+  motivo:["motivo","motivodaalteracao","motivoalteracao"]
+};
+function parseMapasCab(rows){
+  const f = acharHead(rows, ALIAS_MAPAS, ["cod","versao"], 6);
+  if(!f) return new Map();
+  const {h, idx} = f;
+  const out = new Map();            // cod -> Map(versao -> meta)
+  for(let r=h+1; r<rows.length; r++){
+    const row = rows[r];
+    const cod = normCod(val(row, idx.cod)); if(!cod) continue;
+    const versao = parseInt(val(row, idx.versao), 10); if(!versao) continue;
+    if(!out.has(cod)) out.set(cod, new Map());
+    out.get(cod).set(versao, {
+      status: val(row, idx.status).toUpperCase(),
+      data: val(row, idx.data), resp: val(row, idx.resp),
+      motivo: val(row, idx.motivo)
+    });
+  }
+  return out;
+}
+
+function combinarMapas(itens, cabs){
+  const out = new Map();            // cod -> { ativa, versoes }
+  for(const [cod, vs] of itens){
+    const metas = cabs.get(cod) || new Map();
+    let ativa = 0;
+    for(const [v, m] of vs){
+      m.meta = metas.get(v) || null;
+      if(m.meta && m.meta.status === "ATIVA") ativa = Math.max(ativa, v);
+    }
+    // mapa antigo sem cabeçalho: a maior versão existente vale como ativa
+    if(!ativa) ativa = Math.max(...vs.keys());
+    out.set(cod, { ativa, versoes: vs });
+  }
+  return out;
+}
+
+/** Mapa de um produto: a versão pedida, ou a ativa quando versao é 0/omitida. */
+function mapaDe(cod, versao){
+  const m = S.mapas.get(normCod(cod));
+  if(!m) return null;
+  const v = versao || m.ativa;
+  const dado = m.versoes.get(v);
+  return dado ? Object.assign({ versao:v, ativa:m.ativa }, dado) : null;
+}
+const maxVersao = m => m && m.versoes.size ? Math.max(...m.versoes.keys()) : 0;
+const vTag = v => "V" + String(v || 0).padStart(2, "0");
 
 /* ==================================================================
    ESTADO
@@ -670,6 +865,7 @@ const S = {
   operador: new Map(),        // nº da OP -> matrícula
   sel: 1,                     // trilho selecionado
   vel: "", esq: "",
+  verSel: 0,                  // versão aberta na tela (0 = a ativa)
   erroEstr:"", erroColab:""
 };
 
@@ -717,7 +913,13 @@ async function carregarTudo(){
   }
   if(!S.colab.length) S.erroColab = "aba COLABORADORES não encontrada ou vazia";
 
-  try{ S.mapas = parseMapa(await lerCSV(urlAba("MAPA_TRILHOS"))); }
+  try{
+    const itens = parseMapa(await lerCSV(urlAba("MAPA_TRILHOS")));
+    let cabs = new Map();
+    try{ cabs = parseMapasCab(await lerCSV(urlAba("MAPAS"))); }
+    catch(e){ /* aba MAPAS ainda não existe: mapas antigos viram V1 ativa */ }
+    S.mapas = combinarMapas(itens, cabs);
+  }
   catch(e){ S.mapas = new Map(); }
 
   montarSelects();
@@ -749,6 +951,12 @@ function montarSelects(){
     o.label = (l.cor ? l.cor : "") + (l.emb ? " · " + l.emb : "");
     dl.appendChild(o);
   });
+
+  // conferente da embalagem — lembrado entre lotes, trocado no rodízio
+  const sc = $("selConferente");
+  const memoria = localStorage.getItem(CONFERENTE_KEY) || "";
+  sc.innerHTML = '<option value="">— quem confere —</option>' +
+    S.colab.map(c => `<option value="${escapa(c.mat)}"${c.mat===memoria?" selected":""}>${escapa(c.nome)}</option>`).join("");
 }
 
 /** Aceita o número cru ou o texto completo que o datalist devolve. */
@@ -769,13 +977,20 @@ function novosTrilhos(n){
 
 function carregarProduto(){
   S.itens = []; S.trilhos = []; S.inicioOp = new Set([1]); S.sel = 1;
-  S.vel = ""; S.esq = "";
-  if(!S.prod) return;
+  S.vel = ""; S.esq = ""; S.verSel = 0;
+  if(!S.prod){ renderVersao(); return; }
   const lista = S.estrutura.get(normCod(S.prod.cod));
-  if(!lista) return;
+  if(!lista){ renderVersao(); return; }
   S.itens = lista.map(p => Object.assign({}, p));
+  aplicarVersao();
+  $("inTrilhos").value = String(S.nTrilhos);
+  $("inVel").value = S.vel; $("inEsq").value = S.esq;
+}
 
-  const salvo = S.mapas.get(normCod(S.prod.cod));
+/** Monta os trilhos a partir da versão aberta (S.verSel, 0 = ativa). */
+function aplicarVersao(){
+  S.trilhos = []; S.inicioOp = new Set([1]); S.sel = 1;
+  const salvo = mapaDe(S.prod.cod, S.verSel);
   if(salvo && salvo.linhas.length){
     S.nTrilhos = Math.max(1, Math.min(60, salvo.nTrilhos));
     S.trilhos = novosTrilhos(S.nTrilhos);
@@ -794,11 +1009,44 @@ function carregarProduto(){
       if(op !== undefined && ant !== null && op !== ant) S.inicioOp.add(t);
       if(op !== undefined) ant = op;
     }
-  }else{
+  }else if(S.itens.length){
     sugerirMapa();
   }
-  $("inTrilhos").value = String(S.nTrilhos);
-  $("inVel").value = S.vel; $("inEsq").value = S.esq;
+  renderVersao();
+}
+
+/* O cabeçalho que a tela de cadastro mostra: produto, versão, data,
+   responsável, motivo e status — e o aviso quando uma versão antiga está
+   aberta só para consulta. */
+function renderVersao(){
+  const sel = $("selVersao"), bar = $("verbar");
+  if(!S.prod){ sel.innerHTML = '<option value="">—</option>'; bar.hidden = true; return; }
+  const m = S.mapas.get(normCod(S.prod.cod));
+  if(!m){
+    sel.innerHTML = '<option value="">nova — V01</option>';
+    bar.hidden = false; bar.className = "verbar so-ppcp";
+    bar.innerHTML = `<span class="vtag">SEM MAPA</span> Este produto ainda não tem mapa salvo.
+      Monte os trilhos e toque em <b>Salvar mapa</b> — vira a <b>V01</b>, a versão ativa.`;
+    return;
+  }
+  const vers = [...m.versoes.keys()].sort((a,b)=> b-a);
+  const vAtual = S.verSel || m.ativa;
+  sel.innerHTML = vers.map(v =>
+    `<option value="${v}"${vAtual===v?" selected":""}>${vTag(v)}${v===m.ativa?" · ativa":""}</option>`).join("");
+  const meta = (m.versoes.get(vAtual) || {}).meta || {};
+  const antiga = vAtual !== m.ativa;
+  bar.hidden = false;
+  bar.className = "verbar so-ppcp" + (antiga ? " antiga" : "");
+  bar.innerHTML =
+    `<span class="vtag">${vTag(vAtual)}</span>` +
+    (antiga
+      ? `<b>versão antiga</b> — aberta para consulta. A ativa é a <b>${vTag(m.ativa)}</b>;
+         salvar cria uma versão nova por cima dela.`
+      : `<b>versão ativa</b> do mapa deste produto.`) +
+    (meta.data ? ` · criada em <b>${escapa(meta.data)}</b>` : "") +
+    (meta.resp ? ` · por <b>${escapa(meta.resp)}</b>` : "") +
+    (meta.motivo ? ` · motivo: ${escapa(meta.motivo)}` : "") +
+    ` · ${vers.length} ${vers.length===1 ? "versão guardada" : "versões guardadas"}`;
 }
 
 /* Sugestão honesta: um item por trilho, na ordem em que a ESTRUTURA veio do
@@ -919,6 +1167,11 @@ function linhaTrilho(t){
   const el = document.createElement("div");
   el.className = "trilho" + (t===S.sel ? " sel" : "") + (vazio ? " vazia" : "");
 
+  // situação do trilho de relance: ocupado tem peça, livre não tem
+  const dot = document.createElement("span");
+  dot.className = "dot " + (vazio ? "livre" : "ocu");
+  dot.title = vazio ? "LIVRE" : "OCUPADO";
+
   const num = document.createElement("span");
   num.className = "num"; num.textContent = t;
   num.addEventListener("click", ()=>{ S.sel = t; render(); });
@@ -955,7 +1208,7 @@ function linhaTrilho(t){
   mover.querySelector('[data-m="cima"]').addEventListener("click", ()=>{ trocaTrilho(t, t-1); });
   mover.querySelector('[data-m="baixo"]').addEventListener("click", ()=>{ trocaTrilho(t, t+1); });
 
-  el.appendChild(num); el.appendChild(corpo); el.appendChild(mover);
+  el.appendChild(dot); el.appendChild(num); el.appendChild(corpo); el.appendChild(mover);
   return el;
 }
 
@@ -1078,6 +1331,7 @@ function payloadMapa(){
     desc_produto: S.prod.desc || "",
     n_trilhos: S.nTrilhos,
     velocidade: S.vel, n_esquema: S.esq,
+    responsavel: "", motivo: "",
     trilhos: linhasDoMapa()
   };
 }
@@ -1117,22 +1371,70 @@ async function enfileirarEEnviar(payload, okTxt){
   }
 }
 
-async function salvarMapa(){
+/* Salvar mapa é sempre criar versão: a anterior nunca é editada nem apagada.
+   O diálogo pede responsável e motivo — é o que responde "quem mudou e por
+   quê" quando alguém consultar a V02 meses depois. */
+function abrirDialogoVersao(){
   if(!podeSalvarMapa()) return;
-  const p = payloadMapa();
-  $("btnSalvarMapa").disabled = true;
-  const ok = await enfileirarEEnviar(p,
-    `Mapa de ${p.cod_produto} salvo · ${p.n_trilhos} trilhos, ${p.trilhos.length} itens.`);
-  if(ok){
-    // guarda em memória para o próximo lote do mesmo produto já abrir pronto
-    S.mapas.set(normCod(p.cod_produto), {
-      nTrilhos: p.n_trilhos, vel: p.velocidade, esq: p.n_esquema,
-      linhas: p.trilhos.map(l => ({ trilho:l.trilho, op:l.op, item:l.cod_item, qtd:l.qtd }))
-    });
-    linhaStatus();
-  }
-  atualizarBotoes();
+  const m = S.mapas.get(normCod(S.prod.cod));
+  const prox = maxVersao(m) + 1;
+  $("verHint").innerHTML = m
+    ? `Vai criar a <b>${vTag(prox)}</b> do mapa de ${escapa(S.prod.cod)} e ativá-la.
+       A ${vTag(m.ativa)} continua guardada; lotes já iniciados nela não mudam.`
+    : `Primeiro mapa deste produto — vira a <b>V01</b>, a versão ativa.`;
+  $("verResp").value = localStorage.getItem(RESP_KEY) || "";
+  $("verMotivo").value = m ? "" : "Versão inicial";
+  $("dlgVersao").showModal();
 }
+
+/** Grava a versão nova em memória; o número final é o que o servidor deu. */
+function registrarVersaoLocal(p, resp, motivo, versao){
+  const key = normCod(p.cod_produto);
+  if(!S.mapas.has(key)) S.mapas.set(key, { ativa:0, versoes:new Map() });
+  const m = S.mapas.get(key);
+  const v = versao || maxVersao(m) + 1;
+  for(const dado of m.versoes.values()){
+    if(dado.meta && dado.meta.status === "ATIVA") dado.meta.status = "INATIVA";
+  }
+  m.versoes.set(v, {
+    nTrilhos: p.n_trilhos, vel: p.velocidade, esq: p.n_esquema,
+    linhas: p.trilhos.map(l => ({ trilho:l.trilho, op:l.op, item:l.cod_item,
+                                  desc:l.desc_item, qtd:l.qtd })),
+    meta: { status:"ATIVA", data: new Date().toLocaleDateString("pt-BR"), resp, motivo }
+  });
+  m.ativa = v;
+  return v;
+}
+
+async function salvarMapaVersionado(resp, motivo){
+  const p = payloadMapa();
+  p.responsavel = resp; p.motivo = motivo;
+  $("btnSalvarMapa").disabled = true;
+  setMsg("", "Salvando versão…");
+  try{
+    const out = await enviar(p);
+    const versao = registrarVersaoLocal(p, resp, motivo, out.versao || 0);
+    esquecerRegistro();
+    setMsg("ok", `Mapa de ${p.cod_produto} salvo como ${vTag(versao)} — versão ativa a partir de agora.`);
+  }catch(e){
+    // sem rede: fica na fila; o número definitivo é dado pelo servidor no envio
+    const fila = lerFila(); fila.push(p); salvarFila(fila); pintarFila();
+    const versao = registrarVersaoLocal(p, resp, motivo, 0);
+    setMsg("err", `Sem rede — o mapa ficou na fila como ${vTag(versao)} (provisória). Use “Reenviar pendentes”.`);
+  }
+  S.verSel = 0;
+  renderVersao(); linhaStatus(); atualizarBotoes();
+}
+
+$("verCancel").addEventListener("click", ()=> $("dlgVersao").close());
+$("verOk").addEventListener("click", async ()=>{
+  const resp = $("verResp").value.trim(), motivo = $("verMotivo").value.trim();
+  if(!resp){ $("verResp").focus(); return; }
+  if(!motivo){ $("verMotivo").focus(); return; }
+  try{ localStorage.setItem(RESP_KEY, resp); }catch(e){}
+  $("dlgVersao").close();
+  await salvarMapaVersionado(resp, motivo);
+});
 
 async function salvarLote(){
   if(!podeSalvarLote()) return;
@@ -1166,7 +1468,7 @@ function escolherLote(txt){
     sp.appendChild(o);
   });
   if(S.lote && S.lote.itens.length === 1){ sp.value = "0"; sp.dispatchEvent(new Event("change")); }
-  else render();
+  else{ render(); carregarConferencia(); }
 
   // consulta o registro só quando o lote existe, e sem repetir a cada tecla
   clearTimeout(escolherLote._t);
@@ -1184,6 +1486,7 @@ $("selProd").addEventListener("change", ev=>{
   setMsg("", "");
   carregarProduto();
   render();
+  carregarConferencia();
 });
 
 $("inTrilhos").addEventListener("change", ev=>{
@@ -1211,8 +1514,16 @@ $("btnLimpar").addEventListener("click", ()=>{
 $("btnNovaOp").addEventListener("click", ()=>{
   S.inicioOp.add(S.sel); S.operador = new Map(); render();
 });
-$("btnSalvarMapa").addEventListener("click", salvarMapa);
+$("btnSalvarMapa").addEventListener("click", abrirDialogoVersao);
 $("btnSalvarLote").addEventListener("click", salvarLote);
+$("selVersao").addEventListener("change", ev=>{
+  if(!S.prod) return;
+  S.verSel = parseInt(ev.target.value, 10) || 0;
+  aplicarVersao();
+  $("inTrilhos").value = String(S.nTrilhos);
+  $("inVel").value = S.vel; $("inEsq").value = S.esq;
+  render();
+});
 $("btnReenviar").addEventListener("click", async ()=>{
   setMsg("", "Reenviando…");
   try{ const r = await despacharFila(); setMsg("ok", r.enviados + " envio(s) gravado(s)."); }
@@ -1437,11 +1748,16 @@ async function rastrearLote(lote){
   cx.className = "rastro";
   cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">consultando o registro…</span>`;
   try{
-    const linhas = await lerRegistroDoLote(lote);
+    const [linhas, lrows, crows] = await Promise.all([
+      lerRegistroDoLote(lote),
+      lerFiltrado("LOTES", IDX_LOTES.lote, lote),
+      lerFiltrado("CONFERENCIAS", IDX_CONF.lote, lote)
+    ]);
     if(meu !== rastroAtual) return;
     const resumo = resumirRegistro(linhas);
-    if(!resumo.length){
-      cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">ainda não foi gravado.</span>`;
+    const htmlConf = htmlConferenciaLote(lote, lrows, crows);
+    if(!resumo.length && !htmlConf){
+      cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">ainda não foi gravado nem conferido.</span>`;
       return;
     }
     CONF.lote = lote;
@@ -1449,8 +1765,10 @@ async function rastrearLote(lote){
     const dup = resumo.filter(r => r.envios.size > 1);
     if(dup.length) cx.className = "rastro alerta";
 
-    cx.innerHTML = `<div class="rtopo"><b>Lote ${escapa(lote)}</b> · já gravado
-        <button class="gho" id="btnConf">Conferência — quem pôs o quê</button></div>` +
+    cx.innerHTML = `<div class="rtopo"><b>Lote ${escapa(lote)}</b>` +
+        (resumo.length ? ` · já gravado
+        <button class="gho" id="btnConf">Quem pôs o quê (por OP)</button>` : "") + `</div>` +
+      htmlConf +
       resumo.map(r => {
         const ops = opsOrdenadas(r)
           .map(o => `OP ${String(o.op).padStart(2,"0")} ${escapa(o.nome || "—")}` +
@@ -1465,13 +1783,67 @@ async function rastrearLote(lote){
             <span class="rops">${ops}</span>
           </div>`;
       }).join("");
-    $("btnConf").addEventListener("click", abrirConferencia);
+    const bc = $("btnConf");
+    if(bc) bc.addEventListener("click", abrirConferencia);
+    cx.querySelectorAll("[data-hist]").forEach(b =>
+      b.addEventListener("click", ()=> abrirHistorico(lote, b.dataset.hist)));
   }catch(e){
     if(meu !== rastroAtual) return;
     cx.className = "rastro";
     cx.innerHTML = `<b>Lote ${escapa(lote)}</b> <span class="mut">não consegui consultar o registro (${escapa(e.message)}).</span>`;
   }
 }
+
+/* ---------- histórico da conferência peça a peça ----------
+   LT → produto → mapa/versão usada → status → cada peça com operador e hora.
+   A versão mostrada é a amarrada na aba LOTES quando a conferência começou —
+   mapa novo não mexe aqui. */
+const HIST = { lrows: [], crows: [] };
+
+function htmlConferenciaLote(lote, lrows, crows){
+  if(!lrows.length && !crows.length) return "";
+  HIST.lrows = lrows; HIST.crows = crows;
+  return lrows.map(l => {
+    const cod = String(l[IDX_LOTES.cod] || "").trim();
+    const minhas = crows.filter(c => normCod(c[IDX_CONF.cod]) === normCod(cod));
+    const ok = minhas.filter(c => !/^DIV/i.test(String(c[IDX_CONF.res] || ""))).length;
+    const div = minhas.length - ok;
+    const st = String(l[IDX_LOTES.status] || "").trim().toUpperCase();
+    const rot = st === "CONCLUIDA" ? "🟢 CONFERÊNCIA CONCLUÍDA"
+              : st === "COM PENDENCIA" ? "🔴 COM PENDÊNCIA" : "🟡 EM CONFERÊNCIA";
+    return `<div class="rlinha">
+        <span class="rcod">${escapa(cod)}</span>
+        <span class="rdesc">Conferência · Mapa <b>${vTag(parseInt(l[IDX_LOTES.versao],10)||0)}</b> · ${rot}</span>
+        <span class="rnum">${ok} conferida${ok===1?"":"s"}${div ? ` · ${div} divergência${div===1?"":"s"}` : ""}
+          ${l[IDX_LOTES.ini] ? " · iniciada " + escapa(l[IDX_LOTES.ini]) : ""}${l[IDX_LOTES.fim] ? " · concluída " + escapa(l[IDX_LOTES.fim]) : ""}</span>
+        ${minhas.length ? `<button class="gho" data-hist="${escapa(cod)}"
+          style="min-height:36px;padding:6px 12px;font-size:13px;margin-left:auto">Histórico peça a peça</button>` : ""}
+      </div>`;
+  }).join("");
+}
+
+function abrirHistorico(lote, cod){
+  const l = HIST.lrows.find(x => normCod(x[IDX_LOTES.cod]) === normCod(cod)) || [];
+  const rows = HIST.crows.filter(c => normCod(c[IDX_CONF.cod]) === normCod(cod));
+  $("histTit").textContent = `LT ${lote} · ${cod} · Mapa ${vTag(parseInt(l[IDX_LOTES.versao],10)||0)}`;
+  $("histCorpo").innerHTML = (rows.length
+    ? `<div class="cpeca" style="color:var(--mut)"><span class="cq">TR</span>
+         <span class="cd">Peça</span><span class="cc">qtd · operador · quando</span></div>` +
+      rows.map(c => {
+        const div = /^DIV/i.test(String(c[IDX_CONF.res] || ""));
+        return `<div class="cpeca">
+          <span class="cq">${escapa(String(c[IDX_CONF.trilho]))}</span>
+          <span class="cd">${escapa(c[IDX_CONF.dpeca] || c[IDX_CONF.peca])}` +
+          (div ? ` <b style="color:var(--red)">⚠ divergência</b>` : "") +
+          (c[IDX_CONF.obs] ? `<br><small style="color:var(--mut)">${escapa(c[IDX_CONF.obs])}</small>` : "") +
+          `</span>
+          <span class="cc">${fmtQtd(numDec(c[IDX_CONF.qtd]))} un · ${escapa(c[IDX_CONF.nome] || "—")} · ${escapa(c[IDX_CONF.ts] || "")}</span>
+        </div>`;
+      }).join("")
+    : '<p class="hint">Nenhuma peça conferida ainda.</p>');
+  $("dlgHist").showModal();
+}
+$("histFechar").addEventListener("click", ()=> $("dlgHist").close());
 
 /* ==================================================================
    CONFERÊNCIA — quem pôs o quê na caixa
@@ -1561,6 +1933,301 @@ $("confImprimir").addEventListener("click", ()=>{
   if(montarFolhaConferencia()) window.print();
 });
 $("confFechar").addEventListener("click", ()=> $("dlgConf").close());
+
+/* ==================================================================
+   CONFERÊNCIA DO LOTE — peça a peça
+   O operador seleciona o lote, o app identifica o produto e carrega o mapa
+   da versão amarrada ao lote (ou a ativa, se a conferência ainda não
+   começou). Cada peça confirmada vira uma linha em CONFERENCIAS com
+   operador, data e hora. A amarração lote→versão é feita no servidor no
+   momento em que a conferência começa e nunca é trocada — a V03 que sair
+   amanhã não reescreve o que o LT de hoje conferiu na V02.
+   ================================================================== */
+const IDX_LOTES = { lote:0, cor:1, cod:2, desc:3, versao:4, ini:5, fim:6, status:7 };
+const IDX_CONF  = { ts:0, envio:1, lote:2, cod:3, versao:4, trilho:5, peca:6,
+                    dpeca:7, qtd:8, mat:9, nome:10, res:11, obs:12 };
+
+const C = {
+  lote:"", prod:null, versao:0, mapa:null,
+  linhas:[],          // [{trilho,cod,desc,qtd,estado:'pend'|'ok'|'div',nome,quando,obs}]
+  iniciado:false, statusSrv:"", carregando:false, idx:-1
+};
+
+const letraCol = i => String.fromCharCode(65 + i);
+
+/* Mesma tática do REGISTRO: filtra no servidor pelo tq do gviz e só baixa a
+   aba inteira se o filtro não devolver nada — resultado vazio do gviz pode
+   ser recusa silenciosa, não ausência. Aba que ainda não existe cai no []. */
+async function lerFiltrado(nomeAba, colIdx, valor){
+  const num = String(valor).trim();
+  const daqui = linhas => linhas.filter(l => String(l[colIdx] || "").trim() === num);
+  const L = letraCol(colIdx);
+  for(const tq of [`select * where ${L} = '${num}'`, `select * where ${L} = ${num}`]){
+    try{
+      const achadas = daqui(await lerCSV(urlConsulta(nomeAba, tq)));
+      if(achadas.length) return achadas;
+    }catch(e){ /* tenta a próxima forma */ }
+  }
+  try{ return daqui(await lerCSV(urlAba(nomeAba))); }
+  catch(e){ return []; }
+}
+
+/* Digitar rápido dispara consultas fora de ordem — mesma guarda do rastro. */
+let confSeq = 0;
+
+async function carregarConferencia(){
+  const tela = $("telaConf");
+  if(!S.lote || !S.prod){ tela.hidden = true; C.lote = ""; return; }
+  const meu = ++confSeq;
+  C.lote = S.lote.lote; C.prod = S.prod;
+  C.linhas = []; C.mapa = null; C.iniciado = false; C.versao = 0;
+  C.statusSrv = ""; C.carregando = true;
+  tela.hidden = false;
+  $("listaConf").innerHTML = '<div class="vazio-tela">Consultando o lote…</div>';
+  renderConfBar();
+
+  const [lrows, crows] = await Promise.all([
+    lerFiltrado("LOTES", IDX_LOTES.lote, C.lote),
+    lerFiltrado("CONFERENCIAS", IDX_CONF.lote, C.lote)
+  ]);
+  if(meu !== confSeq) return;
+
+  const cod = normCod(C.prod.cod);
+  const meuLote = lrows.find(l => normCod(l[IDX_LOTES.cod]) === cod);
+  if(meuLote){
+    C.iniciado = true;
+    C.versao = parseInt(meuLote[IDX_LOTES.versao], 10) || 0;
+    C.statusSrv = String(meuLote[IDX_LOTES.status] || "").trim().toUpperCase();
+  }
+
+  let mapa = mapaDe(cod, C.versao);
+  if(!mapa && C.versao) mapa = mapaDe(cod, 0);   // versão amarrada sem linhas? mostra a ativa
+  C.mapa = mapa;
+  if(mapa && !C.versao) C.versao = mapa.versao;
+
+  if(mapa){
+    C.linhas = mapa.linhas.map(l => ({
+      trilho: l.trilho, cod: l.item,
+      desc: l.desc || (itemPorCod(l.item) || {}).desc || l.item,
+      qtd: l.qtd, estado: "pend", nome: "", quando: "", obs: ""
+    }));
+    // aplica o que já foi conferido, na ordem em que foi gravado
+    crows
+      .filter(r => normCod(r[IDX_CONF.cod]) === cod)
+      .forEach(r => {
+        const t = parseInt(r[IDX_CONF.trilho], 10);
+        const p = normCod(r[IDX_CONF.peca]);
+        const li = C.linhas.find(x => x.estado === "pend" && x.trilho === t && normCod(x.cod) === p);
+        if(!li) return;
+        li.estado = /^DIV/i.test(String(r[IDX_CONF.res] || "")) ? "div" : "ok";
+        li.nome = String(r[IDX_CONF.nome] || "").trim();
+        li.quando = String(r[IDX_CONF.ts] || "").trim();
+        li.obs = String(r[IDX_CONF.obs] || "").trim();
+      });
+  }
+  C.carregando = false;
+  renderConf();
+}
+
+/* O status do lote sai das peças, não de um botão: tudo OK = concluída,
+   alguma divergência = com pendência, o resto = em conferência. */
+function statusLoteCalc(){
+  const pend = C.linhas.filter(l => l.estado === "pend").length;
+  if(C.linhas.some(l => l.estado === "div")) return "COM PENDENCIA";
+  if(C.linhas.length && !pend) return "CONCLUIDA";
+  return "EM CONFERENCIA";
+}
+
+function renderConfBar(){
+  const total = C.linhas.length;
+  const feitas = C.linhas.filter(l => l.estado !== "pend").length;
+  const pct = total ? Math.round(100 * feitas / total) : 0;
+  const st = total ? statusLoteCalc() : (C.statusSrv || "EM CONFERENCIA");
+  const b = $("lbadge");
+  if(st === "CONCLUIDA"){ b.className = "badge ok"; b.textContent = "🟢 CONFERÊNCIA CONCLUÍDA"; }
+  else if(st === "COM PENDENCIA"){ b.className = "badge pend"; b.textContent = "🔴 COM PENDÊNCIA"; }
+  else{ b.className = "badge and"; b.textContent = "🟡 EM CONFERÊNCIA"; }
+  $("confProg").style.width = pct + "%";
+  const pend = total - feitas;
+  $("confPct").textContent = total
+    ? `${pct}% conferido` + (pend ? ` · ${pend} ${pend === 1 ? "peça pendente" : "peças pendentes"}` : "")
+    : "—";
+  $("confMeta").textContent = C.prod
+    ? `LT ${C.lote} · ${curto(C.prod.desc || C.prod.cod)} · Mapa ${vTag(C.versao)}` +
+      (C.iniciado ? "" : " · ainda não iniciada")
+    : "";
+  $("btnIniciarConf").hidden = C.iniciado || !C.linhas.length;
+}
+
+function renderConf(){
+  if($("telaConf").hidden) return;
+  renderConfBar();
+  if(C.carregando) return;
+  const box = $("listaConf");
+  if(!C.mapa){
+    box.innerHTML = `<div class="vazio-tela">O produto <b>${escapa(C.prod ? C.prod.cod : "")}</b>
+      ainda não tem mapa salvo. A conferência usa o mapa definido pelo PPCP —
+      peça para o PPCP montar e salvar o mapa deste produto primeiro.</div>`;
+    return;
+  }
+  box.innerHTML = "";
+  const porTrilho = new Map();
+  C.linhas.forEach((l, i)=>{
+    if(!porTrilho.has(l.trilho)) porTrilho.set(l.trilho, []);
+    porTrilho.get(l.trilho).push(i);
+  });
+  const nT = Math.max(C.mapa.nTrilhos, ...C.linhas.map(l => l.trilho));
+  for(let t = 1; t <= nT; t++){
+    const idxs = porTrilho.get(t) || [];
+    let dot = "livre";
+    if(idxs.length){
+      const est = idxs.map(i => C.linhas[i].estado);
+      dot = est.every(e => e !== "pend") ? (est.includes("div") ? "div" : "ocu") : "res";
+    }
+    const el = document.createElement("div");
+    el.className = "ctrilho";
+    el.innerHTML = `<span class="cnum"><span class="dot ${dot}"></span>${String(t).padStart(2, "0")}</span>
+      <div class="cpecas">${idxs.length ? "" : '<span class="lv">LIVRE</span>'}</div>`;
+    const cp = el.querySelector(".cpecas");
+    idxs.forEach(i => {
+      const l = C.linhas[i];
+      const p = document.createElement("div");
+      p.className = "cpline";
+      const st = l.estado === "ok"
+        ? `<span class="pst ok">✓ Conferido · ${escapa(l.nome || "—")}${l.quando ? " · " + escapa(l.quando) : ""}</span>`
+        : l.estado === "div"
+        ? `<span class="pst div">⚠ Divergência · ${escapa(l.nome || "—")}${l.quando ? " · " + escapa(l.quando) : ""}${l.obs ? " · " + escapa(l.obs) : ""}</span>`
+        : `<span class="pst">Pendente</span>`;
+      p.innerHTML = `<span class="pq">${fmtQtd(l.qtd)}×</span>
+        <span class="pd">${escapa(l.desc)}<small>${escapa(l.cod)}</small></span>${st}` +
+        (l.estado === "pend" ? `<button class="pri" data-c="ok">✓ Conferir</button>` : "");
+      const btn = p.querySelector('[data-c="ok"]');
+      if(btn) btn.addEventListener("click", ()=> abrirPeca(i));
+      cp.appendChild(p);
+    });
+    box.appendChild(el);
+  }
+}
+
+/* ---------- conferir uma peça ---------- */
+function abrirPeca(i){
+  if(!$("selConferente").value){
+    setMsg("err", "Escolha o conferente antes de conferir peça.");
+    $("selConferente").focus();
+    return;
+  }
+  C.idx = i;
+  const l = C.linhas[i];
+  $("pecaInfo").innerHTML = `<b>TRILHO ${String(l.trilho).padStart(2, "0")}</b> — ${escapa(l.desc)}
+    <br><span class="mono">${escapa(l.cod)} · ${fmtQtd(l.qtd)} un · Mapa ${vTag(C.versao)}</span>`;
+  $("pecaCod").value = "";
+  validarPeca();
+  $("dlgPeca").showModal();
+}
+
+/* A trava contra conferência errada: se o código informado não é o previsto
+   para o trilho, o OK do operador some — sobra registrar a divergência ou o
+   PPCP confirmar por cima, e as duas ações ficam gravadas. */
+function validarPeca(){
+  const l = C.linhas[C.idx]; if(!l) return;
+  const dig = normCod($("pecaCod").value);
+  const bate = !dig || dig === normCod(l.cod);
+  const al = $("pecaAlerta");
+  if(bate){ al.hidden = true; }
+  else{
+    const outro = (S.itens.find(x => normCod(x.peca) === dig) || {}).desc || $("pecaCod").value.trim();
+    al.hidden = false;
+    al.innerHTML = `<b>⚠ ATENÇÃO — peça não prevista neste trilho.</b><br>
+      Esperado: <b>${escapa(l.desc)}</b> (${escapa(l.cod)})<br>
+      Identificado: <b>${escapa(outro)}</b><br>` +
+      (PERFIL === "ppcp"
+        ? "Confirmar mesmo assim é ação do PPCP e fica registrada como observação."
+        : "O operador não confirma peça divergente — registre a divergência e chame o PPCP.");
+  }
+  const okBtn = $("pecaOk");
+  okBtn.disabled = !bate && PERFIL !== "ppcp";
+  okBtn.textContent = bate ? "✓ Confirmar" : "Confirmar mesmo assim (PPCP)";
+}
+$("pecaCod").addEventListener("input", validarPeca);
+$("pecaCancel").addEventListener("click", ()=> $("dlgPeca").close());
+$("pecaOk").addEventListener("click", ()=> fecharPeca("OK"));
+$("pecaDiv").addEventListener("click", ()=> fecharPeca("DIVERGENTE"));
+
+async function fecharPeca(resultado){
+  const l = C.linhas[C.idx]; if(!l) return;
+  const digitado = $("pecaCod").value.trim();
+  const dig = normCod(digitado);
+  let obs = "";
+  if(resultado === "DIVERGENTE"){
+    const outro = dig ? ((S.itens.find(x => normCod(x.peca) === dig) || {}).desc || digitado) : "";
+    obs = outro ? "identificado: " + outro : "peça divergente apontada na conferência";
+  }else if(dig && dig !== normCod(l.cod)){
+    obs = "confirmado pelo PPCP com peça divergente (" + digitado + ")";
+  }
+  $("dlgPeca").close();
+  await registrarConferencia(l, resultado, obs);
+}
+
+async function registrarConferencia(l, resultado, obs){
+  const mat = $("selConferente").value;
+  const nome = (S.colab.find(c => c.mat === mat) || {}).nome || "";
+  const agora = new Date();
+  l.estado = resultado === "DIVERGENTE" ? "div" : "ok";
+  l.nome = nome; l.obs = obs;
+  l.quando = agora.toLocaleDateString("pt-BR") + " " + agora.toTimeString().slice(0, 5);
+  renderConf();
+
+  // primeira peça do lote: amarra a versão antes de registrar a conferência
+  if(!C.iniciado) await iniciarConferencia(false);
+
+  const payload = {
+    acao: "conferir", id_envio: novoId(), ts_local: agora.toISOString(),
+    lote: C.lote, cor: (S.lote && S.lote.cor) || "",
+    cod_produto: C.prod.cod, desc_produto: C.prod.desc || "",
+    versao: C.versao, status_lote: statusLoteCalc(),
+    itens: [{ trilho: l.trilho, cod_peca: l.cod, desc_peca: l.desc, qtd: l.qtd,
+              matricula: mat, nome, resultado, obs }]
+  };
+  const fila = lerFila(); fila.push(payload); salvarFila(fila); pintarFila();
+  try{
+    await despacharFila();
+    setMsg("ok", `Trilho ${l.trilho} · ${curto(l.desc)} — ` +
+      (resultado === "OK" ? "conferido." : "divergência registrada."));
+  }catch(e){
+    setMsg("err", "Registrado no aparelho — sem rede, fica na fila até “Reenviar pendentes”.");
+  }
+  renderConfBar();
+}
+
+/* Amarra o lote à versão no servidor. Se outro tablet começou antes com outra
+   versão, vale a amarração dele — o servidor manda a que ficou. */
+async function iniciarConferencia(avisar){
+  const p = { acao: "iniciar_lote", id_envio: novoId(),
+    lote: C.lote, cor: (S.lote && S.lote.cor) || "",
+    cod_produto: C.prod.cod, desc_produto: C.prod.desc || "", versao: C.versao };
+  C.iniciado = true;
+  try{
+    const out = await enviar(p);
+    if(out.versao && out.ja_iniciado && out.versao !== C.versao){
+      C.versao = out.versao;
+      const mapa = mapaDe(normCod(C.prod.cod), C.versao);
+      if(mapa) C.mapa = mapa;
+      setMsg("", `Este lote já tinha conferência iniciada no mapa ${vTag(C.versao)} — seguindo nele.`);
+    }else if(avisar){
+      setMsg("ok", `Conferência do lote ${C.lote} iniciada no mapa ${vTag(C.versao)}.`);
+    }
+  }catch(e){
+    // sem rede: a amarração vai na fila com a versão local, o servidor respeita
+    const fila = lerFila(); fila.push(p); salvarFila(fila); pintarFila();
+    if(avisar) setMsg("err", "Sem rede — a conferência começou aqui e será enviada pela fila.");
+  }
+  renderConfBar();
+}
+$("btnIniciarConf").addEventListener("click", ()=> iniciarConferencia(true).then(renderConf));
+
+$("selConferente").addEventListener("change", ev=>{
+  try{ localStorage.setItem(CONFERENTE_KEY, ev.target.value); }catch(e){}
+});
 
 /* ==================================================================
    IMPORTAR O MAPA DE UM EXCEL
@@ -1936,12 +2603,14 @@ async function aplicarImportacao(){
     const linhas = trilhosDoProduto(prod);
     if(!linhas.length){ semItem.push(prod.cod); continue; }
     const nTr = Math.max(prod.nTrilhos || 0, ...linhas.map(l => l.trilho));
+    const resp = localStorage.getItem(RESP_KEY) || "";
     const payload = { acao:"salvar_mapa", id_envio:novoId(), ts_local:new Date().toISOString(),
       cod_produto: prod.cod, desc_produto: descDoProduto(prod),
-      n_trilhos: nTr, velocidade: prod.vel || "", n_esquema: prod.esq || "", trilhos: linhas };
+      n_trilhos: nTr, velocidade: prod.vel || "", n_esquema: prod.esq || "",
+      responsavel: resp, motivo: "Importado do Excel", trilhos: linhas };
     const fila = lerFila(); fila.push(payload); salvarFila(fila);
-    S.mapas.set(normCod(prod.cod), { nTrilhos: nTr, vel: prod.vel || "", esq: prod.esq || "",
-      linhas: linhas.map(l => ({ trilho:l.trilho, op:l.op, item:l.cod_item, qtd:l.qtd })) });
+    // cada importação vira uma versão nova; o número definitivo é do servidor
+    registrarVersaoLocal(payload, resp, "Importado do Excel", 0);
     enviados++;
   }
   pintarFila();
@@ -2066,7 +2735,26 @@ $("btnInstalar").addEventListener("click", async ()=>{
 });
 window.addEventListener("appinstalled", ()=>{ $("btnInstalar").hidden = true; convite = null; });
 
+/* ==================================================================
+   PERFIS — PPCP × OPERADOR
+   O PPCP monta o mapa, cria versão e ativa; o operador seleciona o lote,
+   vê o mapa e confere. No perfil Operador os controles de edição somem da
+   tela (classe .so-ppcp) — errar por toque deixa de ser possível. A troca
+   é organizacional, não é senha.
+   ================================================================== */
+let PERFIL = localStorage.getItem(PERFIL_KEY) === "oper" ? "oper" : "ppcp";
+function aplicarPerfil(p){
+  PERFIL = p;
+  try{ localStorage.setItem(PERFIL_KEY, p); }catch(e){}
+  document.body.dataset.perfil = p;
+  document.querySelectorAll("#perfilSwitch button").forEach(b =>
+    b.classList.toggle("on", b.dataset.p === p));
+}
+document.querySelectorAll("#perfilSwitch button").forEach(b =>
+  b.addEventListener("click", ()=>{ aplicarPerfil(b.dataset.p); render(); renderConf(); }));
+
 /* ---------- início ---------- */
+aplicarPerfil(PERFIL);
 pintarFila();
 carregarTudo().then(render);
 window.addEventListener("online", ()=>{ if(lerFila().length) despacharFila().then(pintarFila).catch(()=>{}); });

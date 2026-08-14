@@ -1,11 +1,24 @@
 # Mapa dos Trilhos — PPCP Patrimar
 
 Monta no tablet o **mapa dos trilhos da embalagem** de um produto — qual item entra
-em qual trilho da esteira, em que ordem, e qual OP cobre cada faixa de trilhos —
-salva esse mapa como padrão do produto e grava quem estava em cada OP naquele lote.
+em qual trilho da esteira, em que ordem, e qual OP cobre cada faixa de trilhos —,
+guarda esse mapa como **padrão do produto com controle de versão**, e faz a
+**conferência peça a peça** na hora de embalar, com histórico por lote.
 
-O que o app **não** faz: não confere. Sem leitura de código de barras, o registro é
-declaração — serve para apurar depois, não para impedir que a caixa saia errada.
+A lógica é: **PRODUTO → MAPA → VERSÃO → LOTE → CONFERÊNCIA.**
+
+- O mapa pertence ao **produto**, não ao lote.
+- Toda alteração de disposição vira uma **versão nova** (V01, V02, …); a antiga
+  fica guardada e só **uma versão fica ativa** por produto.
+- Quando a conferência de um lote começa, o lote é **amarrado à versão vigente**
+  naquele momento — e essa amarração nunca muda. Se amanhã o produto passar
+  para a V03, o LT que começou na V02 continua mostrando V02, para sempre.
+- Cada peça confirmada registra trilho, peça, quantidade, operador, data e hora.
+
+O app **não** é programador de produção e não substitui o ERP: a programação
+continua no ERP/PPCP. Sem leitura de código de barras, a conferência é o toque
+do operador — o campo de código no diálogo de conferir é a trava opcional
+contra peça trocada, não um coletor.
 
 ## O desenho
 
@@ -45,7 +58,8 @@ aceita os dois casos.
 ## Implantação
 
 **1. Apps Script** — na planilha, `Extensões > Apps Script`, cole `Codigo.gs`.
-Execute `garantirAbas()` uma vez (autoriza e cria as três abas).
+Execute `garantirAbas()` uma vez (autoriza e cria as abas — rodar de novo após
+atualizar o script é seguro e completa o que faltar).
 Depois `Implantar > Nova implantação > Aplicativo da Web`, executar como **Eu**,
 acesso para **Qualquer pessoa**. Copie a URL que termina em `/exec`.
 
@@ -77,19 +91,83 @@ Criadas pelo Apps Script:
 
 | Aba | Colunas |
 |---|---|
-| `MAPA_TRILHOS` | COD_PRODUTO · DESC_PRODUTO · N_TRILHOS · TRILHO · OP · SEQ · COD_ITEM · DESC_ITEM · QTD · TIPO · VELOCIDADE · N_ESQUEMA · ATUALIZADO_EM |
+| `MAPAS` | COD_PRODUTO · DESC_PRODUTO · VERSAO · STATUS · DATA · RESPONSAVEL · MOTIVO · N_TRILHOS · VELOCIDADE · N_ESQUEMA · ID_ENVIO |
+| `MAPA_TRILHOS` | COD_PRODUTO · DESC_PRODUTO · N_TRILHOS · TRILHO · OP · SEQ · COD_ITEM · DESC_ITEM · QTD · TIPO · VELOCIDADE · N_ESQUEMA · ATUALIZADO_EM · VERSAO |
+| `LOTES` | LOTE · COR · COD_PRODUTO · DESC_PRODUTO · VERSAO · DATA_INICIO · DATA_CONCLUSAO · STATUS |
+| `CONFERENCIAS` | TS · ID_ENVIO · LOTE · COD_PRODUTO · VERSAO · TRILHO · COD_PECA · DESC_PECA · QTD · MATRICULA · NOME · RESULTADO · OBS |
 | `REGISTRO` | TS · ID_ENVIO · LOTE · COR · DATA_EMB · COD_PRODUTO · DESC_PRODUTO · VOLUMES · N_POSTOS · POSTO · MATRICULA · NOME · COD_PECA · DESC_PECA · QTD · TIPO |
 | `COLABORADORES` | MATRICULA · NOME · ATIVO · CADASTRADO_EM |
 
 Em `REGISTRO`, `POSTO` guarda o número da OP e `COD_PECA` o código do item — nomes
 herdados de quando o app pensava em postos, mantidos para não quebrar quem já lê a aba.
 
-`MAPA_TRILHOS` é sobrescrito por produto: o mapa é o desenho vigente da esteira, não
-histórico. `REGISTRO` é append-only e guarda o snapshot completo, não a referência —
-o mapa vai mudar com o tempo e o histórico não pode mudar junto.
+`MAPAS` é o cabeçalho de cada versão (quem criou, quando, por quê, e qual está
+ATIVA); `MAPA_TRILHOS` guarda as linhas item→trilho de **todas** as versões —
+salvar um mapa **acrescenta** as linhas da versão nova, nunca apaga as antigas.
+`LOTES` tem uma linha por lote × produto com a versão amarrada na largada da
+conferência. `CONFERENCIAS` e `REGISTRO` são append-only: o que aconteceu não
+é editado depois.
+
+**Planilha que já rodava a versão anterior:** rode `garantirAbas()` de novo
+depois de colar o `Codigo.gs` atualizado. Ele cria as abas novas e acrescenta a
+coluna `VERSAO` em `MAPA_TRILHOS`; as linhas antigas ficam com a célula vazia e
+valem como **V01** — nada precisa ser migrado na mão.
 
 A aba `ALOCACAO_PADRAO` deixou de ser usada quando o mapa passou a viver em
 `MAPA_TRILHOS`. Se ela já existir na sua planilha, pode apagar.
+
+## Versões do mapa
+
+Salvar mapa é sempre **criar versão** — a anterior nunca é editada nem apagada.
+O diálogo de salvar pede responsável e motivo, que ficam no cabeçalho da versão
+(aba `MAPAS`) e aparecem na barra roxa da tela de cadastro: versão, status,
+data, quem criou e por quê.
+
+O seletor *Versão do mapa* abre qualquer versão antiga para consulta (a barra
+fica laranja avisando). Salvar em cima de uma versão antiga não a altera:
+cria a próxima versão e a ativa. A numeração definitiva é do servidor — dois
+tablets salvando ao mesmo tempo não geram duas V03.
+
+## Perfis — PPCP × Operador
+
+O seletor no topo alterna os dois modos e fica gravado no aparelho:
+
+- **PPCP** — monta o mapa, cria versão, ativa, importa Excel, grava lote e
+  consulta histórico.
+- **Operador** — seleciona o lote, vê o mapa e confere. Os controles de edição
+  somem da tela: errar por toque deixa de ser possível.
+
+A troca é organizacional, não é senha — o tablet da linha fica em *Operador* e
+pronto. Quem precisar de trava de verdade resolve com dois aparelhos.
+
+## Conferência do lote — peça a peça
+
+O operador digita o lote; o app identifica o produto e carrega o mapa **da
+versão amarrada ao lote** (ou a ativa, se a conferência ainda não começou).
+A lista mostra todos os trilhos com três situações, as mesmas do mapa visual:
+
+- 🟢 **OCUPADO** — peça conferida
+- 🟡 **RESERVADO** — peça aguardando conferência
+- ⚪ **LIVRE** — trilho sem peça nesta versão
+
+Cada peça tem um botão **✓ Conferir**. O diálogo mostra o que é esperado
+naquele trilho e um campo opcional de código: se o código informado não é o
+previsto, aparece o alerta **⚠ peça não prevista neste trilho** com o esperado
+e o identificado, e o OK do operador trava — sobra **registrar divergência**
+(vira `DIVERGENTE` em `CONFERENCIAS` e o lote fica 🔴 COM PENDÊNCIA) ou o PPCP
+confirmar por cima, o que fica gravado na observação. Cada confirmação registra
+lote, produto, versão, trilho, peça, quantidade, operador, data e hora.
+
+O status do lote sai das peças, não de um botão: tudo OK = 🟢 **CONFERÊNCIA
+CONCLUÍDA**, alguma divergência = 🔴 **COM PENDÊNCIA**, o resto = 🟡 **EM
+CONFERÊNCIA** — com a barra de progresso do tipo *94% conferido · 1 peça
+pendente*. Sem rede, a conferência continua: cada registro entra na fila local
+e sai por *Reenviar pendentes*, como qualquer outro envio.
+
+Para consultar depois: digite o lote e o rastro mostra a linha de conferência
+(mapa/versão usada, status, início e conclusão) com o botão **Histórico peça a
+peça** — quem conferiu o quê, em qual trilho, a que horas. Meses depois, a
+resposta continua sendo a da versão da época.
 
 ## Decisões que precisam ser validadas na linha
 
@@ -204,7 +282,7 @@ quando o lote está escolhido no app, e em branco para preencher à mão quando 
 
 ## Versões e atualização
 
-A versão fica no rodapé do status (`v1.1.0`) e no ⚙. Quando alguém pergunta por
+A versão fica no rodapé do status (`v2.0.0`) e no ⚙. Quando alguém pergunta por
 telefone qual versão está no tablet, é esse número.
 
 O `sw.js` guarda o app no próprio aparelho, então ele abre e funciona sem rede —
