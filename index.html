@@ -638,7 +638,7 @@
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder vê e o que ele lê no telefone quando a gente pergunta “qual versão
    está aí?”. */
-const VERSAO = "2.7.1";
+const VERSAO = "2.7.2";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -3088,15 +3088,59 @@ async function importarExcel(arquivo){
         vistos.add(chave);
         const m = resolverItem(it, lista, listaBase);
         if(m.certeza !== "nenhuma") continue;
-        /* Código escrito que a ESTRUTURA não tem: não há candidato parecido a
-           oferecer, então oferece a estrutura inteira em vez de um beco sem saída. */
-        const cand = m.candidatos.length ? m.candidatos
-          : lista.map(p => ({ peca: p.peca, desc: p.desc, qtd: p.qtd, nota: 0 }));
-        IMP.pendencias.push({ chave, aba, txt: rotuloItem(it), trilho: t.trilho, candidatos: cand });
+        /* Duas coisas bem diferentes caíam aqui como "ambíguo". Item sem
+           código é ambíguo mesmo: o texto não bastou. Já código escrito que a
+           ESTRUTURA não tem não é dúvida nenhuma do app — é a estrutura do
+           produto que não tem aquela peça, e é isso que o líder precisa ler.
+           Onde o código aparece em OUTRO produto, dizer qual poupa a caçada. */
+        const outros = it.cod
+          ? [...S.estrutura.entries()]
+              .filter(([c, itens]) => c !== normCod(primeiro.cod) && itens.some(x => x.peca === it.cod))
+              .map(([c]) => c).slice(0, 4)
+          : [];
+        IMP.pendencias.push({ chave, aba, trilho: t.trilho, txt: rotuloItem(it),
+          motivo: it.cod ? "codigo" : "texto", cod: it.cod, outros,
+          prod: normCod(primeiro.cod), candidatos: m.candidatos });
       }
     }
   }
   mostrarImportacao();
+}
+
+/* A lista para escolher: primeiro o que se parece com o que estava escrito,
+   depois o resto da estrutura do produto. Sem o resto, código que a ESTRUTURA
+   não tem virava beco sem saída — nenhum candidato e nada a escolher. */
+function opcoesPendencia(p){
+  const lista = S.estrutura.get(p.prod) || [];
+  const opt = c => `<option value="${escapa(c.peca)}">${escapa(codErp(c.peca))} · ${escapa(c.desc)}</option>`;
+  const jaVeio = new Set(p.candidatos.map(c => c.peca));
+  const resto = lista.filter(x => !jaVeio.has(x.peca));
+  return '<option value="">— não colocar no mapa —</option>' +
+    (p.candidatos.length ? `<optgroup label="mais parecidos">${p.candidatos.map(opt).join("")}</optgroup>` : "") +
+    (resto.length ? `<optgroup label="resto da estrutura de ${escapa(p.prod)}">${resto.map(opt).join("")}</optgroup>` : "");
+}
+
+function blocoPendencias(lista, motivo){
+  const n = lista.length, prod = lista[0].prod;
+  const nEstr = (S.estrutura.get(prod) || []).length;
+  let html = motivo === "codigo"
+    ? `<p class="hint" style="color:var(--amber)"><b>${n} ${n === 1 ? "código escrito no arquivo não está" : "códigos escritos no arquivo não estão"}
+       na ESTRUTURA de ${escapa(prod)}</b>, que tem ${nEstr} ${nEstr === 1 ? "item" : "itens"}.
+       Não é dúvida do app: a peça não consta na estrutura desse produto. Ou a estrutura está
+       desatualizada no ERP, ou o código veio de outro produto, ou a linha da peça está lá com a
+       coluna QTD vazia — linha sem quantidade o app não tem como usar e não entra na estrutura.
+       Escolha a peça equivalente aqui, ou deixe de fora e acerte a estrutura depois.</p>`
+    : `<p class="hint">${n} ${n === 1 ? "item veio sem código e o texto não bastou" : "itens vieram sem código e o texto não bastou"}
+       para ter certeza. Escolha ${n === 1 ? "qual é" : "quais são"} — o resto já entrou sozinho.</p>`;
+  lista.forEach(p => {
+    const i = IMP.pendencias.indexOf(p);
+    const onde = p.outros && p.outros.length
+      ? `<small style="color:var(--mut2)">esse código está na ESTRUTURA de ${escapa(p.outros.join(", "))}</small>`
+      : (motivo === "codigo" ? `<small style="color:var(--mut2)">esse código não está na ESTRUTURA de nenhum produto</small>` : "");
+    html += `<div class="fld"><label>trilho ${p.trilho} · ${escapa(p.txt)}</label>
+      ${onde}<select data-imp="${i}">${opcoesPendencia(p)}</select></div>`;
+  });
+  return html;
 }
 
 function mostrarImportacao(){
@@ -3112,16 +3156,10 @@ function mostrarImportacao(){
   if(!IMP.pendencias.length){
     html += `<p class="hint" style="color:var(--green)">Todos os itens foram reconhecidos.</p>`;
   }else{
-    html += `<p class="hint">${IMP.pendencias.length} ${IMP.pendencias.length === 1
-      ? "item ficou ambíguo. Escolha qual é" : "itens ficaram ambíguos. Escolha quais são"} —
-      o resto já entrou sozinho.</p>`;
-    IMP.pendencias.forEach((p, i) => {
-      const opts = ['<option value="">— não colocar no mapa —</option>'].concat(
-        p.candidatos.map(c => `<option value="${escapa(c.peca)}">${escapa(codErp(c.peca))} · ${escapa(c.desc)}</option>`)
-      ).join("");
-      html += `<div class="fld"><label>trilho ${p.trilho} · ${escapa(p.txt)}</label>
-        <select data-imp="${i}">${opts}</select></div>`;
-    });
+    const semEstr = IMP.pendencias.filter(p => p.motivo === "codigo");
+    const ambiguos = IMP.pendencias.filter(p => p.motivo !== "codigo");
+    if(semEstr.length) html += blocoPendencias(semEstr, "codigo");
+    if(ambiguos.length) html += blocoPendencias(ambiguos, "texto");
   }
   corpo.innerHTML = html;
   corpo.querySelectorAll("[data-imp]").forEach(sel=>{
