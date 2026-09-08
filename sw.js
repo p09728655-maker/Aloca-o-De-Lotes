@@ -9,7 +9,7 @@
  * Ao publicar uma versão nova, mude VERSAO aqui e em index.html. É a troca
  * de bytes deste arquivo que faz o navegador procurar atualização.
  */
-const VERSAO = "2.7.2";
+const VERSAO = "3.0.0";
 const CACHE = "trilhos-" + VERSAO;
 
 const CASCA = [
@@ -23,10 +23,11 @@ const CASCA = [
   "./logo-patrimar.png"
 ];
 
-/* Dados vivos nunca entram em cache: a programação e a ESTRUTURA mudam
-   durante o turno, e servir uma cópia velha faria o líder montar o mapa do
-   produto errado. Sem rede, a leitura falha e o app já sabe avisar. */
-const AO_VIVO = ["docs.google.com", "script.google.com", "script.googleusercontent.com"];
+/* O mapa salvo nunca entra em cache: dois tablets editam o mesmo produto e
+   servir uma cópia velha faria um sobrescrever o trabalho do outro. Sem
+   rede, a leitura falha e o app já sabe avisar — e o rascunho local
+   segura o que está na tela. */
+const AO_VIVO = ["script.google.com", "script.googleusercontent.com"];
 
 self.addEventListener("install", ev => {
   // sem skipWaiting: quem decide a hora de trocar é o líder, pelo botão.

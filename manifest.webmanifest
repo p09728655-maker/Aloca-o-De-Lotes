@@ -1,7 +1,7 @@
 {
   "name": "Mapa dos Trilhos — PPCP Patrimar",
   "short_name": "Trilhos",
-  "description": "Monta o mapa dos trilhos da embalagem e grava quem estava em cada OP.",
+  "description": "Monta o mapa dos trilhos da embalagem: qual item entra em qual trilho, e onde começa cada OP.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
