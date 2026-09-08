@@ -32,6 +32,13 @@ var CAB_MAPA = ['COD_PRODUTO', 'DESC_PRODUTO', 'N_TRILHOS', 'VELOCIDADE', 'N_ESQ
                 'TRILHO', 'OP', 'SEQ', 'COD_ITEM', 'DESC_ITEM', 'QTD', 'INSUMO',
                 'ATUALIZADO_EM'];
 
+/* O editor do Apps Script lista TODAS as funções no seletor do botão
+   Executar, e quem clicar em salvarMapa ali recebe os dados vazios. Sem
+   esta mensagem o retorno é um "Cannot read properties of undefined" que
+   não diz o que fazer. */
+var RODE_NO_APP = 'esta funcao e chamada pelo app, com os dados do mapa. ' +
+                  'No editor, rode garantirAbas() ou testar().';
+
 /* ---------------------------------------------------------------- */
 
 function doPost(e) {
@@ -85,6 +92,7 @@ function doGet(e) {
  * Histórico de versões), que o Google guarda de graça.
  */
 function salvarMapa(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
   var cod = normCod(p.cod);
   if (!cod) return { ok: false, erro: 'cod_produto e obrigatorio' };
   if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'mapa vazio' };
@@ -107,6 +115,7 @@ function salvarMapa(ss, p) {
 }
 
 function excluirMapa(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
   var cod = normCod(p.cod);
   if (!cod) return { ok: false, erro: 'cod_produto e obrigatorio' };
   var sh = aba(ss, AB_MAPA, CAB_MAPA);
@@ -241,4 +250,76 @@ function garantirAbas() {
     if (s && s.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s);
   });
   Logger.log('aba MAPA pronta');
+}
+
+/**
+ * Rode no editor para provar a gravação de ponta a ponta contra a planilha
+ * de verdade: grava um mapa de teste, lê de volta, confere item por item e
+ * apaga no fim. Nenhum mapa seu é tocado — o código usado é TESTE000.
+ *
+ * O resultado sai no Registro de execução. "TUDO CERTO" quer dizer que o
+ * caminho app → planilha → app está inteiro.
+ */
+function testar() {
+  var COD = 'TESTE000';
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var erros = [];
+
+  /* Trilho 1 vazio, 2 com a caixa antes do primeiro posto (OP 0), e 3 com
+     peça e insumo juntos: são os três casos que já quebraram alguma coisa. */
+  var linhas = [
+    { trilho: 1, op: 0, seq: 1, cod_item: '',          desc_item: '',                  qtd: '', insumo: false },
+    { trilho: 2, op: 0, seq: 1, cod_item: '607001700', desc_item: 'CX DE TESTE',       qtd: 1,  insumo: true  },
+    { trilho: 3, op: 1, seq: 1, cod_item: '760001006', desc_item: 'PECA DE TESTE',     qtd: 2,  insumo: false },
+    { trilho: 3, op: 1, seq: 2, cod_item: '',          desc_item: 'ISOMANTA DE TESTE', qtd: 1,  insumo: true  }
+  ];
+
+  try {
+    var g = salvarMapa(ss, { cod: COD, desc: 'MAPA DE TESTE', n_trilhos: 3,
+                             velocidade: '8,5', n_esquema: '9', linhas: linhas });
+    if (!g.ok) erros.push('nao gravou: ' + g.erro);
+    else if (g.gravadas !== 4) erros.push('gravou ' + g.gravadas + ' linhas, esperava 4');
+
+    var l = lerMapa(ss, COD);
+    if (!l.achou) {
+      erros.push('nao li de volta o mapa que acabou de gravar');
+    } else {
+      if (l.mapa.desc !== 'MAPA DE TESTE') erros.push('descricao voltou como "' + l.mapa.desc + '"');
+      if (l.mapa.n_trilhos !== 3)          erros.push('n_trilhos voltou ' + l.mapa.n_trilhos + ', esperava 3');
+      if (l.mapa.velocidade !== '8,5')     erros.push('velocidade voltou "' + l.mapa.velocidade + '"');
+      if (l.linhas.length !== 4)           erros.push('voltaram ' + l.linhas.length + ' linhas, esperava 4');
+
+      var t2 = null, t3 = [];
+      l.linhas.forEach(function (x) {
+        if (x.trilho === 2) t2 = x;
+        if (x.trilho === 3) t3.push(x);
+      });
+      if (!t2)                  erros.push('o trilho 2 nao voltou');
+      else {
+        if (t2.op !== 0)        erros.push('trilho antes do 1o posto voltou com OP ' + t2.op + ', esperava 0');
+        if (t2.insumo !== true) erros.push('a marca de insumo nao voltou');
+      }
+      if (t3.length !== 2)      erros.push('o trilho com dois itens voltou com ' + t3.length);
+      else if (Number(t3[0].qtd) !== 2) erros.push('a quantidade voltou ' + t3[0].qtd + ', esperava 2');
+    }
+  } catch (err) {
+    erros.push('excecao: ' + (err && err.message ? err.message : err));
+  }
+
+  /* Limpeza sempre, mesmo se algo acima falhou: teste que deixa sujeira na
+     planilha de produção só é rodado uma vez. */
+  var sobrou = '';
+  try {
+    excluirMapa(ss, { cod: COD });
+    if (lerMapa(ss, COD).achou) sobrou = ' (ATENCAO: a linha de teste nao saiu da aba MAPA)';
+  } catch (err) {
+    sobrou = ' (ATENCAO: nao consegui apagar o mapa de teste: ' + err + ')';
+  }
+
+  if (erros.length) {
+    Logger.log('FALHOU:\n- ' + erros.join('\n- ') + sobrou);
+  } else {
+    Logger.log('TUDO CERTO: gravou, leu de volta igual e apagou. ' +
+               'O caminho app -> planilha -> app esta inteiro.' + sobrou);
+  }
 }

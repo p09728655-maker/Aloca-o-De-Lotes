@@ -50,12 +50,24 @@ Execute `garantirAbas()` uma vez (autoriza o script e cria a aba `MAPA`).
 Depois `Implantar > Nova implantação > Aplicativo da Web`, executar como **Eu**,
 acesso para **Qualquer pessoa**. Copie a URL que termina em `/exec`.
 
+No editor do Apps Script só existem **duas** funções para rodar na mão:
+`garantirAbas()`, na instalação, e `testar()`, para conferir. Todas as outras
+são chamadas pelo app com os dados do mapa — rodar `salvarMapa` pelo botão
+Executar devolve um aviso dizendo isso.
+
+**2b. Conferir a gravação** — rode `testar()` no editor. Ele grava um mapa no
+código `TESTE000`, lê de volta, confere trilho a trilho e apaga no fim; nenhum
+mapa seu é tocado. O resultado sai no *Registro de execução*: `TUDO CERTO`
+significa que o caminho app → planilha → app está inteiro. Vale rodar depois
+de qualquer alteração no `Codigo.gs`.
+
 A planilha **não** precisa ficar pública. O `/exec` lê e grava em seu nome — é um
 passo a menos de configuração e um buraco a menos de segurança do que a versão
 anterior, que dependia de "qualquer pessoa com o link: leitor".
 
-**3. App** — publique o repositório na Vercel (sem build, tudo estático). Abra,
-toque no ⚙ e cole a URL do `/exec`. É o único campo de configuração que existe.
+**3. App** — publique o repositório na Vercel (sem build, tudo estático). A URL
+do `/exec` já vem preenchida no código, então o tablet abre funcionando; o ⚙
+existe para apontar para outra implantação, e é o único campo de configuração.
 
 **4. Instalar no tablet** — com o app aberto, toque em *Instalar no tablet* no
 rodapé. Ele passa a abrir pelo ícone, em tela cheia. O botão só aparece quando o
