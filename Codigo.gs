@@ -1,71 +1,45 @@
 /**
- * Alocação da Embalagem — gravação no Google Sheets
+ * Mapa dos Trilhos — gravação no Google Sheets
  * PPCP · Patrimar Móveis
  *
- * Implantação:
- *   1. Extensões > Apps Script na própria planilha
- *   2. Cole este arquivo, ajuste SHEET_ID se necessário
- *   3. Execute garantirAbas() uma vez (autoriza e cria as abas)
- *   4. Implantar > Nova implantação > Aplicativo da Web
- *        Executar como: Eu
- *        Quem tem acesso: Qualquer pessoa
- *   5. Copie a URL /exec e cole no ⚙ do app
+ * Uma aba, uma linha por trilho. Nada além disso.
  *
- * Toda gravação carrega id_envio. Reenvio com o mesmo id é descartado —
- * é o que impede lote lançado em duplicidade quando o Wi-Fi da fábrica cai.
+ * Implantação:
+ *   1. Na planilha: Extensões > Apps Script
+ *   2. Cole este arquivo
+ *   3. Execute garantirAbas() uma vez (autoriza o script e cria a aba MAPA)
+ *   4. Implantar > Nova implantação > Aplicativo da Web
+ *        Executar como:      Eu
+ *        Quem tem acesso:    Qualquer pessoa
+ *   5. Copie a URL que termina em /exec e cole no ⚙ do app
+ *
+ * A planilha NÃO precisa ficar pública: o app lê e grava pelo /exec, que
+ * roda como você. É um passo a menos de configuração e um buraco a menos
+ * de segurança do que a versão que lia a planilha por link aberto.
  */
 
-var SHEET_ID = '1W9bK_IoWknk8eKFbSWCMxILAQcaXuWD2gG7B0jcwFzg';
+var SHEET_ID = '1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g';
 
-var AB_REG   = 'REGISTRO';
-var AB_COL   = 'COLABORADORES';
-var AB_MAPA  = 'MAPA_TRILHOS';
-var AB_MAPAS = 'MAPAS';
-var AB_LOTES = 'LOTES';
-var AB_CONF  = 'CONFERENCIAS';
+var AB_MAPA = 'MAPA';
 
-/* POSTO guarda o número da OP e COD_PECA o código do item — nomes herdados de
-   quando o app pensava em postos, mantidos para não quebrar o que já leu a aba. */
-var CAB_REG = ['TS','ID_ENVIO','LOTE','COR','DATA_EMB','COD_PRODUTO','DESC_PRODUTO',
-               'VOLUMES','N_POSTOS','POSTO','MATRICULA','NOME','COD_PECA','DESC_PECA',
-               'QTD','TIPO'];
-var CAB_COL = ['MATRICULA','NOME','ATIVO','CADASTRADO_EM'];
+/* Uma linha por TRILHO, inclusive o vazio — é assim que o número de trilhos
+   da esteira e a fronteira de cada OP sobrevivem à ida e volta da planilha.
+   Trilho com dois itens ocupa duas linhas, distinguidas pelo SEQ.
+   O cabeçalho do mapa (descrição, nº de trilhos, velocidade, nº do esquema)
+   se repete em toda linha: é redundante, e é de propósito — assim a aba abre
+   no Power BI sem relacionamento nenhum. */
+var CAB_MAPA = ['COD_PRODUTO', 'DESC_PRODUTO', 'N_TRILHOS', 'VELOCIDADE', 'N_ESQUEMA',
+                'TRILHO', 'OP', 'SEQ', 'COD_ITEM', 'DESC_ITEM', 'QTD', 'INSUMO',
+                'ATUALIZADO_EM'];
 
-/* O mapa dos trilhos é o desenho da esteira para um produto: qual item entra
-   em qual trilho, em que ordem, e qual OP cobre aquele trilho. Uma linha por
-   item — trilho com dois itens ocupa duas linhas, trilho vazio não ocupa
-   nenhuma (o número dele volta pelo N_TRILHOS do cabeçalho).
-   VERSAO amarra a linha a uma versão do mapa: salvar de novo não apaga mais
-   nada, acrescenta as linhas da versão nova. Linha antiga sem VERSAO é da
-   época pré-versionamento e vale como V1. */
-var CAB_MAPA = ['COD_PRODUTO','DESC_PRODUTO','N_TRILHOS','TRILHO','OP','SEQ',
-                'COD_ITEM','DESC_ITEM','QTD','TIPO','VELOCIDADE','N_ESQUEMA',
-                'ATUALIZADO_EM','VERSAO'];
+/* O editor do Apps Script lista TODAS as funções no seletor do botão
+   Executar, e quem clicar em salvarMapa ali recebe os dados vazios. Sem
+   esta mensagem o retorno é um "Cannot read properties of undefined" que
+   não diz o que fazer. */
+var RODE_NO_APP = 'esta funcao e chamada pelo app, com os dados do mapa. ' +
+                  'No editor, rode garantirAbas() ou testar().';
 
-/* Cabeçalho de cada versão do mapa: quem criou, quando, por quê, e qual está
-   ATIVA. Só uma versão fica ATIVA por produto — as demais viram INATIVA mas
-   nunca são apagadas: é o que permite mostrar, meses depois, que o LT 123
-   foi conferido no mapa V02 mesmo que hoje a vigente seja a V03. */
-var CAB_MAPAS = ['COD_PRODUTO','DESC_PRODUTO','VERSAO','STATUS','DATA',
-                 'RESPONSAVEL','MOTIVO','N_TRILHOS','VELOCIDADE','N_ESQUEMA',
-                 'ID_ENVIO'];
-
-/* Uma linha por lote × produto, criada quando a conferência começa. A VERSAO
-   gravada aqui é a amarração que não muda mais: mapa novo vale para lote
-   novo, nunca retroage sobre lote iniciado. N_VOLUMES é quantas caixas o
-   lote tem (vem da programação) e VOL_CONCLUIDOS quantas já passaram
-   inteiras pela conferência — o lote só conclui quando as duas colunas
-   se igualam. */
-var CAB_LOTES = ['LOTE','COR','COD_PRODUTO','DESC_PRODUTO','VERSAO',
-                 'DATA_INICIO','DATA_CONCLUSAO','STATUS','N_VOLUMES',
-                 'VOL_CONCLUIDOS'];
-
-/* Append-only: cada toque em “Conferir” do operador vira uma linha, com peça,
-   trilho, volume (qual das caixas do lote), quem conferiu e quando.
-   RESULTADO é OK ou DIVERGENTE. Linha antiga sem VOLUME vale como volume 1. */
-var CAB_CONF = ['TS','ID_ENVIO','LOTE','COD_PRODUTO','VERSAO','TRILHO',
-                'COD_PECA','DESC_PECA','QTD','MATRICULA','NOME','RESULTADO',
-                'OBS','VOLUME'];
+/* ---------------------------------------------------------------- */
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -81,11 +55,14 @@ function doPost(e) {
     var p = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.openById(SHEET_ID);
 
-    if (p.acao === 'salvar_lote')  return json(salvarLote(ss, p));
-    if (p.acao === 'salvar_mapa')  return json(salvarMapa(ss, p));
-    if (p.acao === 'iniciar_lote') return json(iniciarLote(ss, p));
-    if (p.acao === 'conferir')     return json(conferir(ss, p));
-    if (p.acao === 'colaborador')  return json(salvarColaborador(ss, p));
+    if (p.acao === 'salvar')  return json(salvarMapa(ss, p));
+    if (p.acao === 'excluir') return json(excluirMapa(ss, p));
+    /* Ler também vem por POST: o app usa um transporte só — POST com
+       text/plain, que é o que não dispara o preflight CORS que o Apps
+       Script não responde. Um caminho testado vale mais que dois meio
+       testados. O doGet abaixo fica para conferir no navegador. */
+    if (p.acao === 'lista')   return json(listarProdutos(ss));
+    if (p.acao === 'mapa')    return json(lerMapa(ss, p.cod));
     return json({ ok: false, erro: 'acao desconhecida: ' + p.acao });
 
   } catch (err) {
@@ -95,251 +72,138 @@ function doPost(e) {
   }
 }
 
-function doGet() {
-  return json({ ok: true, servico: 'alocacao-embalagem', ts: new Date().toISOString() });
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var acao = (e && e.parameter && e.parameter.acao) || 'lista';
+    if (acao === 'mapa') return json(lerMapa(ss, (e.parameter.cod || '')));
+    return json(listarProdutos(ss));
+  } catch (err) {
+    return json({ ok: false, erro: String(err && err.message ? err.message : err) });
+  }
 }
 
 /* ---------------------------------------------------------------- */
 
-function salvarLote(ss, p) {
-  if (!p.lote || !p.cod_produto) return { ok: false, erro: 'lote e cod_produto sao obrigatorios' };
-  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'nenhuma linha para gravar' };
-
-  var reg = aba(ss, AB_REG, CAB_REG);
-
-  // idempotência: id_envio já gravado significa reenvio, não lançamento novo
-  if (p.id_envio && jaGravado(reg, p.id_envio)) {
-    return { ok: true, duplicado: true, linhas: 0 };
-  }
-
-  /* O id_envio só pega reenvio do MESMO pacote, que é o caso do Wi-Fi caindo.
-     Não pega o líder tocando em Gravar lote de novo: aí o id é outro e as duas
-     gravações entram, dobrando a quantidade de todo indicador feito em cima.
-     Regravar o mesmo lote é legítimo — corrigir um nome, refazer o rodízio —,
-     então em vez de recusar, pergunta e substitui. */
-  var antigas = linhasDoLote(reg, p.lote, p.cod_produto);
-  if (antigas.length && !p.substituir) {
-    return { ok: false, erro: 'ja_gravado', lote: p.lote, cod_produto: p.cod_produto,
-             linhas_antigas: antigas.length };
-  }
-  if (antigas.length) apagarLinhas(reg, antigas);
-
-  var ts = new Date();
-  var linhas = p.linhas.map(function (l) {
-    return [ts, p.id_envio || '', p.lote, p.cor || '', p.data_emb || '',
-            p.cod_produto, p.desc_produto || '', p.volumes || 0, p.n_postos || 0,
-            l.posto, l.matricula || '', l.nome || '', l.cod_peca,
-            l.desc_peca || '', l.qtd || 0, l.tipo || ''];
-  });
-  var ini = reg.getLastRow() + 1;
-  garantirLinhas(reg, ini + linhas.length);
-  reg.getRange(ini, 1, linhas.length, CAB_REG.length).setValues(linhas);
-
-  return { ok: true, linhas: linhas.length };
-}
-
 /**
- * Grava o mapa de um produto como uma VERSÃO NOVA, sem apagar as anteriores.
- * O cabeçalho da versão (data, responsável, motivo, status) vai para MAPAS;
- * as linhas item→trilho vão para MAPA_TRILHOS com o número da versão. Só uma
- * versão fica ATIVA por produto — as anteriores viram INATIVA mas continuam
- * gravadas: lote que começou a conferência na V02 mostra V02 para sempre.
+ * Salvar é substituir: as linhas daquele produto saem e as novas entram.
+ * Sem versão, sem histórico — foi a decisão de projeto. Quem quiser o mapa
+ * de antes tira do histórico de revisões da própria planilha (Arquivo >
+ * Histórico de versões), que o Google guarda de graça.
  */
 function salvarMapa(ss, p) {
-  if (!p.cod_produto) return { ok: false, erro: 'cod_produto obrigatorio' };
-  if (!p.trilhos || !p.trilhos.length) return { ok: false, erro: 'mapa vazio' };
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var cod = normCod(p.cod);
+  if (!cod) return { ok: false, erro: 'cod_produto e obrigatorio' };
+  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'mapa vazio' };
 
-  var cab = aba(ss, AB_MAPAS, CAB_MAPAS);
-  var itens = aba(ss, AB_MAPA, CAB_MAPA);
-  garantirColunaVersao(itens);
-
-  var cod = String(p.cod_produto);
-  if (p.id_envio && jaGravadoNaCol(cab, 11, p.id_envio)) {
-    return { ok: true, duplicado: true };
-  }
-
-  // próxima versão: 1 + a maior já vista, no cabeçalho ou nas linhas de item
-  // (linha antiga sem VERSAO conta como V1)
-  var versao = maxVersaoItens(itens, cod);
-  var ult = cab.getLastRow();
-  if (ult > 1) {
-    var vals = cab.getRange(2, 1, ult - 1, CAB_MAPAS.length).getValues();
-    for (var i = 0; i < vals.length; i++) {
-      if (String(vals[i][0]) !== cod) continue;
-      versao = Math.max(versao, parseInt(vals[i][2], 10) || 0);
-      if (String(vals[i][3]).toUpperCase() === 'ATIVA') {
-        cab.getRange(i + 2, 4).setValue('INATIVA');
-      }
-    }
-  }
-  versao++;
+  var sh = aba(ss, AB_MAPA, CAB_MAPA);
+  var antigas = linhasDoProduto(sh, cod);
+  apagarLinhas(sh, antigas);
 
   var ts = new Date();
-  cab.appendRow([cod, p.desc_produto || '', versao, 'ATIVA', ts,
-                 p.responsavel || '', p.motivo || '', p.n_trilhos || 0,
-                 p.velocidade || '', p.n_esquema || '', p.id_envio || '']);
-
-  var novas = p.trilhos.map(function (t) {
-    return [cod, p.desc_produto || '', p.n_trilhos || 0, t.trilho, t.op || '',
-            t.seq || 1, t.cod_item, t.desc_item || '', t.qtd || 0, t.tipo || '',
-            p.velocidade || '', p.n_esquema || '', ts, versao];
-  });
-  var ini = itens.getLastRow() + 1;
-  garantirLinhas(itens, ini + novas.length);
-  itens.getRange(ini, 1, novas.length, CAB_MAPA.length).setValues(novas);
-
-  return { ok: true, versao: versao, linhas: novas.length };
-}
-
-/**
- * Amarra o lote à versão vigente do mapa no momento em que a conferência
- * começa. Se o lote já foi iniciado, devolve a amarração que existe — trocar
- * a versão de um lote iniciado reescreveria o histórico, e isso não acontece
- * por aqui em hipótese nenhuma.
- */
-function iniciarLote(ss, p) {
-  if (!p.lote || !p.cod_produto) {
-    return { ok: false, erro: 'lote e cod_produto sao obrigatorios' };
-  }
-  var sh = aba(ss, AB_LOTES, CAB_LOTES);
-  garantirColunas(sh, CAB_LOTES);
-  var r = acharLinhaLote(sh, p.lote, p.cod_produto);
-  if (r) {
-    return { ok: true, ja_iniciado: true,
-             versao: parseInt(sh.getRange(r, 5).getValue(), 10) || 0,
-             status: String(sh.getRange(r, 8).getValue() || ''),
-             n_volumes: parseInt(sh.getRange(r, 9).getValue(), 10) || 0 };
-  }
-  var versao = parseInt(p.versao, 10) || versaoAtiva(ss, p.cod_produto);
-  if (!versao) return { ok: false, erro: 'produto sem mapa ativo' };
-  sh.appendRow([String(p.lote), p.cor || '', String(p.cod_produto),
-                p.desc_produto || '', versao, new Date(), '', 'EM CONFERENCIA',
-                parseInt(p.n_volumes, 10) || 1, 0]);
-  return { ok: true, versao: versao, status: 'EM CONFERENCIA' };
-}
-
-/**
- * Registra as peças conferidas (append-only, idempotente por id_envio) e
- * atualiza o status do lote. O status vem calculado do tablet, que é quem
- * sabe quantas peças o mapa daquela versão tem.
- */
-function conferir(ss, p) {
-  if (!p.lote || !p.cod_produto) {
-    return { ok: false, erro: 'lote e cod_produto sao obrigatorios' };
-  }
-  if (!p.itens || !p.itens.length) {
-    return { ok: false, erro: 'nenhuma peca para registrar' };
-  }
-  var sh = aba(ss, AB_CONF, CAB_CONF);
-  garantirColunas(sh, CAB_CONF);
-  if (p.id_envio && jaGravadoNaCol(sh, 2, p.id_envio)) {
-    atualizarStatusLote(ss, p);   // o reenvio ainda pode carregar status mais novo
-    return { ok: true, duplicado: true, linhas: 0 };
-  }
-  var ts = new Date();
-  var linhas = p.itens.map(function (x) {
-    return [ts, p.id_envio || '', String(p.lote), String(p.cod_produto),
-            parseInt(p.versao, 10) || 0, x.trilho, x.cod_peca, x.desc_peca || '',
-            x.qtd || 0, x.matricula || '', x.nome || '',
-            x.resultado || 'OK', x.obs || '',
-            parseInt(x.volume || p.volume, 10) || 1];
+  var novas = p.linhas.map(function (l) {
+    return [cod, p.desc || '', p.n_trilhos || 0, p.velocidade || '', p.n_esquema || '',
+            l.trilho, l.op || 0, l.seq || 1, l.cod_item || '', l.desc_item || '',
+            l.qtd || '', l.insumo ? 'SIM' : '', ts];
   });
   var ini = sh.getLastRow() + 1;
-  garantirLinhas(sh, ini + linhas.length);
-  sh.getRange(ini, 1, linhas.length, CAB_CONF.length).setValues(linhas);
+  garantirLinhas(sh, ini + novas.length - 1);
+  sh.getRange(ini, 1, novas.length, CAB_MAPA.length).setValues(novas);
 
-  atualizarStatusLote(ss, p);
-  return { ok: true, linhas: linhas.length };
+  return { ok: true, cod: cod, gravadas: novas.length, substituidas: antigas.length };
 }
 
-function atualizarStatusLote(ss, p) {
-  var sh = aba(ss, AB_LOTES, CAB_LOTES);
-  garantirColunas(sh, CAB_LOTES);
-  var ts = new Date();
-  var r = acharLinhaLote(sh, p.lote, p.cod_produto);
-  if (!r) {
-    // conferência chegou antes do iniciar_lote (fila offline fora de ordem):
-    // cria a amarração aqui mesmo, com a versão que o tablet estava usando
-    sh.appendRow([String(p.lote), p.cor || '', String(p.cod_produto),
-                  p.desc_produto || '', parseInt(p.versao, 10) || 0, ts,
-                  p.status_lote === 'CONCLUIDA' ? ts : '',
-                  p.status_lote || 'EM CONFERENCIA',
-                  parseInt(p.n_volumes, 10) || 1,
-                  parseInt(p.vol_concluidos, 10) || 0]);
-    return;
-  }
-  if (p.status_lote) {
-    sh.getRange(r, 8).setValue(p.status_lote);
-    if (p.status_lote === 'CONCLUIDA') {
-      if (!sh.getRange(r, 7).getValue()) sh.getRange(r, 7).setValue(ts);
-    } else {
-      sh.getRange(r, 7).setValue('');
-    }
-  }
-  if (parseInt(p.n_volumes, 10) > 0 && !sh.getRange(r, 9).getValue()) {
-    sh.getRange(r, 9).setValue(parseInt(p.n_volumes, 10));
-  }
-  if (p.vol_concluidos !== undefined) {
-    sh.getRange(r, 10).setValue(parseInt(p.vol_concluidos, 10) || 0);
-  }
+function excluirMapa(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var cod = normCod(p.cod);
+  if (!cod) return { ok: false, erro: 'cod_produto e obrigatorio' };
+  var sh = aba(ss, AB_MAPA, CAB_MAPA);
+  var linhas = linhasDoProduto(sh, cod);
+  apagarLinhas(sh, linhas);
+  return { ok: true, cod: cod, apagadas: linhas.length };
 }
 
-function salvarColaborador(ss, p) {
-  var mat = String(p.matricula || '').trim();
-  var nome = String(p.nome || '').trim();
-  if (!mat || !nome) return { ok: false, erro: 'matricula e nome sao obrigatorios' };
-
-  var sh = aba(ss, AB_COL, CAB_COL);
+/** Só o cabeçalho de cada produto — é o que o app precisa para a lista. */
+function listarProdutos(ss) {
+  var sh = aba(ss, AB_MAPA, CAB_MAPA);
   var ult = sh.getLastRow();
-  if (ult > 1) {
-    var vals = sh.getRange(2, 1, ult - 1, 1).getValues();
-    for (var i = 0; i < vals.length; i++) {
-      if (String(vals[i][0]).trim() === mat) {
-        return { ok: false, erro: 'matricula ' + mat + ' ja cadastrada' };
-      }
+  if (ult < 2) return { ok: true, produtos: [] };
+
+  var vals = sh.getRange(2, 1, ult - 1, CAB_MAPA.length).getValues();
+  var por = {};
+  vals.forEach(function (r) {
+    var cod = normCod(r[0]);
+    if (!cod) return;
+    if (!por[cod]) {
+      por[cod] = { cod: cod, desc: String(r[1] || ''), n_trilhos: Number(r[2]) || 0,
+                   velocidade: r[3], n_esquema: String(r[4] || ''),
+                   itens: 0, atualizado: '' };
     }
-  }
-  sh.appendRow([mat, nome, 'SIM', new Date()]);
-  return { ok: true };
+    if (r[9]) por[cod].itens++;
+    var ts = r[12] instanceof Date ? r[12].toISOString() : String(r[12] || '');
+    if (ts > por[cod].atualizado) por[cod].atualizado = ts;
+  });
+
+  var out = Object.keys(por).map(function (k) { return por[k]; });
+  out.sort(function (a, b) { return a.cod < b.cod ? -1 : 1; });
+  return { ok: true, produtos: out };
+}
+
+function lerMapa(ss, codBruto) {
+  var cod = normCod(codBruto);
+  if (!cod) return { ok: false, erro: 'cod e obrigatorio' };
+
+  var sh = aba(ss, AB_MAPA, CAB_MAPA);
+  var ult = sh.getLastRow();
+  if (ult < 2) return { ok: true, achou: false };
+
+  var vals = sh.getRange(2, 1, ult - 1, CAB_MAPA.length).getValues();
+  var cab = null, linhas = [];
+  vals.forEach(function (r) {
+    if (normCod(r[0]) !== cod) return;
+    if (!cab) {
+      /* Velocidade vai crua: o Sheets guarda 8,5 como o número 8.5, e um
+         String() aqui devolveria "8.5" com ponto para a folha impressa. Quem
+         põe a vírgula de volta é o app, que sabe que isso é para ler. */
+      cab = { cod: cod, desc: String(r[1] || ''), n_trilhos: Number(r[2]) || 0,
+              velocidade: r[3], n_esquema: String(r[4] || '') };
+    }
+    /* OP zero é trilho antes do primeiro posto — a caixa entra na esteira
+       ali. Trocar esse 0 por 1 faria a divisa da OP 01 saltar para o trilho
+       1 toda vez que o mapa voltasse da planilha. A quantidade vai crua: o
+       app normaliza vírgula e ponto melhor do que o Number daqui. */
+    linhas.push({ trilho: Number(r[5]) || 0, op: Number(r[6]) || 0, seq: Number(r[7]) || 1,
+                  cod_item: String(r[8] || ''), desc_item: String(r[9] || ''),
+                  qtd: (r[10] === '' || r[10] === null) ? 0 : r[10],
+                  insumo: String(r[11] || '') === 'SIM' });
+  });
+  if (!cab) return { ok: true, achou: false };
+  return { ok: true, achou: true, mapa: cab, linhas: linhas };
 }
 
 /* ---------------------------------------------------------------- */
 
-/**
- * Aba nova nasce com 1.000 linhas e getRange() estoura se a linha pedida passar
- * do tamanho do grid — não cresce sozinha como o appendRow. REGISTRO ganha ~280
- * linhas por dia, então sem isto a gravação começaria a falhar na primeira
- * semana de fábrica. Cresce com folga para não chamar insertRowsAfter a cada
- * lote salvo.
- */
-function garantirLinhas(sh, ate) {
-  var max = sh.getMaxRows();
-  if (ate > max) sh.insertRowsAfter(max, ate - max + 500);
+/** Só dígitos e letras: o ERP escreve 501.118.001 e o app manda 501118001. */
+function normCod(c) {
+  return String(c == null ? '' : c).toUpperCase().replace(/[^0-9A-Z]/g, '');
 }
 
-/**
- * Linhas já gravadas para um lote e produto. Olha só as últimas 5.000: regravar
- * é sempre coisa do mesmo dia, e varrer o histórico inteiro ficaria lento.
- * Colunas 3 a 6 do REGISTRO são LOTE, COR, DATA_EMB e COD_PRODUTO.
- */
-function linhasDoLote(sh, lote, cod) {
+function linhasDoProduto(sh, cod) {
   var ult = sh.getLastRow();
   if (ult < 2) return [];
-  var ini = Math.max(2, ult - 5000);
-  var vals = sh.getRange(ini, 3, ult - ini + 1, 4).getValues();
-  var achadas = [];
-  for (var i = 0; i < vals.length; i++) {
-    if (String(vals[i][0]).trim() === String(lote).trim() &&
-        String(vals[i][3]).trim() === String(cod).trim()) achadas.push(ini + i);
+  var col = sh.getRange(2, 1, ult - 1, 1).getValues();
+  var out = [];
+  for (var i = 0; i < col.length; i++) {
+    if (normCod(col[i][0]) === cod) out.push(i + 2);
   }
-  return achadas;
+  return out;
 }
 
-/**
- * Apaga as linhas de baixo para cima e em blocos: as linhas de uma gravação
- * são contíguas, e uma chamada por bloco em vez de uma por linha é a diferença
- * entre um segundo e meio minuto num mapa de 28 trilhos.
- */
+/* De trás para frente e em blocos: apagar a linha 5 primeiro faria a 9 virar
+   8 e o índice seguinte apagaria a linha errada. As linhas de um produto são
+   gravadas juntas, então quase sempre isso vira uma chamada só em vez de
+   trinta — o que importa quando o tablet está esperando a resposta. */
 function apagarLinhas(sh, linhas) {
   var ord = linhas.slice().sort(function (a, b) { return b - a; });
   var i = 0;
@@ -351,87 +215,14 @@ function apagarLinhas(sh, linhas) {
   }
 }
 
-function jaGravado(sh, id) { return jaGravadoNaCol(sh, 2, id); }
-
-function jaGravadoNaCol(sh, col, id) {
-  var ult = sh.getLastRow();
-  if (ult < 2) return false;
-  // olha só as últimas 5.000 linhas: reenvio é sempre recente e varrer a
-  // aba inteira ficaria lento conforme o histórico cresce
-  var ini = Math.max(2, ult - 5000);
-  var vals = sh.getRange(ini, col, ult - ini + 1, 1).getValues();
-  for (var i = 0; i < vals.length; i++) {
-    if (String(vals[i][0]) === String(id)) return true;
-  }
-  return false;
+/* deleteRow encolhe a planilha, e getRange além da última linha existente
+   estoura. Sem isto, salvar mapa depois de apagar vários dava "Those rows
+   are out of bounds" justamente para quem usa o app há mais tempo. */
+function garantirLinhas(sh, ate) {
+  var max = sh.getMaxRows();
+  if (ate > max) sh.insertRowsAfter(max, ate - max);
 }
 
-/* Aba criada por uma versão antiga do script pode ter menos colunas que o
-   cabeçalho atual pede. Completa o que falta sem tocar nas linhas de dados —
-   célula vazia em linha antiga é lida com o padrão (VERSAO→1, VOLUME→1). */
-function garantirColunas(sh, cab) {
-  if (sh.getMaxColumns() < cab.length) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), cab.length - sh.getMaxColumns());
-  }
-  var atual = sh.getRange(1, 1, 1, cab.length).getValues()[0];
-  for (var c = 0; c < cab.length; c++) {
-    if (String(atual[c]).trim() !== cab[c]) {
-      sh.getRange(1, c + 1).setValue(cab[c]).setFontWeight('bold');
-    }
-  }
-}
-
-function garantirColunaVersao(sh) { garantirColunas(sh, CAB_MAPA); }
-
-/** Maior versão presente nas linhas de item de um produto (sem VERSAO = 1). */
-function maxVersaoItens(sh, cod) {
-  var ult = sh.getLastRow();
-  if (ult < 2) return 0;
-  var max = 0;
-  var vals = sh.getRange(2, 1, ult - 1, Math.min(sh.getMaxColumns(), 14)).getValues();
-  for (var i = 0; i < vals.length; i++) {
-    if (String(vals[i][0]) !== cod) continue;
-    max = Math.max(max, parseInt(vals[i][13], 10) || 1);
-  }
-  return max;
-}
-
-/** Versão ATIVA de um produto pela aba MAPAS; mapa antigo sem cabeçalho cai
-    na maior versão das linhas de item. */
-function versaoAtiva(ss, cod) {
-  var sh = ss.getSheetByName(AB_MAPAS);
-  var melhor = 0;
-  if (sh && sh.getLastRow() > 1) {
-    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues();
-    for (var i = 0; i < vals.length; i++) {
-      if (String(vals[i][0]) === String(cod) &&
-          String(vals[i][3]).toUpperCase() === 'ATIVA') {
-        melhor = Math.max(melhor, parseInt(vals[i][2], 10) || 0);
-      }
-    }
-  }
-  if (melhor) return melhor;
-  var itens = ss.getSheetByName(AB_MAPA);
-  return itens ? maxVersaoItens(itens, String(cod)) : 0;
-}
-
-/** Linha (1-based) do lote × produto na aba LOTES, ou 0. */
-function acharLinhaLote(sh, lote, cod) {
-  var ult = sh.getLastRow();
-  if (ult < 2) return 0;
-  var vals = sh.getRange(2, 1, ult - 1, 3).getValues();
-  for (var i = 0; i < vals.length; i++) {
-    if (String(vals[i][0]).trim() === String(lote).trim() &&
-        String(vals[i][2]).trim() === String(cod).trim()) return i + 2;
-  }
-  return 0;
-}
-
-/**
- * Devolve a aba, criando-a se não existir. Se a aba existir mas estiver vazia
- * — caso de quem criou na mão antes de rodar o script — escreve o cabeçalho
- * mesmo assim: sem ele o app não acha as colunas e a aba parece quebrada.
- */
 function aba(ss, nome, cab) {
   var sh = ss.getSheetByName(nome);
   if (!sh) sh = ss.insertSheet(nome);
@@ -449,139 +240,89 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Rode uma vez pelo editor para autorizar o script e criar as abas.
-    Rodar de novo depois de atualizar o script é seguro: aba que já existe
-    não é tocada, só ganha a coluna VERSAO se ainda não tiver. */
+/** Rode uma vez pelo editor para autorizar o script e criar a aba MAPA.
+    Rodar de novo é seguro: aba que já existe não é tocada. */
 function garantirAbas() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  aba(ss, AB_REG, CAB_REG);
-  garantirColunas(aba(ss, AB_MAPA, CAB_MAPA), CAB_MAPA);
-  aba(ss, AB_MAPAS, CAB_MAPAS);
-  garantirColunas(aba(ss, AB_LOTES, CAB_LOTES), CAB_LOTES);
-  garantirColunas(aba(ss, AB_CONF, CAB_CONF), CAB_CONF);
-  aba(ss, AB_COL, CAB_COL);
-  Logger.log('abas prontas');
-}
+  aba(ss, AB_MAPA, CAB_MAPA);
 
-/* ---------------------------------------------------------------- */
-
-/**
- * Tira a duplicidade já gravada, mantendo a gravação mais recente de cada lote
- * e produto — que é a que o líder quis deixar valendo quando salvou de novo.
- * O log diz quantas linhas saíram; para ver o antes e o depois de um lote
- * específico, digite o número dele no app.
- */
-function limparDuplicados() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var reg = ss.getSheetByName(AB_REG);
-  var ult = reg ? reg.getLastRow() : 0;
-  if (ult < 2) { Logger.log('REGISTRO vazio'); return; }
-
-  var vals = reg.getRange(2, 1, ult - 1, 16).getValues();
-  var ultimoEnvio = {}, quando = {};
-  for (var i = 0; i < vals.length; i++) {
-    var chave = String(vals[i][2]).trim() + '|' + String(vals[i][5]).trim();
-    var ts = vals[i][0] instanceof Date ? vals[i][0].getTime() : 0;
-    if (quando[chave] === undefined || ts >= quando[chave]) {
-      quando[chave] = ts;
-      ultimoEnvio[chave] = String(vals[i][1]);
-    }
-  }
-
-  var apagar = [];
-  for (var j = 0; j < vals.length; j++) {
-    var k = String(vals[j][2]).trim() + '|' + String(vals[j][5]).trim();
-    if (String(vals[j][1]) !== ultimoEnvio[k]) apagar.push(j + 2);
-  }
-  if (!apagar.length) { Logger.log('nada duplicado a limpar'); return; }
-  apagarLinhas(reg, apagar);
-  Logger.log(apagar.length + ' linha(s) antiga(s) apagada(s); ficou a gravação mais recente de cada lote');
-}
-
-/**
- * Zera um lote para testar o fluxo de novo do começo.
- *
- * Apaga desse lote: a amarração e o status (LOTES), as peças conferidas
- * (CONFERENCIAS) e o rodízio gravado (REGISTRO). NÃO toca em MAPAS nem em
- * MAPA_TRILHOS — o mapa é do produto, não do lote, e apagá-lo obrigaria a
- * remontar tudo. Nenhum outro lote é tocado.
- *
- * Como usar: escreva o número do lote em LOTE, rode, confira o log.
- * Deixe LOTE vazio e a função não faz nada — é a trava contra rodar
- * distraído e limpar o lote da vez anterior.
- *
- * ATENÇÃO: em produção isso apaga histórico de verdade, sem desfazer.
- * É ferramenta de teste; para tirar duplicidade use limparDuplicados().
- */
-function limparLoteParaTeste() {
-  var LOTE = '';            // ex.: '25055'
-  var COD_PRODUTO = '';     // vazio = todos os produtos do lote
-
-  var alvo = String(LOTE).trim();
-  if (!alvo) { Logger.log('escreva o numero do lote em LOTE antes de rodar'); return; }
-  var cod = String(COD_PRODUTO).trim();
-
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var contas = [];
-
-  // aba, coluna do lote (1-based), coluna do produto (0 = não filtrar)
-  [[AB_LOTES, 1, 3], [AB_CONF, 3, 4], [AB_REG, 3, 6]].forEach(function (alvoAba) {
-    var nome = alvoAba[0], colLote = alvoAba[1], colCod = alvoAba[2];
-    var sh = ss.getSheetByName(nome);
-    if (!sh || sh.getLastRow() < 2) { contas.push(nome + ': 0'); return; }
-    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
-    var apagar = [];
-    for (var i = 0; i < vals.length; i++) {
-      if (String(vals[i][colLote - 1]).trim() !== alvo) continue;
-      if (cod && String(vals[i][colCod - 1]).trim() !== cod) continue;
-      apagar.push(i + 2);
-    }
-    if (apagar.length) apagarLinhas(sh, apagar);
-    contas.push(nome + ': ' + apagar.length);
+  /* A planilha nasce com uma aba vazia chamada "Página1"/"Sheet1". Ela não
+     atrapalha, mas confunde quem abre o arquivo procurando o mapa. */
+  ['Página1', 'Pagina1', 'Sheet1'].forEach(function (n) {
+    var s = ss.getSheetByName(n);
+    if (s && s.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s);
   });
-
-  Logger.log('lote ' + alvo + (cod ? ' / produto ' + cod : '') +
-             ' zerado — linhas apagadas por aba: ' + contas.join(' · ') +
-             '. Mapas preservados.');
+  Logger.log('aba MAPA pronta');
 }
 
 /**
- * Cadastro em lote da equipe da embalagem — mais rápido que digitar um a um
- * pelo tablet. Cole os nomes aqui, rode uma vez, apague a lista.
- * Formato: 'matricula, nome' por linha.
+ * Rode no editor para provar a gravação de ponta a ponta contra a planilha
+ * de verdade: grava um mapa de teste, lê de volta, confere item por item e
+ * apaga no fim. Nenhum mapa seu é tocado — o código usado é TESTE000.
+ *
+ * O resultado sai no Registro de execução. "TUDO CERTO" quer dizer que o
+ * caminho app → planilha → app está inteiro.
  */
-function cadastrarEquipe() {
-  var LISTA = [
-    // '12345, MARIA DA SILVA',
-    // '12346, JOAO SOUZA',
+function testar() {
+  var COD = 'TESTE000';
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var erros = [];
+
+  /* Trilho 1 vazio, 2 com a caixa antes do primeiro posto (OP 0), e 3 com
+     peça e insumo juntos: são os três casos que já quebraram alguma coisa. */
+  var linhas = [
+    { trilho: 1, op: 0, seq: 1, cod_item: '',          desc_item: '',                  qtd: '', insumo: false },
+    { trilho: 2, op: 0, seq: 1, cod_item: '607001700', desc_item: 'CX DE TESTE',       qtd: 1,  insumo: true  },
+    { trilho: 3, op: 1, seq: 1, cod_item: '760001006', desc_item: 'PECA DE TESTE',     qtd: 2,  insumo: false },
+    { trilho: 3, op: 1, seq: 2, cod_item: '',          desc_item: 'ISOMANTA DE TESTE', qtd: 1,  insumo: true  }
   ];
-  if (!LISTA.length) { Logger.log('preencha LISTA antes de rodar'); return; }
 
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sh = aba(ss, AB_COL, CAB_COL);
-  var ja = {};
-  var ult = sh.getLastRow();
-  if (ult > 1) {
-    sh.getRange(2, 1, ult - 1, 1).getValues().forEach(function (r) {
-      ja[String(r[0]).trim()] = true;
-    });
+  try {
+    var g = salvarMapa(ss, { cod: COD, desc: 'MAPA DE TESTE', n_trilhos: 3,
+                             velocidade: 8.5, n_esquema: '9', linhas: linhas });
+    if (!g.ok) erros.push('nao gravou: ' + g.erro);
+    else if (g.gravadas !== 4) erros.push('gravou ' + g.gravadas + ' linhas, esperava 4');
+
+    var l = lerMapa(ss, COD);
+    if (!l.achou) {
+      erros.push('nao li de volta o mapa que acabou de gravar');
+    } else {
+      if (l.mapa.desc !== 'MAPA DE TESTE') erros.push('descricao voltou como "' + l.mapa.desc + '"');
+      if (l.mapa.n_trilhos !== 3)          erros.push('n_trilhos voltou ' + l.mapa.n_trilhos + ', esperava 3');
+      if (Number(l.mapa.velocidade) !== 8.5) erros.push('velocidade voltou "' + l.mapa.velocidade + '"');
+      if (l.linhas.length !== 4)           erros.push('voltaram ' + l.linhas.length + ' linhas, esperava 4');
+
+      var t2 = null, t3 = [];
+      l.linhas.forEach(function (x) {
+        if (x.trilho === 2) t2 = x;
+        if (x.trilho === 3) t3.push(x);
+      });
+      if (!t2)                  erros.push('o trilho 2 nao voltou');
+      else {
+        if (t2.op !== 0)        erros.push('trilho antes do 1o posto voltou com OP ' + t2.op + ', esperava 0');
+        if (t2.insumo !== true) erros.push('a marca de insumo nao voltou');
+      }
+      if (t3.length !== 2)      erros.push('o trilho com dois itens voltou com ' + t3.length);
+      else if (Number(t3[0].qtd) !== 2) erros.push('a quantidade voltou ' + t3[0].qtd + ', esperava 2');
+    }
+  } catch (err) {
+    erros.push('excecao: ' + (err && err.message ? err.message : err));
   }
 
-  var novas = [], pulados = [];
-  LISTA.forEach(function (linha) {
-    var partes = String(linha).split(',');
-    var mat = (partes.shift() || '').trim();
-    var nome = partes.join(',').trim();
-    if (!mat || !nome) { pulados.push(linha + ' (formato)'); return; }
-    if (ja[mat]) { pulados.push(linha + ' (ja cadastrada)'); return; }
-    ja[mat] = true;
-    novas.push([mat, nome, 'SIM', new Date()]);
-  });
-
-  if (novas.length) {
-    var ini = sh.getLastRow() + 1;
-    garantirLinhas(sh, ini + novas.length);
-    sh.getRange(ini, 1, novas.length, CAB_COL.length).setValues(novas);
+  /* Limpeza sempre, mesmo se algo acima falhou: teste que deixa sujeira na
+     planilha de produção só é rodado uma vez. */
+  var sobrou = '';
+  try {
+    excluirMapa(ss, { cod: COD });
+    if (lerMapa(ss, COD).achou) sobrou = ' (ATENCAO: a linha de teste nao saiu da aba MAPA)';
+  } catch (err) {
+    sobrou = ' (ATENCAO: nao consegui apagar o mapa de teste: ' + err + ')';
   }
-  Logger.log(novas.length + ' cadastrados; ' + pulados.length + ' pulados: ' + pulados.join(' | '));
+
+  if (erros.length) {
+    Logger.log('FALHOU:\n- ' + erros.join('\n- ') + sobrou);
+  } else {
+    Logger.log('TUDO CERTO: gravou, leu de volta igual e apagou. ' +
+               'O caminho app -> planilha -> app esta inteiro.' + sobrou);
+  }
 }
