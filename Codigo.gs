@@ -81,6 +81,7 @@ function doPost(e) {
     if (p.acao === 'novo_colaborador') return json(novoColaborador(ss, p));
     if (p.acao === 'conferir')       return json(gravarConferencia(ss, p));
     if (p.acao === 'conferencia')    return json(lerConferencia(ss, p));
+    if (p.acao === 'relatorio')      return json(relatorioConferencia(ss, p));
     return json({ ok: false, erro: 'acao desconhecida: ' + p.acao });
 
   } catch (err) {
@@ -261,8 +262,9 @@ function gravarConferencia(ss, p) {
   apagarLinhas(sh, antigas);
 
   var ts = new Date();
+  var dataEmb = paraData(p.data_emb);
   var novas = p.linhas.map(function (l) {
-    return [ts, lote, p.data_emb || '', cod, p.desc || '',
+    return [ts, lote, dataEmb, cod, p.desc || '',
             l.trilho, l.op || 0, l.cod_item || '', l.desc_item || '', l.qtd || '',
             String(l.mat || ''), l.nome || '',
             l.resultado === 'DIVERGENTE' ? 'DIVERGENTE' : 'OK', l.obs || ''];
@@ -292,14 +294,62 @@ function lerConferencia(ss, p) {
   var out = [], dataEmb = '';
   linhas.forEach(function (n) {
     var r = sh.getRange(n, 1, 1, CAB_CONF.length).getValues()[0];
-    if (!dataEmb) dataEmb = r[2] instanceof Date ? Utilities.formatDate(r[2], 'GMT-3', 'yyyy-MM-dd')
-                                                 : String(r[2] || '');
+    if (!dataEmb) dataEmb = dataISO(r[2]);
     out.push({ trilho: Number(r[5]) || 0, op: Number(r[6]) || 0,
                cod_item: String(r[7] || ''), desc_item: String(r[8] || ''), qtd: r[9],
                mat: String(r[10] || ''), nome: String(r[11] || ''),
                resultado: String(r[12] || 'OK'), obs: String(r[13] || '') });
   });
   return { ok: true, achou: true, data_emb: dataEmb, linhas: out };
+}
+
+/**
+ * Busca por lote OU por data da embalagem. Devolve as linhas cruas; quem
+ * agrupa por lote × produto é o app, que também imprime.
+ */
+function relatorioConferencia(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var lote = String(p.lote || '').trim();
+  var data = String(p.data || '').trim();
+  if (!lote && !data) return { ok: false, erro: 'informe o lote ou a data' };
+
+  var sh = aba(ss, AB_CONF, CAB_CONF);
+  var ult = sh.getLastRow();
+  if (ult < 2) return { ok: true, linhas: [] };
+
+  var vals = sh.getRange(2, 1, ult - 1, CAB_CONF.length).getValues();
+  var out = [];
+  vals.forEach(function (r) {
+    var l = String(r[1] || '').trim(), d = dataISO(r[2]);
+    if (lote && l !== lote) return;
+    if (data && d !== data) return;
+    out.push({ ts: r[0] instanceof Date ? r[0].toISOString() : String(r[0] || ''),
+               lote: l, data_emb: d, cod: normCod(r[3]), desc: String(r[4] || ''),
+               trilho: Number(r[5]) || 0, op: Number(r[6]) || 0,
+               cod_item: String(r[7] || ''), desc_item: String(r[8] || ''), qtd: r[9],
+               mat: String(r[10] || ''), nome: String(r[11] || ''),
+               resultado: String(r[12] || 'OK'), obs: String(r[13] || '') });
+  });
+  return { ok: true, linhas: out };
+}
+
+/* A data da embalagem entra na célula como DATA, não como texto: é o que
+   faz o filtro da planilha, o Power BI e a busca por data funcionarem sem
+   adivinhar se "08/09" é agosto ou setembro. O app manda yyyy-mm-dd. */
+function paraData(iso) {
+  var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/* O caminho de volta, e tolerante: célula que virou Date, texto que ficou
+   yyyy-mm-dd, ou dd/mm/yyyy digitado na mão na planilha. */
+function dataISO(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var t = String(v || '').trim();
+  var m = t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  return t;
 }
 
 /* Lote e produto juntos: o mesmo lote tem VOL 1/2 e VOL 2/2, que são

@@ -149,6 +149,31 @@ Uma linha por peça da caixa de amostra:
 próprio tablet. A conferência grava a **matrícula**, não o nome digitado: é assim que
 o Power BI agrupa a pessoa certa mesmo quando alguém escreve o nome de outro jeito.
 
+## Três abas, uma tela de cada vez
+
+No tablet, em pé, a conferência não pode morar embaixo de 30 trilhos. O app tem três
+abas — **Mapa dos trilhos**, **Conferência do lote** e **Relatório** — e cada uma
+ocupa a tela inteira. A aba fica gravada no aparelho: o tablet da esteira abre na
+Conferência e fica nela.
+
+Em tela larga (tablet deitado) trilhos e peças aparecem em **duas colunas**: o mapa
+de 30 trilhos cabe sem rolar. Trilho vazio ocupa uma linha só, com `+` e `OP`.
+
+## Relatório — buscar o que foi conferido
+
+Por **lote** ou por **data da embalagem**. Cada conferência gravada vira um bloco:
+lote, data, produto, quem estava em cada OP, quantas peças e quais divergiram — com a
+observação e o nome de quem estava na OP da peça. *Imprimir relatório* tira uma folha
+por conferência, com a divergência sublinhada para saltar aos olhos em impressora
+preto e branco.
+
+Depois de gravar uma conferência, a aba Relatório abre já com aquele lote no campo:
+gravou, quer o papel, são dois toques.
+
+A data da embalagem entra na planilha como **data de verdade** na célula, não como
+texto — é o que faz a busca por dia, o filtro da planilha e o Power BI funcionarem
+sem adivinhar se `08/09` é agosto ou setembro.
+
 ## Como se usa
 
 **Produto que já tem mapa** — digite o código. O app abre o mapa salvo.
