@@ -137,7 +137,7 @@ function listarProdutos(ss) {
     if (!cod) return;
     if (!por[cod]) {
       por[cod] = { cod: cod, desc: String(r[1] || ''), n_trilhos: Number(r[2]) || 0,
-                   velocidade: String(r[3] || ''), n_esquema: String(r[4] || ''),
+                   velocidade: r[3], n_esquema: String(r[4] || ''),
                    itens: 0, atualizado: '' };
     }
     if (r[9]) por[cod].itens++;
@@ -163,8 +163,11 @@ function lerMapa(ss, codBruto) {
   vals.forEach(function (r) {
     if (normCod(r[0]) !== cod) return;
     if (!cab) {
+      /* Velocidade vai crua: o Sheets guarda 8,5 como o número 8.5, e um
+         String() aqui devolveria "8.5" com ponto para a folha impressa. Quem
+         põe a vírgula de volta é o app, que sabe que isso é para ler. */
       cab = { cod: cod, desc: String(r[1] || ''), n_trilhos: Number(r[2]) || 0,
-              velocidade: String(r[3] || ''), n_esquema: String(r[4] || '') };
+              velocidade: r[3], n_esquema: String(r[4] || '') };
     }
     /* OP zero é trilho antes do primeiro posto — a caixa entra na esteira
        ali. Trocar esse 0 por 1 faria a divisa da OP 01 saltar para o trilho
@@ -276,7 +279,7 @@ function testar() {
 
   try {
     var g = salvarMapa(ss, { cod: COD, desc: 'MAPA DE TESTE', n_trilhos: 3,
-                             velocidade: '8,5', n_esquema: '9', linhas: linhas });
+                             velocidade: 8.5, n_esquema: '9', linhas: linhas });
     if (!g.ok) erros.push('nao gravou: ' + g.erro);
     else if (g.gravadas !== 4) erros.push('gravou ' + g.gravadas + ' linhas, esperava 4');
 
@@ -286,7 +289,7 @@ function testar() {
     } else {
       if (l.mapa.desc !== 'MAPA DE TESTE') erros.push('descricao voltou como "' + l.mapa.desc + '"');
       if (l.mapa.n_trilhos !== 3)          erros.push('n_trilhos voltou ' + l.mapa.n_trilhos + ', esperava 3');
-      if (l.mapa.velocidade !== '8,5')     erros.push('velocidade voltou "' + l.mapa.velocidade + '"');
+      if (Number(l.mapa.velocidade) !== 8.5) erros.push('velocidade voltou "' + l.mapa.velocidade + '"');
       if (l.linhas.length !== 4)           erros.push('voltaram ' + l.linhas.length + ' linhas, esperava 4');
 
       var t2 = null, t3 = [];

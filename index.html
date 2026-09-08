@@ -439,6 +439,17 @@ const fmtQtd = n => Number.isInteger(n) ? String(n)
   : (Math.round(n * 1000) / 1000).toString().replace(".", ",");
 const curto = s => { s = String(s || ""); return s.length > 46 ? s.slice(0, 45) + "…" : s; };
 
+/* A velocidade da esteira é número, e é assim que ela vai para a planilha —
+   coluna numérica é o que o Power BI quer, e é o que impede o Sheets de
+   reinterpretar o texto por conta própria. Aqui na tela e na folha impressa
+   ela volta com vírgula, que é como a linha escreve: 8,5 e não 8.5. */
+const fmtVel = v => {
+  const t = String(v ?? "").trim();
+  if(!t) return "";
+  const n = numDec(t);
+  return n ? fmtQtd(n) : t;
+};
+
 /* Insumo de embalagem ocupa trilho igual a painel de MDP — a isomanta, o
    isopor e a própria caixa estão na sequência do mapa da linha. A diferença
    é só de coluna na folha impressa, e de cor do chip na tela. */
@@ -759,7 +770,7 @@ function aplicarMapa(m){
   S.cod = normCod(m.cod || "");
   S.desc = m.desc || "";
   S.nTrilhos = Math.max(1, Math.min(60, m.nTrilhos || 28));
-  S.vel = m.vel || ""; S.esq = m.esq || "";
+  S.vel = fmtVel(m.vel); S.esq = String(m.esq ?? "").trim();
   S.trilhos = novosTrilhos(S.nTrilhos);
   (m.trilhos || []).forEach((tr, i) => { if(i < S.nTrilhos) S.trilhos[i] = { itens: (tr.itens || []).slice() }; });
   S.inicioOp = new Set(m.inicioOp || []);
@@ -880,7 +891,7 @@ async function salvarMapa(){
     cod: normCod(S.cod),
     desc: S.desc,
     n_trilhos: S.nTrilhos,
-    velocidade: S.vel,
+    velocidade: numDec(S.vel) || "",
     n_esquema: S.esq,
     linhas: linhasDoMapa()
   };
