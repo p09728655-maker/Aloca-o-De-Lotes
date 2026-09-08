@@ -22,7 +22,7 @@
     --amber:#ff5a1f; --amber-dim:#5a2410; --green:#3fd15f; --green-dim:#184f2b;
     --steel:#5b8bb0; --red:#ff3b30; --roxo:#8b6bd1;
     /* alvo mínimo de toque no tablet — nada abaixo disso é clicável */
-    --tap:48px;
+    --tap:44px;
   }
   *{box-sizing:border-box} html,body{margin:0}
   body{background:var(--bg); color:var(--ink); font-family:"Inter",system-ui,sans-serif;
@@ -38,13 +38,13 @@
     text-transform:uppercase; color:var(--mut); display:flex; align-items:center; gap:10px}
   .brand .eyebrow img{height:26px; width:auto; display:block; flex:none}
   .brand .eyebrow .sep{color:var(--mut2)}
-  .brand h1{font-family:"Oswald"; font-weight:600; font-size:20px; letter-spacing:.02em; margin:0; line-height:1}
+  .brand h1{font-family:"Oswald"; font-weight:600; font-size:18px; letter-spacing:.02em; margin:0; line-height:1}
   .brand h1 span{color:var(--amber)}
   .brand h1 small{font-family:"IBM Plex Mono"; font-size:11px; font-weight:400;
     letter-spacing:.18em; text-transform:uppercase; color:var(--mut); margin-left:8px}
   .headmeta{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px 18px; align-items:flex-end}
   .kpi{display:flex; flex-direction:column; align-items:flex-end; line-height:1}
-  .kpi b{font-family:"Oswald"; font-size:23px; font-weight:600}
+  .kpi b{font-family:"Oswald"; font-size:20px; font-weight:600}
   .kpi small{font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut);
     margin-top:3px; white-space:nowrap}
 
@@ -52,21 +52,21 @@
     color:var(--mut); padding:7px 0 3px; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .status.err{color:var(--red)} .status.ok{color:var(--green)}
 
-  .setup{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end;
+  .setup{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:flex-end;
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
-    padding:12px 14px; margin-top:10px}
+    padding:9px 12px; margin-top:10px}
   /* A dica do produto ("mapa salvo · 30 trilhos") fica numa faixa reservada
      embaixo do campo. Solta no fluxo ela empurraria os campos vizinhos meia
      linha para baixo toda vez que aparecesse. */
-  .setup .fld{position:relative; padding-bottom:18px}
+  .setup .fld{position:relative; padding-bottom:15px}
   .setup .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
-  .setup > button{margin-bottom:18px}
+  .setup > button{margin-bottom:15px}
   .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
   .fld label{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--mut)}
   select,input[type=text],input[type=number],input[type=date]{background:var(--panel2); color:var(--ink);
-    border:1px solid var(--line); border-radius:8px; padding:10px 11px;
-    font-family:"Inter"; font-size:15px; min-height:var(--tap); width:100%}
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+    font-family:"Inter"; font-size:14px; min-height:var(--tap); width:100%}
   /* color-scheme dark: sem isto o Chrome pinta o ícone do calendário de
      preto (invisível no fundo escuro) e abre o seletor de data em branco */
   input[type=date]{color-scheme:dark}
@@ -78,9 +78,9 @@
     color:var(--mut2); min-height:13px}
   .achou.ok{color:var(--green)} .achou.err{color:var(--red)}
 
-  button{font-family:"Oswald"; font-weight:600; letter-spacing:.04em; font-size:15px;
+  button{font-family:"Oswald"; font-weight:600; letter-spacing:.04em; font-size:14px;
     background:var(--panel2); color:var(--ink); border:1px solid var(--line);
-    border-radius:9px; padding:11px 16px; cursor:pointer; min-height:var(--tap)}
+    border-radius:9px; padding:9px 14px; cursor:pointer; min-height:var(--tap)}
   button:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
   button.pri{background:var(--amber); border-color:var(--amber); color:#000}
   button.gho{background:transparent}
@@ -91,8 +91,8 @@
   /* Sem position:sticky: o cabeçalho da página já é sticky em top:0, e o
      título da caixa grudava atrás dele — sumia junto com o contador de
      divergências, que é justamente o que se quer ver enquanto rola. */
-  .box h2{font-family:"Oswald"; font-weight:600; font-size:14px; letter-spacing:.1em;
-    text-transform:uppercase; margin:0; padding:12px 14px; border-bottom:1px solid var(--line);
+  .box h2{font-family:"Oswald"; font-weight:600; font-size:13px; letter-spacing:.1em;
+    text-transform:uppercase; margin:0; padding:9px 13px; border-bottom:1px solid var(--line);
     color:var(--mut); display:flex; align-items:center; gap:10px; background:var(--panel)}
   .box h2 em{font-style:normal; font-family:"IBM Plex Mono"; font-size:11px;
     letter-spacing:.04em; text-transform:none; color:var(--amber); margin-left:auto}
@@ -106,19 +106,22 @@
   .opsep span{flex:1 1 auto}
   .opsep button{min-height:34px; padding:0 12px; font-size:13px}
 
-  .trilho{border-bottom:1px solid var(--line); padding:7px 13px; display:flex;
-    gap:10px; align-items:flex-start; min-height:44px}
+  .trilho{border-bottom:1px solid var(--line); padding:4px 11px; display:flex;
+    gap:8px; align-items:flex-start; min-height:40px}
   .trilho:last-child{border-bottom:none}
-  .trilho .num{font-family:"Oswald"; font-weight:700; font-size:17px; width:42px;
-    height:42px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  .trilho .num{font-family:"Oswald"; font-weight:700; font-size:16px; width:38px;
+    height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center;
     background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none}
   .trilho.cheia .num{color:var(--ink); border-color:var(--mut2)}
   .trilho .corpo{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:5px;
     justify-content:center; padding-top:2px}
   /* Trilho vazio é a maioria enquanto o mapa está sendo montado. Um traço
      marca o lugar sem gastar altura de tela: 30 trilhos precisam caber. */
-  .trilho.vazia{padding:3px 13px; min-height:0}
-  .trilho.vazia .num{height:32px; font-size:15px}
+  /* Trilho vazio numa linha só, de 30px: só + e OP. Subir e descer um
+     trilho vazio não move peça nenhuma — quem move é o ↑↓ do trilho cheio. */
+  .trilho.vazia{padding:2px 11px; min-height:0; align-items:center}
+  .trilho.vazia .num{height:26px; width:38px; font-size:13px}
+  .trilho.vazia .acoes{grid-template-columns:1fr 1fr}
   .trilho .risco{height:2px; border-radius:1px; background:var(--line); width:56px}
 
   /* 2×2 de botões miúdos: adicionar item, marcar início de OP, e mover o
@@ -126,17 +129,18 @@
   .acoes{display:grid; grid-template-columns:1fr 1fr; gap:3px; flex:none}
   .acoes button{min-height:20px; min-width:32px; padding:0 7px; font-size:11.5px;
     line-height:1; border-radius:5px; letter-spacing:.02em}
+  .trilho.vazia .acoes button{min-height:22px}
   .acoes button.on{background:var(--amber-dim); border-color:var(--amber); color:var(--amber)}
 
-  .chip{display:flex; align-items:center; gap:8px; background:var(--panel2);
-    border:1px solid var(--line); border-radius:8px; padding:4px 5px 4px 9px}
+  .chip{display:flex; align-items:center; gap:6px; background:var(--panel2);
+    border:1px solid var(--line); border-radius:8px; padding:3px 4px 3px 8px}
   .chip .ctxt{flex:1 1 0; min-width:0; font-size:12.5px; line-height:1.25;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer}
   .chip .ctxt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
   .chip .ctxt i{font-style:normal; font-family:"IBM Plex Mono"; font-size:10px; color:var(--mut2)}
   .chip.emb{border-color:#3a2f52}
   .chip.emb .ctxt b{color:var(--roxo)}
-  .chip button{min-height:32px; min-width:32px; padding:0; font-size:15px; line-height:1;
+  .chip button{min-height:28px; min-width:30px; padding:0; font-size:14px; line-height:1;
     border-radius:6px; flex:none}
 
   .rodape{position:fixed; left:0; right:0; bottom:0; z-index:60;
@@ -184,6 +188,47 @@
     margin-top:3px; letter-spacing:.04em}
   .imp .n{font-family:"Oswald"; font-size:20px; color:var(--amber); flex:none}
 
+  /* ---------- abas ---------- */
+  .abas{display:flex; gap:6px; margin-top:10px; border-bottom:1px solid var(--line)}
+  .abas button{flex:1 1 0; border-radius:9px 9px 0 0; border-bottom:none; background:transparent;
+    color:var(--mut); font-size:14px; letter-spacing:.06em; text-transform:uppercase; min-height:44px}
+  .abas button.on{background:var(--panel); color:var(--amber); border-color:var(--line);
+    box-shadow:inset 0 -3px 0 var(--amber)}
+  [data-aba][hidden]{display:none !important}
+
+  .prodchip{flex:1 1 320px; font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--mut);
+    letter-spacing:.03em; padding-bottom:2px}
+  .confbar .confmeta{order:9; margin-left:auto; align-self:center; font-style:normal;
+    font-family:"IBM Plex Mono"; font-size:12px; color:var(--amber); padding-bottom:15px}
+  .confbar .confmeta:empty{display:none}
+  .confbar .fld{padding-bottom:0}
+  .prodchip b{color:var(--ink); font-family:"Inter"; font-weight:600; letter-spacing:0}
+
+  /* Tablet deitado: duas colunas, e 30 trilhos cabem numa tela sem rolar.
+     Em pé (menos de 1000px) continua uma coluna. */
+  @media(min-width:1000px){
+    #listaTrilhos, #listaConf{columns:2; column-gap:14px; column-rule:1px solid var(--line)}
+    #listaTrilhos > *, #listaConf > *{break-inside:avoid}
+    .opsep, .opgrupo{break-after:avoid}
+    .obsdiv{break-before:avoid}
+    .vazio-tela{column-span:all}
+  }
+
+  /* ---------- relatório ---------- */
+  .relgrupo{padding:12px 14px; border-bottom:1px solid var(--line)}
+  .relgrupo:last-child{border-bottom:none}
+  .reltit{display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline; font-size:13.5px}
+  .reltit b{font-family:"Oswald"; font-size:17px; letter-spacing:.03em}
+  .reltit .relcod{font-family:"IBM Plex Mono"; font-size:12px; color:var(--steel)}
+  .reltit .relres{margin-left:auto; font-family:"Oswald"; font-size:12.5px; letter-spacing:.06em;
+    padding:4px 10px; border-radius:6px; background:var(--green-dim); color:var(--green)}
+  .reltit .relres.div{background:#4a1512; color:var(--red)}
+  .relops{margin-top:7px; font-size:12.5px; color:var(--mut); line-height:1.7}
+  .relops b{color:var(--ink); font-weight:500}
+  .relops i{font-style:normal; font-family:"Oswald"; color:var(--amber); letter-spacing:.06em; margin-right:3px}
+  .reldiv{margin-top:6px; font-size:12.5px; color:var(--red); line-height:1.5}
+  .reldiv i{font-style:normal; color:var(--mut)}
+
   /* ---------- conferência do lote ---------- */
   .confbar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end;
     padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel)}
@@ -191,34 +236,34 @@
   .confbar .fld{min-width:140px}
   .confbar .espaco{flex:1 1 auto}
 
-  .opgrupo{display:flex; align-items:center; gap:11px; padding:8px 13px;
+  .opgrupo{display:flex; align-items:center; gap:9px; padding:5px 11px;
     background:#0b0d10; border-bottom:1px solid var(--line)}
   .opgrupo b{font-family:"Oswald"; font-size:13.5px; letter-spacing:.1em; color:var(--amber);
     flex:none; min-width:64px}
-  .opgrupo select{flex:1 1 0; min-width:0; font-size:14px; min-height:44px; padding:8px 10px}
+  .opgrupo select{flex:1 1 0; min-width:0; font-size:13.5px; min-height:38px; padding:6px 9px}
   .opgrupo.sem select{border-color:var(--amber)}
   .opgrupo.antes b{color:var(--mut2)}
 
   /* A peça nasce OK e o toque marca divergência: numa amostra quase tudo
      está certo, e obrigar 21 toques para dizer "tudo certo" faria o líder
      bater tudo no automático — que é pior que não conferir. */
-  .pconf{display:flex; align-items:center; gap:11px; padding:8px 13px;
-    border-bottom:1px solid var(--line); cursor:pointer; user-select:none; min-height:var(--tap)}
+  .pconf{display:flex; align-items:center; gap:9px; padding:4px 11px;
+    border-bottom:1px solid var(--line); cursor:pointer; user-select:none; min-height:40px}
   .pconf:last-child{border-bottom:none}
   .pconf:active{background:var(--panel2)}
-  .pconf .tr{font-family:"Oswald"; font-weight:600; font-size:14px; min-width:38px; height:34px;
+  .pconf .tr{font-family:"Oswald"; font-weight:600; font-size:13px; min-width:34px; height:30px;
     border-radius:6px; display:flex; align-items:center; justify-content:center;
     background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none}
   .pconf .txt{flex:1 1 0; min-width:0; font-size:13px; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap}
   .pconf .txt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
-  .pconf .marca{font-family:"Oswald"; font-size:12.5px; letter-spacing:.06em; flex:none;
-    padding:5px 10px; border-radius:6px; background:var(--green-dim); color:var(--green)}
+  .pconf .marca{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none;
+    padding:4px 9px; border-radius:6px; background:var(--green-dim); color:var(--green)}
   .pconf.div{background:rgba(255,59,48,.08)}
   .pconf.div .marca{background:#4a1512; color:var(--red)}
   .pconf.div .txt b{color:var(--red)}
-  .obsdiv{padding:0 13px 10px 62px; border-bottom:1px solid var(--line)}
-  .obsdiv input{font-size:13.5px; min-height:42px}
+  .obsdiv{padding:0 11px 8px 54px; border-bottom:1px solid var(--line)}
+  .obsdiv input{font-size:13px; min-height:38px}
 
   /* ==================================================================
      FOLHA IMPRESSA — é o que fica pendurado na esteira.
@@ -282,6 +327,13 @@
     #folha .fpe{display:flex; justify-content:space-between; gap:6mm; margin-top:2.5mm;
       padding-top:1.5mm; border-top:.3mm solid #999; font-size:7pt; color:#555}
 
+    /* folha da conferência: a divergência salta aos olhos mesmo em preto e branco */
+    #folha tr.fdiv td{background:#f0f0f0; font-weight:600}
+    #folha td.fnome{font-size:9pt; font-weight:600}
+    #folha td.fobs{font-size:8pt; font-style:italic; color:#222}
+    #folha td.fres{text-align:center}
+    #folha tr.fdiv td.fres{text-decoration:underline}
+
     /* folha em branco: linha alta para caber letra de mão */
     #folha table.fbranca td{height:6.8mm; border-bottom:.25mm solid #888}
     #folha th.fbloco, #folha td.fbloco{border-left:.4mm solid #000}
@@ -308,7 +360,15 @@
 
 <div class="status" id="status">Carregando…</div>
 
-<div class="setup">
+<!-- Três telas, uma de cada vez. No tablet, em pé, a conferência não pode
+     morar embaixo de 30 trilhos: é uma aba, ocupa a tela inteira. -->
+<div class="abas" id="abas">
+  <button data-aba="mapa" class="on">Mapa dos trilhos</button>
+  <button data-aba="conf">Conferência do lote</button>
+  <button data-aba="rel">Relatório</button>
+</div>
+
+<div class="setup" data-aba="mapa">
   <div class="fld" style="min-width:170px">
     <label for="inCod">Código do produto</label>
     <input type="text" id="inCod" list="listaProdutos" inputmode="numeric"
@@ -343,7 +403,7 @@
   <button class="gho" id="btnNovoColab">+ Colaborador</button>
 </div>
 
-<div class="box">
+<div class="box" data-aba="mapa">
   <h2>Trilhos <em id="selTxt"></em></h2>
   <div id="listaTrilhos"><div class="vazio-tela">
     Digite o <b>código do produto</b> para abrir o mapa salvo,
@@ -351,15 +411,32 @@
   </div></div>
 </div>
 
-<div class="box" id="boxConf">
-  <h2>Conferência do lote <em id="confMeta"></em></h2>
+<div class="box" id="boxConf" data-aba="conf" hidden>
+  <!-- sem h2: a aba já diz "Conferência do lote", e no tablet cada 40px
+       de altura é meia peça a menos na tela -->
   <div class="confbar" id="confBarra" hidden>
+    <div class="prodchip" id="confProd"></div>
+    <em class="confmeta" id="confMeta"></em>
     <div class="fld"><label for="inLote">Lote</label>
       <input type="text" id="inLote" inputmode="numeric" autocomplete="off" placeholder="ex.: 25055"></div>
     <div class="fld"><label for="inData">Data da embalagem</label>
       <input type="date" id="inData"></div>
   </div>
   <div id="listaConf"></div>
+</div>
+
+<div class="box" id="boxRel" data-aba="rel" hidden>
+  <div class="confbar">
+    <em class="confmeta" id="relMeta"></em>
+    <div class="fld"><label for="relLote">Lote</label>
+      <input type="text" id="relLote" inputmode="numeric" autocomplete="off" placeholder="ex.: 25055"></div>
+    <div class="fld"><label for="relData">Data da embalagem</label>
+      <input type="date" id="relData"></div>
+    <button class="pri" id="relBuscar">Buscar</button>
+    <span class="espaco"></span>
+  </div>
+  <div id="relCorpo"><div class="vazio-tela">Digite o <b>lote</b> ou a <b>data</b> e toque em Buscar.
+    O relatório mostra, por lote, quem estava em cada OP e o que veio errado.</div></div>
 </div>
 
 <div class="rodape">
@@ -376,8 +453,9 @@
     <!-- No rodapé fixo, e não no alto da seção: depois de descer 21 peças
          marcando divergência, rolar tudo de volta para achar o botão é o
          tipo de coisa que faz o líder desistir de conferir. -->
-    <button class="pri" id="btnGravarConf" hidden disabled>Gravar conferência</button>
-    <button class="pri" id="btnSalvar" disabled>Salvar mapa</button>
+    <button class="pri" id="btnGravarConf" data-aba="conf" hidden disabled>Gravar conferência</button>
+    <button class="pri" id="btnImprimirRel" data-aba="rel" hidden disabled>Imprimir relatório</button>
+    <button class="pri" id="btnSalvar" data-aba="mapa" disabled>Salvar mapa</button>
   </div>
 </div>
 
@@ -459,7 +537,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.1.1";
+const VERSAO = "3.2.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -759,13 +837,16 @@ function linhaTrilho(t){
   acoes.innerHTML =
     `<button class="gho" data-a="add" title="acrescentar item neste trilho">+</button>
      <button class="gho${S.inicioOp.has(t) ? " on" : ""}" data-a="op"
-             title="começar uma OP nova neste trilho">OP</button>
-     <button class="gho" data-a="cima" title="subir o trilho">↑</button>
-     <button class="gho" data-a="baixo" title="descer o trilho">↓</button>`;
+             title="começar uma OP nova neste trilho">OP</button>` +
+    (vazio ? "" :
+    `<button class="gho" data-a="cima" title="subir o trilho">↑</button>
+     <button class="gho" data-a="baixo" title="descer o trilho">↓</button>`);
   acoes.querySelector('[data-a="add"]').addEventListener("click", () => abrirItem(t, -1));
   acoes.querySelector('[data-a="op"]').addEventListener("click", () => alternarOp(t));
-  acoes.querySelector('[data-a="cima"]').addEventListener("click", () => trocaTrilho(t, t - 1));
-  acoes.querySelector('[data-a="baixo"]').addEventListener("click", () => trocaTrilho(t, t + 1));
+  if(!vazio){
+    acoes.querySelector('[data-a="cima"]').addEventListener("click", () => trocaTrilho(t, t - 1));
+    acoes.querySelector('[data-a="baixo"]').addEventListener("click", () => trocaTrilho(t, t + 1));
+  }
 
   el.appendChild(num); el.appendChild(corpo); el.appendChild(acoes);
   return el;
@@ -825,10 +906,12 @@ function renderConf(){
      sem mapa — e dizer o que falta é mais simples que sumir. */
   const lista = $("listaConf");
   $("confBarra").hidden = !totalItens();
+  renderProdChip();
   if(!totalItens()){
     lista.innerHTML = `<div class="vazio-tela">A conferência é de um lote de um produto.
-      <b>Abra o mapa</b> — digite o código lá em cima — e as peças aparecem aqui,
-      agrupadas por OP, para dizer quem estava em cada uma e o que veio errado.</div>`;
+      <b>Abra o mapa</b> na aba <b>Mapa dos trilhos</b> — digite o código do produto —
+      e as peças aparecem aqui, agrupadas por OP, para dizer quem estava em cada uma
+      e o que veio errado.</div>`;
     $("confMeta").textContent = "";
     atualizarBotaoConf();
     return;
@@ -856,6 +939,12 @@ function renderConf(){
      mapa, então o rascunho tem de ser guardado aqui também — senão a tela
      recarregada volta com o mapa e sem a conferência. */
   guardarRascunho();
+}
+
+function renderProdChip(){
+  $("confProd").innerHTML = S.cod
+    ? `${escapa(codErp(S.cod))} · <b>${escapa(S.desc || "sem descrição")}</b>`
+    : `<b>produto sem código</b> — volte ao mapa e preencha`;
 }
 
 function grupoOp(op){
@@ -913,7 +1002,6 @@ function podeConferir(){
 function atualizarBotaoConf(){
   const b = $("btnGravarConf");
   if(!b) return;
-  b.hidden = !totalItens();
   b.disabled = !podeConferir();
   b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
     : !normCod(S.cod) ? "falta o código do produto"
@@ -994,6 +1082,154 @@ async function abrirConferencia(){
   renderConf();
   setMsg("", `Lote ${lote} já tinha conferência gravada — abri o que estava lá.`);
 }
+
+/* ==================================================================
+   ABAS — uma tela de cada vez
+   ================================================================== */
+const ABA_KEY = "trilhosAba";
+function mostrarAba(a){
+  document.querySelectorAll("[data-aba]").forEach(el => {
+    if(el.parentElement && el.parentElement.id === "abas"){
+      el.classList.toggle("on", el.dataset.aba === a);
+    }else{
+      el.hidden = el.dataset.aba !== a;
+    }
+  });
+  /* Relatório abre já com o lote que está na conferência: gravou, quer
+     imprimir — é o caminho de dois toques. */
+  if(a === "rel" && !$("relLote").value && S.lote.trim()) $("relLote").value = S.lote.trim();
+  try{ localStorage.setItem(ABA_KEY, a); }catch(e){}
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("#abas button").forEach(b =>
+  b.addEventListener("click", () => mostrarAba(b.dataset.aba)));
+
+/* ==================================================================
+   RELATÓRIO — buscar conferências gravadas por lote ou por data
+   ================================================================== */
+let REL = [];
+
+const dataBR = iso => {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || "—");
+};
+
+/* Uma conferência = lote × produto. As linhas voltam soltas da planilha e
+   aqui viram um bloco cada: quem estava em cada OP, quantas peças, quais
+   divergiram. */
+function agruparRelatorio(linhas){
+  const g = new Map();
+  linhas.forEach(l => {
+    const k = l.lote + "|" + l.cod;
+    if(!g.has(k)) g.set(k, { lote: l.lote, data: l.data_emb, cod: l.cod, desc: l.desc,
+                             ts: l.ts || "", ops: new Map(), pecas: [] });
+    const x = g.get(k);
+    if(l.op > 0 && l.nome && !x.ops.has(l.op)) x.ops.set(l.op, l.nome);
+    x.pecas.push(l);
+    if((l.ts || "") > x.ts) x.ts = l.ts;
+  });
+  const out = [...g.values()];
+  out.forEach(x => x.pecas.sort((a, b) => a.trilho - b.trilho));
+  return out.sort((a, b) => (b.data || "").localeCompare(a.data || "") || a.lote.localeCompare(b.lote)
+                            || a.cod.localeCompare(b.cod));
+}
+
+function renderRelatorio(){
+  const box = $("relCorpo");
+  $("btnImprimirRel").disabled = !REL.length;
+  if(!REL.length){
+    box.innerHTML = '<div class="vazio-tela">Nenhuma conferência gravada com esse lote ou nessa data.</div>';
+    $("relMeta").textContent = "";
+    return;
+  }
+  const totDiv = REL.reduce((a, g) => a + g.pecas.filter(p => p.resultado === "DIVERGENTE").length, 0);
+  $("relMeta").textContent = `${REL.length} ${REL.length === 1 ? "conferência" : "conferências"}` +
+    (totDiv ? ` · ${totDiv} ${totDiv === 1 ? "divergência" : "divergências"}` : " · sem divergência");
+
+  box.innerHTML = REL.map(g => {
+    const div = g.pecas.filter(p => p.resultado === "DIVERGENTE");
+    const ops = [...g.ops.entries()].sort((a, b) => a[0] - b[0])
+      .map(([op, nome]) => `<i>OP ${String(op).padStart(2, "0")}</i><b>${escapa(nome)}</b>`).join(" · ");
+    return `<div class="relgrupo">
+      <div class="reltit"><b>Lote ${escapa(g.lote)}</b> <span>${dataBR(g.data)}</span>
+        <span class="relcod">${escapa(codErp(g.cod))}</span> <span>${escapa(g.desc)}</span>
+        <span class="relres${div.length ? " div" : ""}">${div.length
+          ? `${div.length} ${div.length === 1 ? "DIVERGÊNCIA" : "DIVERGÊNCIAS"}` : "OK"}</span></div>
+      <div class="relops">${ops || "<i>—</i> sem colaborador registrado"} · ${g.pecas.length} peças</div>
+      ${div.map(p => `<div class="reldiv">⚠ Trilho ${p.trilho} · ${fmtQtd(numDec(p.qtd) || 1)}× ${escapa(p.desc_item)}` +
+        (p.obs ? ` — ${escapa(p.obs)}` : "") +
+        ` <i>(${p.op ? "OP " + String(p.op).padStart(2, "0") : "antes da 1ª OP"}${p.nome ? " · " + escapa(p.nome) : ""})</i></div>`).join("")}
+    </div>`;
+  }).join("");
+}
+
+async function buscarRelatorio(){
+  const lote = $("relLote").value.trim(), data = $("relData").value;
+  if(!lote && !data){ setMsg("err", "Digite o lote ou a data para buscar."); return; }
+  $("relCorpo").innerHTML = '<div class="vazio-tela">Buscando na planilha…</div>';
+  $("btnImprimirRel").disabled = true;
+  try{
+    const out = await chamar({ acao: "relatorio", lote, data });
+    REL = agruparRelatorio(out.linhas || []);
+    renderRelatorio();
+    setMsg("", "");
+  }catch(e){
+    REL = [];
+    $("relCorpo").innerHTML = `<div class="vazio-tela">Não consegui buscar: ${escapa(e.message)}</div>`;
+  }
+}
+$("relBuscar").addEventListener("click", buscarRelatorio);
+$("relLote").addEventListener("keydown", ev => { if(ev.key === "Enter") buscarRelatorio(); });
+
+/* Uma folha por conferência: OP, quem estava, peça a peça, e a divergência
+   sublinhada para saltar aos olhos mesmo em impressora preto e branco. */
+function caixaConferencia(g){
+  const div = g.pecas.filter(p => p.resultado === "DIVERGENTE").length;
+  let opAnterior = null;
+  const corpo = g.pecas.map(p => {
+    const ini = p.op !== opAnterior; opAnterior = p.op;
+    const d = p.resultado === "DIVERGENTE";
+    return `<tr class="${ini ? "fini" : ""}${d ? " fdiv" : ""}">
+      <td class="fop">${ini ? (p.op ? "OP " + String(p.op).padStart(2, "0") : "—") : ""}</td>
+      <td class="fnome">${ini ? escapa(p.op ? (g.ops.get(p.op) || "________________") : "antes da 1ª OP") : ""}</td>
+      <td class="ftr">${p.trilho}</td>
+      <td class="fpeca">${fmtQtd(numDec(p.qtd) || 1)}× ${escapa(p.desc_item)}</td>
+      <td class="fres">${d ? "DIVERGENTE" : "OK"}</td>
+      <td class="fobs">${escapa(p.obs)}</td>
+    </tr>`;
+  }).join("");
+  const gravadaEm = g.ts ? new Date(g.ts) : null;
+  return `<div class="caixa">
+    ${fCab("Conferência da caixa de amostra", g.desc || codErp(g.cod),
+           "Resultado", div ? `${div} DIV.` : "OK",
+           div ? `${div} ${div === 1 ? "divergência" : "divergências"} em ${g.pecas.length} peças`
+               : `${g.pecas.length} peças sem divergência`)}
+    <div class="fmeta">
+      <div><small>Lote</small><b>${escapa(g.lote)}</b></div>
+      <div><small>Data emb.</small><b>${dataBR(g.data)}</b></div>
+      <div><small>Código</small><b>${escapa(codErp(g.cod))}</b></div>
+      <div><small>Gravada em</small><b>${gravadaEm && !isNaN(gravadaEm)
+        ? gravadaEm.toLocaleDateString("pt-BR") + " " + gravadaEm.toTimeString().slice(0, 5) : "—"}</b></div>
+      <div><small>Responsável</small><b>____________________</b></div>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:9%"><col style="width:19%"><col style="width:7%">
+        <col style="width:40%"><col style="width:12%"><col style="width:13%">
+      </colgroup>
+      <thead><tr><th>OP</th><th>Quem estava</th><th style="text-align:center">Trilho</th>
+        <th>Peça</th><th style="text-align:center">Resultado</th><th>Observação</th></tr></thead>
+      <tbody>${corpo}</tbody>
+    </table>
+    ${fPe(`lote ${escapa(g.lote)} · ${escapa(codErp(g.cod))} · ${g.ops.size} OPs com colaborador`)}
+  </div>`;
+}
+
+$("btnImprimirRel").addEventListener("click", () => {
+  if(!REL.length) return;
+  $("folha").innerHTML = REL.map(caixaConferencia).join("");
+  window.print();
+});
 
 const hojeISO = () => {
   const d = new Date();
@@ -1151,6 +1387,7 @@ function mapaDeLinhas(cod, cab, linhas){
 async function abrirProduto(bruto){
   const cod = normCod(bruto);
   S.cod = cod;
+  renderProdChip();
   const el = $("achouCod");
   if(!cod){ el.className = "achou"; el.textContent = ""; atualizarBotoes(); return; }
 
@@ -1745,7 +1982,7 @@ $("impCancel").addEventListener("click", () => $("dlgImp").close());
    ================================================================== */
 $("inCod").addEventListener("change", ev => abrirProduto(ev.target.value));
 $("inCod").addEventListener("blur",   ev => abrirProduto(ev.target.value));
-$("inDesc").addEventListener("input", ev => { S.desc = ev.target.value.trim(); guardarRascunho(); });
+$("inDesc").addEventListener("input", ev => { S.desc = ev.target.value.trim(); renderProdChip(); guardarRascunho(); });
 $("inVel").addEventListener("input",  ev => { S.vel  = ev.target.value.trim(); guardarRascunho(); });
 $("inEsq").addEventListener("input",  ev => { S.esq  = ev.target.value.trim(); guardarRascunho(); });
 $("inTrilhos").addEventListener("change", ev => {
@@ -1859,6 +2096,9 @@ $("cfgProcurar").addEventListener("click", async () => {
     render();
   }
   pintarFila();
+  let aba = "mapa";
+  try{ aba = localStorage.getItem(ABA_KEY) || "mapa"; }catch(e){}
+  mostrarAba(["mapa", "conf", "rel"].includes(aba) ? aba : "mapa");
   carregarLista();
 })();
 </script>
