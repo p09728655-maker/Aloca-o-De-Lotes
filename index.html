@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mapa dos Trilhos — PPCP Patrimar</title>
+<title>RitmoPatrimar — Mapa dos Trilhos · Embalagem</title>
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -40,6 +40,8 @@
   .brand .eyebrow .sep{color:var(--mut2)}
   .brand h1{font-family:"Oswald"; font-weight:600; font-size:20px; letter-spacing:.02em; margin:0; line-height:1}
   .brand h1 span{color:var(--amber)}
+  .brand h1 small{font-family:"IBM Plex Mono"; font-size:11px; font-weight:400;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--mut); margin-left:8px}
   .headmeta{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px 18px; align-items:flex-end}
   .kpi{display:flex; flex-direction:column; align-items:flex-end; line-height:1}
   .kpi b{font-family:"Oswald"; font-size:23px; font-weight:600}
@@ -62,9 +64,13 @@
   .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
   .fld label{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--mut)}
-  select,input[type=text],input[type=number]{background:var(--panel2); color:var(--ink);
+  select,input[type=text],input[type=number],input[type=date]{background:var(--panel2); color:var(--ink);
     border:1px solid var(--line); border-radius:8px; padding:10px 11px;
     font-family:"Inter"; font-size:15px; min-height:var(--tap); width:100%}
+  /* color-scheme dark: sem isto o Chrome pinta o ícone do calendário de
+     preto (invisível no fundo escuro) e abre o seletor de data em branco */
+  input[type=date]{color-scheme:dark}
+  input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer; opacity:.8}
   select:focus,input:focus{outline:2px solid var(--amber); outline-offset:1px}
   .fld.grow{flex:1 1 240px}
   .fld.mini{min-width:96px; max-width:120px}
@@ -82,10 +88,12 @@
 
   .box{background:var(--panel); border:1px solid var(--line); border-radius:12px;
     overflow:hidden; margin-top:14px}
+  /* Sem position:sticky: o cabeçalho da página já é sticky em top:0, e o
+     título da caixa grudava atrás dele — sumia junto com o contador de
+     divergências, que é justamente o que se quer ver enquanto rola. */
   .box h2{font-family:"Oswald"; font-weight:600; font-size:14px; letter-spacing:.1em;
     text-transform:uppercase; margin:0; padding:12px 14px; border-bottom:1px solid var(--line);
-    color:var(--mut); display:flex; align-items:center; gap:10px; position:sticky; top:0;
-    background:var(--panel); z-index:2}
+    color:var(--mut); display:flex; align-items:center; gap:10px; background:var(--panel)}
   .box h2 em{font-style:normal; font-family:"IBM Plex Mono"; font-size:11px;
     letter-spacing:.04em; text-transform:none; color:var(--amber); margin-left:auto}
   .vazio-tela{padding:26px 16px; color:var(--mut2); font-size:13.5px; line-height:1.6; text-align:center}
@@ -176,6 +184,41 @@
     margin-top:3px; letter-spacing:.04em}
   .imp .n{font-family:"Oswald"; font-size:20px; color:var(--amber); flex:none}
 
+  /* ---------- conferência do lote ---------- */
+  .confbar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end;
+    padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel)}
+  .confbar .fld{min-width:140px}
+  .confbar .espaco{flex:1 1 auto}
+
+  .opgrupo{display:flex; align-items:center; gap:11px; padding:8px 13px;
+    background:#0b0d10; border-bottom:1px solid var(--line)}
+  .opgrupo b{font-family:"Oswald"; font-size:13.5px; letter-spacing:.1em; color:var(--amber);
+    flex:none; min-width:64px}
+  .opgrupo select{flex:1 1 0; min-width:0; font-size:14px; min-height:44px; padding:8px 10px}
+  .opgrupo.sem select{border-color:var(--amber)}
+  .opgrupo.antes b{color:var(--mut2)}
+
+  /* A peça nasce OK e o toque marca divergência: numa amostra quase tudo
+     está certo, e obrigar 21 toques para dizer "tudo certo" faria o líder
+     bater tudo no automático — que é pior que não conferir. */
+  .pconf{display:flex; align-items:center; gap:11px; padding:8px 13px;
+    border-bottom:1px solid var(--line); cursor:pointer; user-select:none; min-height:var(--tap)}
+  .pconf:last-child{border-bottom:none}
+  .pconf:active{background:var(--panel2)}
+  .pconf .tr{font-family:"Oswald"; font-weight:600; font-size:14px; min-width:38px; height:34px;
+    border-radius:6px; display:flex; align-items:center; justify-content:center;
+    background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none}
+  .pconf .txt{flex:1 1 0; min-width:0; font-size:13px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .pconf .txt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
+  .pconf .marca{font-family:"Oswald"; font-size:12.5px; letter-spacing:.06em; flex:none;
+    padding:5px 10px; border-radius:6px; background:var(--green-dim); color:var(--green)}
+  .pconf.div{background:rgba(255,59,48,.08)}
+  .pconf.div .marca{background:#4a1512; color:var(--red)}
+  .pconf.div .txt b{color:var(--red)}
+  .obsdiv{padding:0 13px 10px 62px; border-bottom:1px solid var(--line)}
+  .obsdiv input{font-size:13.5px; min-height:42px}
+
   /* ==================================================================
      FOLHA IMPRESSA — é o que fica pendurado na esteira.
      ================================================================== */
@@ -250,9 +293,9 @@
   <div class="brand">
     <div class="eyebrow">
       <img src="./logo-patrimar.png" alt="Patrimar Móveis" width="900" height="291">
-      <span class="sep">·</span><span>PPCP</span>
+      <span class="sep">·</span><span>RitmoPatrimar</span>
     </div>
-    <h1>Mapa dos <span>Trilhos</span></h1>
+    <h1>Mapa dos <span>Trilhos</span> <small>Embalagem</small></h1>
   </div>
   <div class="headmeta">
     <div class="kpi"><b id="kItens">–</b><small>itens</small></div>
@@ -303,6 +346,19 @@
   </div></div>
 </div>
 
+<div class="box" id="boxConf" hidden>
+  <h2>Conferência do lote <em id="confMeta"></em></h2>
+  <div class="confbar">
+    <div class="fld"><label for="inLote">Lote</label>
+      <input type="text" id="inLote" inputmode="numeric" autocomplete="off" placeholder="ex.: 25055"></div>
+    <div class="fld"><label for="inData">Data da embalagem</label>
+      <input type="date" id="inData"></div>
+    <span class="espaco"></span>
+    <button class="gho" id="btnNovoColab">+ Colaborador</button>
+  </div>
+  <div id="listaConf"></div>
+</div>
+
 <div class="rodape">
   <div class="atualiza" id="barraAtualiza" hidden>
     <span id="txtAtualiza">Versão nova disponível.</span>
@@ -314,6 +370,10 @@
     <button class="gho" id="btnInstalar" hidden>Instalar no tablet</button>
     <span class="msg" id="msg"></span>
     <button class="gho" id="btnReenviar" hidden>Reenviar pendentes</button>
+    <!-- No rodapé fixo, e não no alto da seção: depois de descer 21 peças
+         marcando divergência, rolar tudo de volta para achar o botão é o
+         tipo de coisa que faz o líder desistir de conferir. -->
+    <button class="pri" id="btnGravarConf" hidden disabled>Gravar conferência</button>
     <button class="pri" id="btnSalvar" disabled>Salvar mapa</button>
   </div>
 </div>
@@ -370,6 +430,24 @@
   </div>
 </dialog>
 
+<dialog id="dlgColab">
+  <h3>Cadastrar colaborador</h3>
+  <div class="body">
+    <div class="fld"><label for="colMat">Matrícula</label>
+      <input type="text" id="colMat" inputmode="numeric" autocomplete="off"></div>
+    <div class="fld"><label for="colNome">Nome</label>
+      <input type="text" id="colNome" autocomplete="off"></div>
+    <p class="hint">Grava na aba COLABORADORES e já aparece nos seletores de OP.
+      A conferência guarda a <b>matrícula</b>, não o nome digitado — é assim que
+      o Power BI agrupa a pessoa certa mesmo se alguém escrever o nome de outro jeito.</p>
+    <p class="hint" id="colErro" style="color:var(--red)" hidden></p>
+  </div>
+  <div class="foot">
+    <button class="gho" id="colCancel">Cancelar</button>
+    <button class="pri" id="colOk">Cadastrar</button>
+  </div>
+</dialog>
+
 <div id="folha"></div>
 
 <script>
@@ -378,7 +456,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.0.1";
+const VERSAO = "3.1.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -412,7 +490,13 @@ const S = {
   trilhos: [],              // índice 0 = trilho 1 → { itens:[{cod,desc,qtd,insumo}] }
   inicioOp: new Set(),      // trilhos onde começa uma OP nova
   produtos: [],             // cabeçalhos dos mapas já salvos na planilha
-  edit: null                // { t, j } — j < 0 é item novo
+  edit: null,               // { t, j } — j < 0 é item novo
+
+  /* ---- conferência da caixa de amostra ---- */
+  lote: "", dataEmb: "",
+  colab: [],                // equipe, da aba COLABORADORES
+  opColab: new Map(),       // nº da OP -> matrícula de quem está nela hoje
+  conf: new Map()           // "trilho|j" -> { div:true, obs:"" }
 };
 
 const $ = id => document.getElementById(id);
@@ -496,6 +580,10 @@ async function carregarLista(){
     const out = await chamar({ acao: "lista" });
     S.produtos = out.produtos || [];
     montarDatalist();
+    try{
+      S.colab = (await chamar({ acao: "colaboradores" })).colaboradores || [];
+    }catch(e){ S.colab = []; }
+    renderConf();
     linhaStatus();
   }catch(e){
     /* "Failed to fetch" não diz nada para quem está de pé na esteira. Sem
@@ -513,6 +601,8 @@ function linhaStatus(){
   const p = [];
   p.push(S.produtos.length ? `<b>${S.produtos.length}</b> produtos com mapa salvo`
                            : "nenhum mapa salvo ainda");
+  p.push(S.colab.length ? `${S.colab.length} colaboradores`
+                        : '<span style="color:var(--amber)">nenhum colaborador cadastrado</span>');
   if(!CFG.api) p.push('<span style="color:var(--amber)">Apps Script não configurado — não grava</span>');
   p.push(`<span class="versao">v${VERSAO}</span>`);
   setStatus("", p.join(" · "));
@@ -580,6 +670,8 @@ function alternarOp(t){
 
 function limparTela(){
   S.cod = ""; S.desc = ""; S.vel = ""; S.esq = "";
+  S.lote = ""; S.conf = new Map(); S.opColab = new Map();
+  $("inLote").value = "";
   S.nTrilhos = 28; S.trilhos = novosTrilhos(28); S.inicioOp = new Set();
   $("inCod").value = ""; $("inDesc").value = ""; $("inVel").value = ""; $("inEsq").value = "";
   $("inTrilhos").value = "28"; $("achouCod").className = "achou"; $("achouCod").textContent = "";
@@ -592,6 +684,7 @@ function limparTela(){
    ================================================================== */
 function render(){
   renderTrilhos();
+  renderConf();
   renderKpi();
   atualizarBotoes();
   guardarRascunho();
@@ -687,6 +780,7 @@ function podeSalvar(){ return !!(normCod(S.cod) && totalItens()); }
 
 function atualizarBotoes(){
   $("btnSalvar").disabled = !podeSalvar();
+  atualizarBotaoConf();
   if(!S.trilhos.length){ setMsg("", ""); return; }
   if(!totalItens())            setMsg("", "Mapa vazio — toque no + de um trilho para acrescentar a peça.");
   else if(!normCod(S.cod))     setMsg("err", "Falta o código do produto para salvar.");
@@ -694,6 +788,236 @@ function atualizarBotoes(){
   else                         setMsg("ok", `${totalItens()} ${totalItens() === 1 ? "item" : "itens"} · ` +
                                              `${S.nTrilhos} trilhos · ${totalOps()} ${totalOps() === 1 ? "OP" : "OPs"}.`);
 }
+
+/* ==================================================================
+   CONFERÊNCIA DO LOTE — a caixa de amostra
+   O mapa é o padrão do produto; a conferência é o que aconteceu num lote.
+   Uma caixa por lote, não toda caixa: a esteira não para para 21 toques
+   por caixa, e o que a rastreabilidade precisa saber é quem estava em cada
+   OP naquele dia. As peças ficam agrupadas pela OP, com o nome de quem está
+   nela no cabeçalho do grupo — a pessoa ao lado das peças por que responde.
+   ================================================================== */
+const chaveConf = (t, j) => t + "|" + j;
+
+/* Peça nasce OK e o toque marca divergência. Exigir 21 toques para dizer
+   "tudo certo" faz o líder bater tudo no automático, que é pior do que
+   não conferir — e a assinatura do que ficou gravado é o nome dele. */
+const estadoConf = (t, j) => S.conf.get(chaveConf(t, j)) || { div: false, obs: "" };
+
+/* As OPs que têm peça. A 0 é o trecho antes do primeiro posto — a caixa
+   entrando na esteira —, e por isso não cobra colaborador. */
+function opsComPeca(){
+  const ops = [];
+  for(let t = 1; t <= S.nTrilhos; t++){
+    if(!(S.trilhos[t - 1] || { itens: [] }).itens.length) continue;
+    const op = opDoTrilho(t);
+    if(!ops.includes(op)) ops.push(op);
+  }
+  return ops;
+}
+const opsSemColab = () => opsComPeca().filter(op => op > 0 && !S.opColab.get(op));
+
+function renderConf(){
+  const box = $("boxConf");
+  box.hidden = !totalItens();
+  if(box.hidden) return;
+
+  const lista = $("listaConf");
+  lista.innerHTML = "";
+  let opAtual = null;
+  for(let t = 1; t <= S.nTrilhos; t++){
+    const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
+    if(!itens.length) continue;
+    const op = opDoTrilho(t);
+    if(op !== opAtual){ opAtual = op; lista.appendChild(grupoOp(op)); }
+    itens.forEach((x, j) => {
+      lista.appendChild(linhaConf(t, j, x));
+      const e = estadoConf(t, j);
+      if(e.div) lista.appendChild(campoObs(t, j, e));
+    });
+  }
+
+  const div = [...S.conf.values()].filter(e => e.div).length;
+  $("confMeta").textContent = div
+    ? `${div} ${div === 1 ? "divergência" : "divergências"}`
+    : "toque na peça que estiver errada";
+  atualizarBotaoConf();
+  /* Marcar divergência e escolher quem está na OP não passa pelo render() do
+     mapa, então o rascunho tem de ser guardado aqui também — senão a tela
+     recarregada volta com o mapa e sem a conferência. */
+  guardarRascunho();
+}
+
+function grupoOp(op){
+  const el = document.createElement("div");
+  el.className = "opgrupo" + (op === 0 ? " antes" : (S.opColab.get(op) ? "" : " sem"));
+  if(op === 0){
+    el.innerHTML = "<b>—</b><span style=\"color:var(--mut2); font-size:12.5px\">" +
+      "antes da primeira OP: a caixa entrando na esteira</span>";
+    return el;
+  }
+  const opts = ['<option value="">— quem está nesta OP hoje —</option>']
+    .concat(S.colab.map(c =>
+      `<option value="${escapa(c.mat)}"${S.opColab.get(op) === c.mat ? " selected" : ""}>` +
+      `${escapa(c.nome)}</option>`)).join("");
+  el.innerHTML = `<b>OP ${String(op).padStart(2, "0")}</b><select>${opts}</select>`;
+  el.querySelector("select").addEventListener("change", ev => {
+    if(ev.target.value) S.opColab.set(op, ev.target.value);
+    else S.opColab.delete(op);
+    renderConf();
+  });
+  return el;
+}
+
+function linhaConf(t, j, x){
+  const e = estadoConf(t, j);
+  const el = document.createElement("div");
+  el.className = "pconf" + (e.div ? " div" : "");
+  el.innerHTML = `<span class="tr">${t}</span>
+    <span class="txt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(x.desc)}</span>
+    <span class="marca">${e.div ? "⚠ DIVERGENTE" : "✓ OK"}</span>`;
+  el.addEventListener("click", () => {
+    if(e.div) S.conf.delete(chaveConf(t, j));
+    else      S.conf.set(chaveConf(t, j), { div: true, obs: "" });
+    renderConf();
+  });
+  return el;
+}
+
+function campoObs(t, j, e){
+  const el = document.createElement("div");
+  el.className = "obsdiv";
+  el.innerHTML = `<input type="text" placeholder="o que houve? ex.: veio 1 pé só"
+    value="${escapa(e.obs)}" autocomplete="off">`;
+  const inp = el.querySelector("input");
+  /* Sem re-render a cada tecla: redesenhar a lista tiraria o foco do campo
+     no meio da frase, e no tablet isso é o teclado fechando na cara. */
+  inp.addEventListener("input", ev => { e.obs = ev.target.value; guardarRascunho(); });
+  return el;
+}
+
+function podeConferir(){
+  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !opsSemColab().length);
+}
+
+function atualizarBotaoConf(){
+  const b = $("btnGravarConf");
+  if(!b) return;
+  b.hidden = !totalItens();
+  b.disabled = !podeConferir();
+  b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
+    : !normCod(S.cod) ? "falta o código do produto"
+    : "falta dizer quem está nas OPs " + opsSemColab().join(", "));
+}
+
+/* Uma linha por peça: leva a OP e QUEM estava nela. É assim que o rodízio
+   fica gravado sem uma segunda aba — quem estava na OP 04 do lote são os
+   nomes das linhas de OP 04 daquele lote. */
+function linhasDaConferencia(){
+  const out = [];
+  for(let t = 1; t <= S.nTrilhos; t++){
+    const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
+    if(!itens.length) continue;
+    const op = opDoTrilho(t);
+    const mat = op > 0 ? (S.opColab.get(op) || "") : "";
+    const nome = (S.colab.find(c => c.mat === mat) || {}).nome || "";
+    itens.forEach((x, j) => {
+      const e = estadoConf(t, j);
+      out.push({ trilho: t, op, cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd,
+                 mat, nome, resultado: e.div ? "DIVERGENTE" : "OK",
+                 obs: e.div ? e.obs : "" });
+    });
+  }
+  return out;
+}
+
+async function gravarConferencia(){
+  if(!podeConferir()) return;
+  const payload = {
+    acao: "conferir",
+    lote: S.lote.trim(),
+    data_emb: S.dataEmb || hojeISO(),
+    cod: normCod(S.cod),
+    desc: S.desc,
+    linhas: linhasDaConferencia()
+  };
+  const fila = lerFila();
+  fila.push(payload); salvarFila(fila); pintarFila();
+
+  setMsg("", "Gravando a conferência…");
+  $("btnGravarConf").disabled = true;
+  try{
+    await despacharFila();
+    const div = payload.linhas.filter(l => l.resultado === "DIVERGENTE").length;
+    setMsg(div ? "" : "ok", div
+      ? `Conferência do lote ${payload.lote} gravada com ${div} ${div === 1 ? "divergência" : "divergências"}.`
+      : `Conferência do lote ${payload.lote} gravada — tudo OK.`);
+  }catch(e){
+    setMsg("err", "Não gravou (" + e.message + ") — ficou na fila, toque em Reenviar pendentes.");
+  }finally{
+    atualizarBotaoConf();
+  }
+}
+
+/* Lote já conferido abre com o que foi gravado, em vez de folha em branco:
+   quem volta para corrigir uma divergência vê o que marcou antes. */
+async function abrirConferencia(){
+  const lote = S.lote.trim(), cod = normCod(S.cod);
+  if(!lote || !cod || !CFG.api) return;
+  let out;
+  try{ out = await chamar({ acao: "conferencia", lote, cod }); }
+  catch(e){ return; }
+  if(!out.achou || S.lote.trim() !== lote) return;
+
+  S.conf = new Map(); S.opColab = new Map();
+  out.linhas.forEach(l => { if(l.op > 0 && l.mat) S.opColab.set(l.op, String(l.mat)); });
+
+  /* Casa pela descrição dentro do trilho: o mapa pode ter mudado desde a
+     conferência, e marcar divergência no item errado seria pior que não
+     marcar nada. O que não achar par fica sem marca, para o líder rever. */
+  out.linhas.filter(l => l.resultado === "DIVERGENTE").forEach(l => {
+    const itens = (S.trilhos[l.trilho - 1] || { itens: [] }).itens;
+    const j = itens.findIndex(x => x.desc === l.desc_item);
+    if(j >= 0) S.conf.set(chaveConf(l.trilho, j), { div: true, obs: l.obs || "" });
+  });
+  if(out.data_emb){ S.dataEmb = out.data_emb; $("inData").value = out.data_emb; }
+  renderConf();
+  setMsg("", `Lote ${lote} já tinha conferência gravada — abri o que estava lá.`);
+}
+
+const hojeISO = () => {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+         "-" + String(d.getDate()).padStart(2, "0");
+};
+
+$("inLote").addEventListener("input", ev => {
+  S.lote = ev.target.value; atualizarBotaoConf(); guardarRascunho();
+});
+$("inLote").addEventListener("change", abrirConferencia);
+$("inData").addEventListener("change", ev => { S.dataEmb = ev.target.value; guardarRascunho(); });
+$("btnGravarConf").addEventListener("click", gravarConferencia);
+
+/* ---- cadastro de colaborador ---- */
+$("btnNovoColab").addEventListener("click", () => {
+  $("colMat").value = ""; $("colNome").value = "";
+  $("colErro").hidden = true;
+  $("dlgColab").showModal();
+  setTimeout(() => $("colMat").focus(), 40);
+});
+$("colCancel").addEventListener("click", () => $("dlgColab").close());
+$("colOk").addEventListener("click", async () => {
+  const mat = $("colMat").value.trim(), nome = $("colNome").value.trim();
+  const erro = t => { $("colErro").textContent = t; $("colErro").hidden = false; };
+  if(!mat || !nome) return erro("Matrícula e nome são obrigatórios.");
+  try{
+    await chamar({ acao: "novo_colaborador", mat, nome });
+    S.colab = (await chamar({ acao: "colaboradores" })).colaboradores || [];
+    $("dlgColab").close();
+    renderConf(); linhaStatus();
+    setMsg("ok", `${nome} cadastrado.`);
+  }catch(e){ erro(e.message); }
+});
 
 /* ==================================================================
    ITEM DO TRILHO
@@ -754,7 +1078,9 @@ function guardarRascunho(){
   try{
     localStorage.setItem(RASC_KEY, JSON.stringify({
       cod: S.cod, desc: S.desc, nTrilhos: S.nTrilhos, vel: S.vel, esq: S.esq,
-      trilhos: S.trilhos, inicioOp: [...S.inicioOp]
+      trilhos: S.trilhos, inicioOp: [...S.inicioOp],
+      lote: S.lote, dataEmb: S.dataEmb,
+      opColab: [...S.opColab], conf: [...S.conf]
     }));
   }catch(e){ /* cota estourada não pode derrubar a tela */ }
 }
@@ -767,6 +1093,9 @@ function lerRascunho(){
 }
 
 function aplicarMapa(m){
+  /* Conferência é do lote, não do produto: abrir outro mapa não pode
+     carregar as marcas do anterior para cima dele. */
+  S.conf = new Map(); S.opColab = new Map();
   S.cod = normCod(m.cod || "");
   S.desc = m.desc || "";
   S.nTrilhos = Math.max(1, Math.min(60, m.nTrilhos || 28));
@@ -942,7 +1271,7 @@ const fCab = (titulo, sub, boxLabel, boxValor, boxSub) => `
   <div class="fcab">
     <img src="./logo-patrimar.png" alt="Patrimar Móveis">
     <div class="ftit">
-      <small>PPCP · Embalagem</small>
+      <small>RitmoPatrimar · PPCP · Embalagem</small>
       <b>${titulo}</b>
       <span>${escapa(sub)}</span>
     </div>
@@ -1501,10 +1830,19 @@ $("cfgProcurar").addEventListener("click", async () => {
    ABERTURA
    ================================================================== */
 (function iniciar(){
+  S.dataEmb = hojeISO();
+  $("inData").value = S.dataEmb;
+
   const r = lerRascunho();
   if(r){
     aplicarMapa({ cod: r.cod, desc: r.desc, nTrilhos: r.nTrilhos, vel: r.vel, esq: r.esq,
                   trilhos: r.trilhos, inicioOp: r.inicioOp });
+    /* depois do aplicarMapa, que zera a conferência de propósito */
+    S.lote = r.lote || ""; $("inLote").value = S.lote;
+    if(r.dataEmb){ S.dataEmb = r.dataEmb; $("inData").value = r.dataEmb; }
+    S.opColab = new Map(r.opColab || []);
+    S.conf = new Map(r.conf || []);
+    renderConf();
     setMsg("", "Rascunho do último acesso recuperado — confira antes de salvar.");
   }else{
     S.trilhos = novosTrilhos(S.nTrilhos);

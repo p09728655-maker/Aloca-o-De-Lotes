@@ -1,14 +1,17 @@
-# Mapa dos Trilhos — PPCP Patrimar
+# RitmoPatrimar — Mapa dos Trilhos · Embalagem
 
 Monta no tablet o **mapa dos trilhos da embalagem** de um produto — qual item entra
 em qual trilho da esteira, em que ordem, e onde começa a faixa de cada OP —, guarda
-esse mapa numa planilha e imprime a folha que fica pendurada na linha.
+esse mapa numa planilha, imprime a folha que fica pendurada na linha, e registra a
+**conferência de uma caixa por lote** com quem estava em cada OP naquele dia.
 
-A lógica é **PRODUTO → MAPA**, e para nisso.
+São duas coisas com ritmos diferentes, e o app separa as duas:
 
-O app **não** é programador de produção e não substitui o ERP. Ele não sabe o que é
-lote, não confere peça, não guarda quem embalou. A programação continua no ERP/PPCP
-e a conferência continua no chão de fábrica.
+- O **mapa** é do produto. É estável e vale para todo lote daquele código.
+- A **conferência** é do lote. É o que aconteceu num dia, com aquelas pessoas.
+
+O app não é programador de produção e não substitui o ERP: a programação continua
+no ERP/PPCP.
 
 ## O desenho
 
@@ -38,6 +41,33 @@ na tela. O app propõe a marcação pela descrição e o líder desmarca se erra
 leva o tampo *e* uma isomanta, e os trilhos 4 a 8 estão vazios. Trilho vazio também é
 gravado: é assim que o número de trilhos da esteira e a fronteira de cada OP voltam
 inteiros da planilha.
+
+## Conferência do lote — uma caixa, não todas
+
+A esteira não para. Num produto de 21 itens, confirmar peça por peça em **toda**
+caixa é 21 toques por caixa enquanto as caixas continuam vindo — foi por isso que a
+versão anterior do app carregava uma conferência que a linha não usava.
+
+O que ficou é **amostragem**: uma caixa por lote. E a peça **nasce OK** — o toque
+marca divergência, não o contrário. Exigir 21 toques para dizer "tudo certo" faz o
+líder bater tudo no automático, que é pior do que não conferir.
+
+As peças aparecem **agrupadas pela OP**, com o seletor de quem está nela no cabeçalho
+do grupo: a pessoa fica ao lado das peças por que responde. Preenchidas as OPs e o
+número do lote, o botão libera; enquanto falta alguma, ele diz qual.
+
+**O rodízio não tem tabela própria.** Cada linha da conferência já carrega a OP e a
+matrícula de quem estava nela, então "quem estava na OP 04 do lote 25055" são os
+nomes das linhas de OP 04 daquele lote. Uma aba a menos para manter e uma tabela a
+menos para o Power BI relacionar.
+
+Gravar de novo o mesmo lote e produto **substitui** — uma caixa de amostra por lote,
+e o que está na tela é o que vale. Isso também deixa a fila de envio segura: reenviar
+não duplica.
+
+O que fica gravado por peça: lote, data da embalagem, produto, trilho, OP, item,
+quantidade, **matrícula e nome de quem estava na OP**, resultado (OK ou DIVERGENTE) e
+a observação da divergência.
 
 ## Implantação
 
@@ -74,9 +104,11 @@ rodapé. Ele passa a abrir pelo ícone, em tela cheia. O botão só aparece quan
 navegador oferece a instalação; no iPad o caminho é
 *Compartilhar > Adicionar à Tela de Início*.
 
-## A aba `MAPA`
+## As abas
 
-Uma aba, uma linha por trilho:
+### `MAPA` — o padrão do produto
+
+Uma linha por trilho:
 
 | Coluna | O que guarda |
 |---|---|
@@ -96,6 +128,27 @@ relacionamento nenhum.
 versão nem histórico dentro do app. Quem precisar do mapa de antes usa
 `Arquivo > Histórico de versões` da própria planilha, que o Google guarda de graça.
 
+### `CONFERENCIA` — o que aconteceu no lote
+
+Uma linha por peça da caixa de amostra:
+
+| Coluna | O que guarda |
+|---|---|
+| `TS` | quando foi gravado |
+| `LOTE` · `DATA_EMB` | o lote e a data da embalagem |
+| `COD_PRODUTO` · `DESC_PRODUTO` | qual volume do lote |
+| `TRILHO` · `OP` | onde a peça estava; OP **0** é antes do primeiro posto |
+| `COD_ITEM` · `DESC_ITEM` · `QTD` | a peça |
+| `MATRICULA` · `NOME` | **quem estava naquela OP naquele dia** |
+| `RESULTADO` | `OK` ou `DIVERGENTE` |
+| `OBS` | o que houve, quando divergente |
+
+### `COLABORADORES` — a equipe
+
+`MATRICULA · NOME · ATIVO · CADASTRADO_EM`. O botão **+ Colaborador** cadastra pelo
+próprio tablet. A conferência grava a **matrícula**, não o nome digitado: é assim que
+o Power BI agrupa a pessoa certa mesmo quando alguém escreve o nome de outro jeito.
+
 ## Como se usa
 
 **Produto que já tem mapa** — digite o código. O app abre o mapa salvo.
@@ -106,6 +159,10 @@ código do produto e salve.
 
 **Produto novo, do zero** — ponha código e descrição, ajuste o número de trilhos, e
 no `+` de cada trilho acrescente os itens. O botão `OP` marca onde começa cada posto.
+
+**Conferir um lote** — com o mapa na tela, preencha o lote e a data, diga quem está
+em cada OP, toque nas peças que estiverem erradas e grave. Lote já conferido abre com
+o que foi gravado, para quem volta corrigir uma divergência.
 
 **Longe do computador** — *Folha em branco* imprime o mapa vazio com linha alta para
 escrever à mão; depois alguém digita no app.
@@ -144,15 +201,15 @@ A versão anterior fazia cinco trabalhos empilhados. Quatro saíram:
 | Saiu | Por quê |
 |---|---|
 | Busca de lote na programação | só servia para descobrir o código do produto; agora ele é digitado |
-| Conferência peça a peça | é controle de chão de fábrica, não de cadastro de mapa |
-| Cadastro de colaboradores e operador por OP | o rodízio muda todo dia; a folha impressa deixa o campo em branco |
+| Conferência peça a peça em **toda** caixa | a esteira não para; virou amostragem de uma caixa por lote |
 | Rastro e histórico do lote | assunto do ERP |
 | Versionamento do mapa | o histórico de revisões da planilha já resolve |
 | Perfil PPCP × Operador | sem conferência não há dois perfis |
 | Casamento de descrição com código do ERP | os mapas reais nunca tiveram código |
 
-O app foi de 3.740 para 1.485 linhas, e o Apps Script de 587 para 244.
+O app foi de 3.740 para pouco mais de 1.800 linhas, e o Apps Script de 587 para 464
+— com a conferência já dentro dessa conta.
 
 As abas `MAPAS`, `MAPA_TRILHOS`, `LOTES`, `CONFERENCIAS`, `REGISTRO` e
-`COLABORADORES` da planilha antiga não são mais lidas nem escritas. Elas continuam
-onde estão — nada foi apagado.
+`COLABORADORES` da **planilha antiga** não são mais lidas nem escritas. Elas
+continuam onde estão — nada foi apagado. A planilha nova é outro arquivo.

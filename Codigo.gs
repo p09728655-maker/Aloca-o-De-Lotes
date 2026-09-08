@@ -1,6 +1,6 @@
 /**
- * Mapa dos Trilhos — gravação no Google Sheets
- * PPCP · Patrimar Móveis
+ * RitmoPatrimar — Mapa dos Trilhos · Embalagem
+ * Gravação no Google Sheets · PPCP Patrimar Móveis
  *
  * Uma aba, uma linha por trilho. Nada além disso.
  *
@@ -20,7 +20,9 @@
 
 var SHEET_ID = '1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g';
 
-var AB_MAPA = 'MAPA';
+var AB_MAPA  = 'MAPA';
+var AB_COLAB = 'COLABORADORES';
+var AB_CONF  = 'CONFERENCIA';
 
 /* Uma linha por TRILHO, inclusive o vazio — é assim que o número de trilhos
    da esteira e a fronteira de cada OP sobrevivem à ida e volta da planilha.
@@ -31,6 +33,18 @@ var AB_MAPA = 'MAPA';
 var CAB_MAPA = ['COD_PRODUTO', 'DESC_PRODUTO', 'N_TRILHOS', 'VELOCIDADE', 'N_ESQUEMA',
                 'TRILHO', 'OP', 'SEQ', 'COD_ITEM', 'DESC_ITEM', 'QTD', 'INSUMO',
                 'ATUALIZADO_EM'];
+
+var CAB_COLAB = ['MATRICULA', 'NOME', 'ATIVO', 'CADASTRADO_EM'];
+
+/* Uma linha por peça conferida na caixa de amostra. Carrega a OP e QUEM
+   estava nela — é assim que o rodízio fica registrado sem precisar de uma
+   segunda aba: quem estava na OP 04 do lote 25055 são os nomes das linhas
+   de OP 04 daquele lote.
+   Gravar de novo o mesmo lote e produto SUBSTITUI: uma caixa de amostra por
+   lote, e o que está na tela é o que vale. */
+var CAB_CONF = ['TS', 'LOTE', 'DATA_EMB', 'COD_PRODUTO', 'DESC_PRODUTO',
+                'TRILHO', 'OP', 'COD_ITEM', 'DESC_ITEM', 'QTD',
+                'MATRICULA', 'NOME', 'RESULTADO', 'OBS'];
 
 /* O editor do Apps Script lista TODAS as funções no seletor do botão
    Executar, e quem clicar em salvarMapa ali recebe os dados vazios. Sem
@@ -63,6 +77,10 @@ function doPost(e) {
        testados. O doGet abaixo fica para conferir no navegador. */
     if (p.acao === 'lista')   return json(listarProdutos(ss));
     if (p.acao === 'mapa')    return json(lerMapa(ss, p.cod));
+    if (p.acao === 'colaboradores')  return json(listarColaboradores(ss));
+    if (p.acao === 'novo_colaborador') return json(novoColaborador(ss, p));
+    if (p.acao === 'conferir')       return json(gravarConferencia(ss, p));
+    if (p.acao === 'conferencia')    return json(lerConferencia(ss, p));
     return json({ ok: false, erro: 'acao desconhecida: ' + p.acao });
 
   } catch (err) {
@@ -184,6 +202,121 @@ function lerMapa(ss, codBruto) {
 
 /* ---------------------------------------------------------------- */
 
+/** A equipe da embalagem. Matrícula é a chave — o Power BI agrupa por ela,
+    não pelo nome, que cada um escreve de um jeito. */
+function listarColaboradores(ss) {
+  var sh = aba(ss, AB_COLAB, CAB_COLAB);
+  var ult = sh.getLastRow();
+  if (ult < 2) return { ok: true, colaboradores: [] };
+
+  var vals = sh.getRange(2, 1, ult - 1, CAB_COLAB.length).getValues();
+  var out = [], vistos = {};
+  vals.forEach(function (r) {
+    var mat = String(r[0] || '').trim(), nome = String(r[1] || '').trim();
+    if (!mat || !nome || vistos[mat]) return;
+    if (/^(N|NAO|0|FALSE|INATIVO|DEMITID)/i.test(String(r[2] || 'SIM').trim())) return;
+    vistos[mat] = true;
+    out.push({ mat: mat, nome: nome });
+  });
+  out.sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+  return { ok: true, colaboradores: out };
+}
+
+function novoColaborador(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var mat = String(p.mat || '').trim(), nome = String(p.nome || '').trim();
+  if (!mat || !nome) return { ok: false, erro: 'matricula e nome sao obrigatorios' };
+
+  var sh = aba(ss, AB_COLAB, CAB_COLAB);
+  var ult = sh.getLastRow();
+  if (ult >= 2) {
+    var mats = sh.getRange(2, 1, ult - 1, 1).getValues();
+    for (var i = 0; i < mats.length; i++) {
+      if (String(mats[i][0] || '').trim() === mat) {
+        return { ok: false, erro: 'matricula ' + mat + ' ja cadastrada' };
+      }
+    }
+  }
+  garantirLinhas(sh, ult + 1);
+  sh.getRange(ult + 1, 1, 1, CAB_COLAB.length).setValues([[mat, nome, 'SIM', new Date()]]);
+  return { ok: true, mat: mat, nome: nome };
+}
+
+/**
+ * A conferência da caixa de amostra. Substitui o que já houver daquele lote
+ * e produto: é uma caixa por lote, e o que está na tela é o que vale. Gravar
+ * duas vezes não duplica — o que também deixa a fila de envio do app segura
+ * de reenviar sem medo.
+ */
+function gravarConferencia(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var lote = String(p.lote || '').trim();
+  var cod = normCod(p.cod);
+  if (!lote) return { ok: false, erro: 'lote e obrigatorio' };
+  if (!cod)  return { ok: false, erro: 'cod_produto e obrigatorio' };
+  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'nenhuma peca para conferir' };
+
+  var sh = aba(ss, AB_CONF, CAB_CONF);
+  var antigas = linhasDoLote(sh, lote, cod);
+  apagarLinhas(sh, antigas);
+
+  var ts = new Date();
+  var novas = p.linhas.map(function (l) {
+    return [ts, lote, p.data_emb || '', cod, p.desc || '',
+            l.trilho, l.op || 0, l.cod_item || '', l.desc_item || '', l.qtd || '',
+            String(l.mat || ''), l.nome || '',
+            l.resultado === 'DIVERGENTE' ? 'DIVERGENTE' : 'OK', l.obs || ''];
+  });
+  var ini = sh.getLastRow() + 1;
+  garantirLinhas(sh, ini + novas.length - 1);
+  sh.getRange(ini, 1, novas.length, CAB_CONF.length).setValues(novas);
+
+  var div = 0;
+  novas.forEach(function (r) { if (r[12] === 'DIVERGENTE') div++; });
+  return { ok: true, lote: lote, cod: cod, gravadas: novas.length,
+           substituidas: antigas.length, divergentes: div };
+}
+
+/** O que já está gravado para aquele lote e produto — para a tela abrir
+    mostrando o que foi conferido em vez de uma folha em branco. */
+function lerConferencia(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var lote = String(p.lote || '').trim();
+  var cod = normCod(p.cod);
+  if (!lote || !cod) return { ok: false, erro: 'lote e cod sao obrigatorios' };
+
+  var sh = aba(ss, AB_CONF, CAB_CONF);
+  var linhas = linhasDoLote(sh, lote, cod);
+  if (!linhas.length) return { ok: true, achou: false };
+
+  var out = [], dataEmb = '';
+  linhas.forEach(function (n) {
+    var r = sh.getRange(n, 1, 1, CAB_CONF.length).getValues()[0];
+    if (!dataEmb) dataEmb = r[2] instanceof Date ? Utilities.formatDate(r[2], 'GMT-3', 'yyyy-MM-dd')
+                                                 : String(r[2] || '');
+    out.push({ trilho: Number(r[5]) || 0, op: Number(r[6]) || 0,
+               cod_item: String(r[7] || ''), desc_item: String(r[8] || ''), qtd: r[9],
+               mat: String(r[10] || ''), nome: String(r[11] || ''),
+               resultado: String(r[12] || 'OK'), obs: String(r[13] || '') });
+  });
+  return { ok: true, achou: true, data_emb: dataEmb, linhas: out };
+}
+
+/* Lote e produto juntos: o mesmo lote tem VOL 1/2 e VOL 2/2, que são
+   códigos diferentes e conferências diferentes. */
+function linhasDoLote(sh, lote, cod) {
+  var ult = sh.getLastRow();
+  if (ult < 2) return [];
+  var vals = sh.getRange(2, 2, ult - 1, 3).getValues();   // LOTE, DATA_EMB, COD_PRODUTO
+  var out = [];
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][0] || '').trim() === lote && normCod(vals[i][2]) === cod) out.push(i + 2);
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- */
+
 /** Só dígitos e letras: o ERP escreve 501.118.001 e o app manda 501118001. */
 function normCod(c) {
   return String(c == null ? '' : c).toUpperCase().replace(/[^0-9A-Z]/g, '');
@@ -245,6 +378,8 @@ function json(obj) {
 function garantirAbas() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   aba(ss, AB_MAPA, CAB_MAPA);
+  aba(ss, AB_COLAB, CAB_COLAB);
+  aba(ss, AB_CONF, CAB_CONF);
 
   /* A planilha nasce com uma aba vazia chamada "Página1"/"Sheet1". Ela não
      atrapalha, mas confunde quem abre o arquivo procurando o mapa. */
@@ -252,7 +387,7 @@ function garantirAbas() {
     var s = ss.getSheetByName(n);
     if (s && s.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s);
   });
-  Logger.log('aba MAPA pronta');
+  Logger.log('abas MAPA, COLABORADORES e CONFERENCIA prontas');
 }
 
 /**
