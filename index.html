@@ -64,9 +64,13 @@
   .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
   .fld label{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--mut)}
-  select,input[type=text],input[type=number]{background:var(--panel2); color:var(--ink);
+  select,input[type=text],input[type=number],input[type=date]{background:var(--panel2); color:var(--ink);
     border:1px solid var(--line); border-radius:8px; padding:10px 11px;
     font-family:"Inter"; font-size:15px; min-height:var(--tap); width:100%}
+  /* color-scheme dark: sem isto o Chrome pinta o ícone do calendário de
+     preto (invisível no fundo escuro) e abre o seletor de data em branco */
+  input[type=date]{color-scheme:dark}
+  input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer; opacity:.8}
   select:focus,input:focus{outline:2px solid var(--amber); outline-offset:1px}
   .fld.grow{flex:1 1 240px}
   .fld.mini{min-width:96px; max-width:120px}
