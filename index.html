@@ -323,10 +323,13 @@
   <div class="body">
     <div class="fld"><label for="cfgApi">URL do Apps Script (/exec)</label>
       <input type="text" id="cfgApi" placeholder="https://script.google.com/macros/s/.../exec"></div>
-    <p class="hint">É o único endereço que o app precisa. O Apps Script lê e grava
-      a planilha por você — ela <b>não</b> precisa ficar pública.</p>
+    <p class="hint">É o único endereço que o app precisa, e já vem preenchido.
+      O Apps Script lê e grava a planilha por você — ela <b>não</b> precisa
+      ficar pública. Só mexa aqui para apontar para outra implantação.</p>
     <p class="hint">Sem essa URL o app funciona e imprime, mas não salva: o mapa
       fica na fila local até você configurar.</p>
+    <p class="hint"><a href="https://docs.google.com/spreadsheets/d/1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g/edit"
+      target="_blank" rel="noopener">Abrir a planilha do mapa</a></p>
     <p class="hint versao" id="cfgVersao"></p>
   </div>
   <div class="foot">
@@ -375,14 +378,19 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.0.0";
+const VERSAO = "3.0.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
    Um endereço só: o /exec do Apps Script. Ele lê e grava a planilha em
    nome de quem implantou, então a planilha não precisa ficar pública.
    ================================================================== */
-const CFG_PADRAO = { api: "" };
+/* A URL do /exec já vem preenchida: tablet novo abre funcionando, sem
+   ninguém digitar endereço nenhum com o dedo na esteira. O ⚙ continua lá
+   para quem precisar apontar para outra implantação. */
+const CFG_PADRAO = {
+  api: "https://script.google.com/macros/s/AKfycbzQmy9XJI_zFDNhPUw56w_GwmV7fzM58ecvJMksGLXD-TN4_TZgPzb6DSEp7IlROPFL/exec"
+};
 const CFG_KEY  = "trilhosCfg";
 const FILA_KEY = "trilhosFila";
 const RASC_KEY = "trilhosRascunho";
@@ -479,8 +487,14 @@ async function carregarLista(){
     montarDatalist();
     linhaStatus();
   }catch(e){
-    setStatus("err", "Não consegui ler a planilha: " + escapa(e.message) +
-      ` <span class="versao">v${VERSAO}</span>`);
+    /* "Failed to fetch" não diz nada para quem está de pé na esteira. Sem
+       rede o app continua servindo: monta, imprime e guarda na fila. */
+    const semRede = /failed to fetch|networkerror|load failed/i.test(e.message);
+    setStatus("err", semRede
+      ? "Sem conexão com a planilha — dá para montar e imprimir; a gravação fica na fila. " +
+        `<span class="versao">v${VERSAO}</span>`
+      : "Não consegui ler a planilha: " + escapa(e.message) +
+        ` <span class="versao">v${VERSAO}</span>`);
   }
 }
 
@@ -1425,11 +1439,17 @@ $("btnInstalar").addEventListener("click", async () => {
 window.addEventListener("appinstalled", () => { $("btnInstalar").hidden = true; });
 
 let registro = null;
+/* Só recarrega quando FOI O LÍDER que pediu. Na primeira visita o service
+   worker assume o controle da página por conta própria (clients.claim) e
+   dispara controllerchange do mesmo jeito — recarregar ali fazia todo
+   tablet novo se recarregar sozinho ao abrir o app pela primeira vez. */
+let pediuAtualizar = false;
 function mostrarAtualiza(worker, txt){
   $("txtAtualiza").textContent = txt;
   $("barraAtualiza").hidden = false;
   document.body.classList.add("tem-aviso");
   $("btnAtualizar").onclick = () => {
+    pediuAtualizar = true;
     worker && worker.postMessage({ tipo: "ATUALIZAR" });
     setTimeout(() => location.reload(), 400);
   };
@@ -1455,7 +1475,8 @@ if("serviceWorker" in navigator){
   });
   let recarregou = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if(recarregou) return; recarregou = true; location.reload();
+    if(!pediuAtualizar || recarregou) return;
+    recarregou = true; location.reload();
   });
 }
 $("cfgProcurar").addEventListener("click", async () => {
