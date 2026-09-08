@@ -1,5 +1,5 @@
 /**
- * Service worker do Mapa dos Trilhos.
+ * Service worker do RitmoPatrimar — Mapa dos Trilhos · Embalagem.
  *
  * Existe por dois motivos, nessa ordem de importância:
  *   1. o tablet abre o app sem rede e continua montando o mapa;
@@ -9,7 +9,7 @@
  * Ao publicar uma versão nova, mude VERSAO aqui e em index.html. É a troca
  * de bytes deste arquivo que faz o navegador procurar atualização.
  */
-const VERSAO = "3.0.1";
+const VERSAO = "3.1.0";
 const CACHE = "trilhos-" + VERSAO;
 
 const CASCA = [
