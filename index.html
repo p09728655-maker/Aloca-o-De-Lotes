@@ -187,6 +187,7 @@
   /* ---------- conferência do lote ---------- */
   .confbar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end;
     padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel)}
+  .confbar[hidden]{display:none}
   .confbar .fld{min-width:140px}
   .confbar .espaco{flex:1 1 auto}
 
@@ -336,6 +337,10 @@
   <button class="gho" id="btnImprimir">Imprimir mapa</button>
   <button class="gho" id="btnFolhaBranca">Folha em branco</button>
   <button class="gho" id="btnLimpar">Limpar</button>
+  <!-- Aqui e não na seção de conferência: cadastro de equipe não é assunto
+       de lote, e a seção só aparece com mapa na tela — quem abria o app
+       para cadastrar a equipe não achava o botão em lugar nenhum. -->
+  <button class="gho" id="btnNovoColab">+ Colaborador</button>
 </div>
 
 <div class="box">
@@ -346,15 +351,13 @@
   </div></div>
 </div>
 
-<div class="box" id="boxConf" hidden>
+<div class="box" id="boxConf">
   <h2>Conferência do lote <em id="confMeta"></em></h2>
-  <div class="confbar">
+  <div class="confbar" id="confBarra" hidden>
     <div class="fld"><label for="inLote">Lote</label>
       <input type="text" id="inLote" inputmode="numeric" autocomplete="off" placeholder="ex.: 25055"></div>
     <div class="fld"><label for="inData">Data da embalagem</label>
       <input type="date" id="inData"></div>
-    <span class="espaco"></span>
-    <button class="gho" id="btnNovoColab">+ Colaborador</button>
   </div>
   <div id="listaConf"></div>
 </div>
@@ -456,7 +459,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.1.0";
+const VERSAO = "3.1.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -601,7 +604,7 @@ function linhaStatus(){
   const p = [];
   p.push(S.produtos.length ? `<b>${S.produtos.length}</b> produtos com mapa salvo`
                            : "nenhum mapa salvo ainda");
-  p.push(S.colab.length ? `${S.colab.length} colaboradores`
+  p.push(S.colab.length ? `${S.colab.length} ${S.colab.length === 1 ? "colaborador" : "colaboradores"}`
                         : '<span style="color:var(--amber)">nenhum colaborador cadastrado</span>');
   if(!CFG.api) p.push('<span style="color:var(--amber)">Apps Script não configurado — não grava</span>');
   p.push(`<span class="versao">v${VERSAO}</span>`);
@@ -818,11 +821,18 @@ function opsComPeca(){
 const opsSemColab = () => opsComPeca().filter(op => op > 0 && !S.opColab.get(op));
 
 function renderConf(){
-  const box = $("boxConf");
-  box.hidden = !totalItens();
-  if(box.hidden) return;
-
+  /* Sempre visível. Escondida, ela "não aparecia" para quem abria o app
+     sem mapa — e dizer o que falta é mais simples que sumir. */
   const lista = $("listaConf");
+  $("confBarra").hidden = !totalItens();
+  if(!totalItens()){
+    lista.innerHTML = `<div class="vazio-tela">A conferência é de um lote de um produto.
+      <b>Abra o mapa</b> — digite o código lá em cima — e as peças aparecem aqui,
+      agrupadas por OP, para dizer quem estava em cada uma e o que veio errado.</div>`;
+    $("confMeta").textContent = "";
+    atualizarBotaoConf();
+    return;
+  }
   lista.innerHTML = "";
   let opAtual = null;
   for(let t = 1; t <= S.nTrilhos; t++){
