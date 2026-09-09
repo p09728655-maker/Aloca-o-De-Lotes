@@ -537,7 +537,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.2.0";
+const VERSAO = "3.2.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -577,7 +577,9 @@ const S = {
   lote: "", dataEmb: "",
   colab: [],                // equipe, da aba COLABORADORES
   opColab: new Map(),       // nº da OP -> matrícula de quem está nela hoje
-  conf: new Map()           // "trilho|j" -> { div:true, obs:"" }
+  conf: new Map(),          // "trilho|j" -> { div:true, obs:"" }
+  loteConf: "",             // lote dono das marcas em `conf` — trocar o lote limpa
+  confSalva: true           // false = há marca que ainda não foi gravada
 };
 
 const $ = id => document.getElementById(id);
@@ -752,6 +754,7 @@ function alternarOp(t){
 function limparTela(){
   S.cod = ""; S.desc = ""; S.vel = ""; S.esq = "";
   S.lote = ""; S.conf = new Map(); S.opColab = new Map();
+  S.loteConf = ""; S.confSalva = true;
   $("inLote").value = "";
   S.nTrilhos = 28; S.trilhos = novosTrilhos(28); S.inicioOp = new Set();
   $("inCod").value = ""; $("inDesc").value = ""; $("inVel").value = ""; $("inEsq").value = "";
@@ -978,6 +981,8 @@ function linhaConf(t, j, x){
   el.addEventListener("click", () => {
     if(e.div) S.conf.delete(chaveConf(t, j));
     else      S.conf.set(chaveConf(t, j), { div: true, obs: "" });
+    if(!S.loteConf) S.loteConf = S.lote.trim();
+    S.confSalva = false;
     renderConf();
   });
   return el;
@@ -991,7 +996,7 @@ function campoObs(t, j, e){
   const inp = el.querySelector("input");
   /* Sem re-render a cada tecla: redesenhar a lista tiraria o foco do campo
      no meio da frase, e no tablet isso é o teclado fechando na cara. */
-  inp.addEventListener("input", ev => { e.obs = ev.target.value; guardarRascunho(); });
+  inp.addEventListener("input", ev => { e.obs = ev.target.value; S.confSalva = false; guardarRascunho(); });
   return el;
 }
 
@@ -1041,6 +1046,7 @@ async function gravarConferencia(){
   };
   const fila = lerFila();
   fila.push(payload); salvarFila(fila); pintarFila();
+  S.loteConf = payload.lote; S.confSalva = true; guardarRascunho();
 
   setMsg("", "Gravando a conferência…");
   $("btnGravarConf").disabled = true;
@@ -1057,10 +1063,32 @@ async function gravarConferencia(){
   }
 }
 
+/* Divergência é do lote. Gravou o 25055 e digitou 25056: as marcas do
+   anterior saem da tela, senão o lote novo é gravado com a divergência do
+   velho sem ninguém ter tocado em nada. Quem está nas OPs fica — o rodízio
+   não muda de um lote para o outro. Marca que ainda não foi gravada só sai
+   com confirmação. Devolve false quando o líder desistiu da troca. */
+function trocarLoteDasMarcas(lote){
+  if(!S.conf.size || !S.loteConf || S.loteConf === lote) return true;
+  if(!S.confSalva && !confirm(
+    `As divergências marcadas no lote ${S.loteConf} ainda não foram gravadas.\n\n` +
+    `Trocar para o lote ${lote || "(vazio)"} descarta essas marcas. Continuar?`)){
+    S.lote = S.loteConf; $("inLote").value = S.loteConf; atualizarBotaoConf(); guardarRascunho();
+    return false;
+  }
+  const n = S.conf.size, antigo = S.loteConf;
+  S.conf = new Map(); S.loteConf = lote; S.confSalva = true;
+  renderConf();
+  setMsg("", `Lote ${lote || "novo"}: ${n === 1 ? "a divergência" : `as ${n} divergências`} ` +
+    `do lote ${antigo} ${n === 1 ? "saiu" : "saíram"} da tela. Marque o que houver neste lote.`);
+  return true;
+}
+
 /* Lote já conferido abre com o que foi gravado, em vez de folha em branco:
    quem volta para corrigir uma divergência vê o que marcou antes. */
 async function abrirConferencia(){
   const lote = S.lote.trim(), cod = normCod(S.cod);
+  if(!trocarLoteDasMarcas(lote)) return;
   if(!lote || !cod || !CFG.api) return;
   let out;
   try{ out = await chamar({ acao: "conferencia", lote, cod }); }
@@ -1068,6 +1096,7 @@ async function abrirConferencia(){
   if(!out.achou || S.lote.trim() !== lote) return;
 
   S.conf = new Map(); S.opColab = new Map();
+  S.loteConf = lote; S.confSalva = true;
   out.linhas.forEach(l => { if(l.op > 0 && l.mat) S.opColab.set(l.op, String(l.mat)); });
 
   /* Casa pela descrição dentro do trilho: o mapa pode ter mudado desde a
@@ -1326,7 +1355,8 @@ function guardarRascunho(){
       cod: S.cod, desc: S.desc, nTrilhos: S.nTrilhos, vel: S.vel, esq: S.esq,
       trilhos: S.trilhos, inicioOp: [...S.inicioOp],
       lote: S.lote, dataEmb: S.dataEmb,
-      opColab: [...S.opColab], conf: [...S.conf]
+      opColab: [...S.opColab], conf: [...S.conf],
+      loteConf: S.loteConf || "", confSalva: S.confSalva !== false
     }));
   }catch(e){ /* cota estourada não pode derrubar a tela */ }
 }
@@ -1342,6 +1372,7 @@ function aplicarMapa(m){
   /* Conferência é do lote, não do produto: abrir outro mapa não pode
      carregar as marcas do anterior para cima dele. */
   S.conf = new Map(); S.opColab = new Map();
+  S.loteConf = ""; S.confSalva = true;
   S.cod = normCod(m.cod || "");
   S.desc = m.desc || "";
   S.nTrilhos = Math.max(1, Math.min(60, m.nTrilhos || 28));
@@ -2089,6 +2120,8 @@ $("cfgProcurar").addEventListener("click", async () => {
     if(r.dataEmb){ S.dataEmb = r.dataEmb; $("inData").value = r.dataEmb; }
     S.opColab = new Map(r.opColab || []);
     S.conf = new Map(r.conf || []);
+    S.loteConf = r.loteConf || (S.conf.size ? S.lote.trim() : "");
+    S.confSalva = r.confSalva !== false;
     renderConf();
     setMsg("", "Rascunho do último acesso recuperado — confira antes de salvar.");
   }else{
