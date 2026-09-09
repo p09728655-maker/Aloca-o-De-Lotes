@@ -575,7 +575,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.5.0";
+const VERSAO = "3.6.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1155,17 +1155,31 @@ async function gravarConferencia(){
 
   setMsg("", "Gravando a conferência…");
   $("btnGravarConf").disabled = true;
+  let msg;
   try{
     await despacharFila();
     const div = payload.linhas.filter(l => l.resultado === "DIVERGENTE").length;
-    setMsg(div ? "" : "ok", div
-      ? `Conferência do lote ${payload.lote} gravada com ${div} ${div === 1 ? "divergência" : "divergências"}.`
-      : `Conferência do lote ${payload.lote} gravada — tudo OK.`);
+    msg = ["ok", `Lote ${payload.lote} gravado` +
+      (div ? ` com ${div} ${div === 1 ? "divergência" : "divergências"}` : ", tudo OK") +
+      ". Tela limpa para o próximo lote."];
   }catch(e){
-    setMsg("err", "Não gravou (" + e.message + ") — ficou na fila, toque em Reenviar pendentes.");
-  }finally{
-    atualizarBotaoConf();
+    msg = ["err", `Lote ${payload.lote} ficou na fila (${e.message}) — sai no Reenviar pendentes. ` +
+      "Tela limpa para o próximo lote."];
   }
+  proximoLote();
+  setMsg(msg[0], msg[1]);
+}
+
+/* Gravou, acabou: lote, produto e marcas saem da tela para o próximo lote
+   não nascer com o anterior. Quem está em cada OP fica — o posto é da
+   esteira, não do produto, e não muda de um lote para o outro. */
+function proximoLote(){
+  const equipe = new Map(S.opColab);
+  limparTela();
+  S.opColab = equipe;
+  S.dataEmb = hojeISO(); $("inData").value = S.dataEmb;
+  renderConf();
+  const cod = $("inConfCod"); if(cod){ cod.value = ""; cod.focus(); }
 }
 
 /* Divergência é do lote. Gravou o 25055 e digitou 25056: as marcas do
@@ -1338,7 +1352,8 @@ function caixaConferencia(g){
   }).join("");
   const gravadaEm = g.ts ? new Date(g.ts) : null;
   return `<div class="caixa">
-    ${fCab("Conferência da caixa de amostra", g.desc || codErp(g.cod),
+    ${fCab(`Lote ${escapa(g.lote)} · ${escapa(g.desc || codErp(g.cod))}`,
+           `Conferência da caixa de amostra · ${codErp(g.cod)}`,
            "Resultado", div ? `${div} DIV.` : "OK",
            div ? `${div} ${div === 1 ? "divergência" : "divergências"} em ${g.pecas.length} peças`
                : `${g.pecas.length} peças sem divergência`)}
@@ -1363,10 +1378,25 @@ function caixaConferencia(g){
   </div>`;
 }
 
+/* O nome do PDF é o título da página. "Mapa dos Trilhos.pdf" no WhatsApp
+   não diz de que lote é; "Conferência lote 25055 · ESCRIVANINHA.pdf" diz. */
+const TITULO_APP = document.title;
+function imprimirCom(titulo){
+  document.title = titulo.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || TITULO_APP;
+  const volta = () => { document.title = TITULO_APP; window.removeEventListener("afterprint", volta); };
+  window.addEventListener("afterprint", volta);
+  window.print();
+  setTimeout(volta, 60000);   // navegador sem afterprint (alguns Android)
+}
+
 $("btnImprimirRel").addEventListener("click", () => {
   if(!REL.length) return;
   $("folha").innerHTML = REL.map(caixaConferencia).join("");
-  window.print();
+  const g = REL[0];
+  const data = $("relData").value;
+  imprimirCom(REL.length === 1
+    ? `Conferência lote ${g.lote} · ${g.desc || codErp(g.cod)}`
+    : `Conferências ${data ? dataBR(data).replace(/\//g, "-") : "lote " + $("relLote").value.trim()} · ${REL.length} lotes`);
 });
 
 const hojeISO = () => {
@@ -1753,7 +1783,7 @@ function montarFolha(){
 
 $("btnImprimir").addEventListener("click", () => {
   if(!montarFolha()){ setMsg("err", "Monte o mapa antes de imprimir."); return; }
-  window.print();
+  imprimirCom(`Mapa trilhos · ${S.desc || codErp(S.cod)}`);
 });
 
 /* Folha em branco: as mesmas colunas do mapa, com linha alta para escrever
@@ -1791,7 +1821,7 @@ function montarFolhaBranca(){
     </div>`;
   return true;
 }
-$("btnFolhaBranca").addEventListener("click", () => { montarFolhaBranca(); window.print(); });
+$("btnFolhaBranca").addEventListener("click", () => { montarFolhaBranca(); imprimirCom("Mapa trilhos · folha em branco"); });
 
 /* ==================================================================
    IMPORTAR
