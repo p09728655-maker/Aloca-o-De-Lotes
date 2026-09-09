@@ -250,12 +250,36 @@
   /* O nome de quem está na OP é o que o líder lê de longe, em pé: grande,
      em negrito, e com fundo próprio quando preenchido. Vazio fica apagado,
      para o buraco saltar aos olhos. */
-  .opgrupo select{flex:1 1 0; min-width:0; font-size:18px; font-weight:700; font-family:"Oswald";
+  /* Botão, não <select>: a lista nativa do Android é uma folha branca com
+     letra miúda que não dá para estilizar. O toque abre a janela de escolha. */
+  .quem{flex:1 1 0; min-width:0; font-size:18px; font-weight:700; font-family:"Oswald";
     letter-spacing:.04em; text-transform:uppercase; min-height:46px; padding:6px 12px;
-    background:var(--amber-dim); color:var(--ink); border-color:var(--amber-dim)}
-  .opgrupo.sem select{background:var(--panel2); color:var(--mut); border-color:var(--amber);
+    background:var(--amber-dim); color:var(--ink); border:1px solid var(--amber-dim); border-radius:8px;
+    text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .quem::after{content:"▾"; font-size:14px; opacity:.7; flex:none}
+  .quem.sem{background:var(--panel2); color:var(--mut); border-color:var(--amber);
     font-weight:400; text-transform:none; font-family:"Inter"; font-size:14px}
-  .opgrupo.rep select{background:#4a1512; color:var(--red); border-color:var(--red)}
+  .opgrupo.rep .quem{background:#4a1512; color:var(--red); border-color:var(--red)}
+  #inConferente{width:100%}
+
+  #dlgQuem .body{padding:10px 12px; gap:8px}
+  #dlgQuem input{font-size:16px}
+  /* uma coluna: nome inteiro, sem "MANOEL BISPO VIEIRA DO…" */
+  #quemLista{display:grid; grid-template-columns:1fr; gap:6px;
+    max-height:min(62vh, 560px); overflow-y:auto; padding-right:2px}
+  #quemLista button{min-height:50px; padding:6px 12px; text-align:left; border-radius:9px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--ink);
+    font-family:"Oswald"; font-size:15.5px; letter-spacing:.03em; text-transform:uppercase;
+    display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0}
+  #quemLista button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #dlgQuem{max-width:440px}
+  #quemLista button i{font-style:normal; font-family:"IBM Plex Mono"; font-size:10.5px;
+    letter-spacing:.06em; color:var(--mut2); flex:none}
+  #quemLista button.on{background:var(--amber-dim); border-color:var(--amber); color:var(--ink)}
+  #quemLista button.usado{opacity:.45}
+  #quemLista button.ninguem{font-family:"Inter"; text-transform:none; font-size:14px; color:var(--mut)}
+  #quemLista .nada{grid-column:1 / -1; color:var(--mut2); font-size:13px; padding:10px 4px}
   .opgrupo.antes b{color:var(--mut2)}
   .opgrupo .antes-txt{flex:1 1 0; min-width:0; color:var(--mut2); font-size:12.5px}
   /* OK é por OP: um toque marca todas as peças dela que ainda não têm
@@ -462,8 +486,8 @@
       <input type="date" id="inData"></div>
     <!-- Quem está conferindo. Fica gravado no aparelho: escolhe no início
          do turno e vale para todos os lotes; a tela limpa não apaga. -->
-    <div class="fld" style="min-width:200px"><label for="inConferente">Conferido por</label>
-      <select id="inConferente"></select></div>
+    <div class="fld" style="min-width:200px"><label>Conferido por</label>
+      <button type="button" class="quem sem" id="inConferente">— quem está conferindo? —</button></div>
   </div>
   <div id="listaConf"></div>
 </div>
@@ -526,6 +550,17 @@
   </div>
 </dialog>
 
+<dialog id="dlgQuem">
+  <h3 id="quemTit">Quem está nesta OP?</h3>
+  <div class="body">
+    <input type="text" id="quemBusca" placeholder="buscar pelo nome…" autocomplete="off">
+    <div id="quemLista"></div>
+  </div>
+  <div class="foot">
+    <button class="gho" id="quemCancel">Cancelar</button>
+  </div>
+</dialog>
+
 <dialog id="dlgItem">
   <h3 id="itemTit">Item do trilho</h3>
   <div class="body">
@@ -583,7 +618,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.7.0";
+const VERSAO = "3.7.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1027,14 +1062,54 @@ function renderConf(){
 
 const nomeColab = mat => (S.colab.find(c => c.mat === mat) || {}).nome || "";
 function renderConferente(){
-  const sel = $("inConferente");
-  if(!sel) return;
+  const b = $("inConferente");
+  if(!b) return;
   if(S.colab.length && S.conferente && !nomeColab(S.conferente)) S.conferente = "";   // saiu da lista
-  sel.innerHTML = ['<option value="">— quem está conferindo? —</option>']
-    .concat(S.colab.map(c => `<option value="${escapa(c.mat)}"${S.conferente === c.mat ? " selected" : ""}>${escapa(c.nome)}</option>`))
-    .join("");
-  sel.className = S.conferente ? "" : "sem";
+  b.textContent = nomeColab(S.conferente) || "— quem está conferindo? —";
+  b.className = "quem" + (S.conferente ? "" : " sem");
 }
+
+/* Janela de escolha de colaborador — para as OPs e para o "Conferido por".
+   Nomes em botões grandes, busca por nome, e quem já está em outra OP
+   aparece apagado com a OP ao lado. `ocupado(mat)` devolve a OP que já tem
+   a pessoa (0 = livre); `aoEscolher(mat)` recebe "" para "ninguém". */
+function escolherColab({ titulo, atual, ocupado, aoEscolher }){
+  const dlg = $("dlgQuem"), lista = $("quemLista"), busca = $("quemBusca");
+  $("quemTit").textContent = titulo;
+  busca.value = "";
+  const pinta = () => {
+    const q = busca.value.trim().toLowerCase();
+    const itens = S.colab.filter(c => !q || c.nome.toLowerCase().includes(q));
+    lista.innerHTML = "";
+    if(!q && atual){
+      const n = document.createElement("button");
+      n.type = "button"; n.className = "ninguem"; n.textContent = "— ninguém (limpar) —";
+      n.addEventListener("click", () => { dlg.close(); aoEscolher(""); });
+      lista.appendChild(n);
+    }
+    if(!itens.length){
+      lista.innerHTML += `<div class="nada">${S.colab.length ? "nenhum nome com isso" : "nenhum colaborador cadastrado — use + Colaborador no computador"}</div>`;
+      return;
+    }
+    itens.forEach(c => {
+      const op = ocupado ? ocupado(c.mat) : 0;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = (c.mat === atual ? "on" : "") + (op ? " usado" : "");
+      b.innerHTML = `<span>${escapa(c.nome)}</span>` + (op ? `<i>JÁ NA OP ${String(op).padStart(2, "0")}</i>` : "");
+      if(op) b.disabled = true;
+      b.addEventListener("click", () => { dlg.close(); aoEscolher(c.mat); });
+      lista.appendChild(b);
+    });
+  };
+  busca.oninput = pinta;
+  pinta();
+  dlg.showModal();
+  /* teclado só se pedir: no tablet, abrir a lista já com o teclado na
+     tela esconde metade dos nomes */
+  busca.blur();
+}
+$("quemCancel").addEventListener("click", () => $("dlgQuem").close());
 function renderProdChip(){
   $("confProd").innerHTML = S.cod && totalItens()
     ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs`
@@ -1075,19 +1150,15 @@ function grupoOp(op){
     el.appendChild(botaoOkOp(0));
     return el;
   }
-  const opts = ['<option value="">— quem está nesta OP hoje —</option>']
-    .concat(S.colab.map(c => {
-      const outra = opDoColab(c.mat, op);
-      return `<option value="${escapa(c.mat)}"${meu === c.mat ? " selected" : ""}` +
-        `${outra && meu !== c.mat ? " disabled" : ""}>${escapa(c.nome)}` +
-        `${outra ? ` — já na OP ${String(outra).padStart(2, "0")}` : ""}</option>`;
-    })).join("");
-  el.innerHTML = `<b>OP ${String(op).padStart(2, "0")}</b><select>${opts}</select>`;
-  el.querySelector("select").addEventListener("change", ev => {
-    if(ev.target.value) S.opColab.set(op, ev.target.value);
-    else S.opColab.delete(op);
-    renderConf();
-  });
+  const nome = nomeColab(meu);
+  el.innerHTML = `<b>OP ${String(op).padStart(2, "0")}</b>` +
+    `<button type="button" class="quem${nome ? "" : " sem"}">${nome ? escapa(nome) : "— quem está nesta OP hoje —"}</button>`;
+  el.querySelector(".quem").addEventListener("click", () => escolherColab({
+    titulo: `Quem está na OP ${String(op).padStart(2, "0")} hoje?`,
+    atual: meu || "",
+    ocupado: mat => opDoColab(mat, op),
+    aoEscolher: mat => { if(mat) S.opColab.set(op, mat); else S.opColab.delete(op); renderConf(); }
+  }));
   el.appendChild(botaoOkOp(op));
   return el;
 }
@@ -1435,11 +1506,15 @@ $("inLote").addEventListener("input", ev => {
   S.lote = ev.target.value; atualizarBotaoConf(); guardarRascunho();
 });
 $("inLote").addEventListener("change", abrirConferencia);
-$("inConferente").addEventListener("change", ev => {
-  S.conferente = ev.target.value;
-  try{ localStorage.setItem(CONFERENTE_KEY, S.conferente); }catch(e){}
-  renderConferente(); atualizarBotaoConf();
-});
+$("inConferente").addEventListener("click", () => escolherColab({
+  titulo: "Quem está conferindo?",
+  atual: S.conferente,
+  aoEscolher: mat => {
+    S.conferente = mat;
+    try{ localStorage.setItem(CONFERENTE_KEY, S.conferente); }catch(e){}
+    renderConferente(); atualizarBotaoConf();
+  }
+}));
 $("inData").addEventListener("change", ev => { S.dataEmb = ev.target.value; guardarRascunho(); });
 $("btnGravarConf").addEventListener("click", gravarConferencia);
 
