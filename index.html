@@ -575,7 +575,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.5.2";
+const VERSAO = "3.6.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1155,17 +1155,31 @@ async function gravarConferencia(){
 
   setMsg("", "Gravando a conferência…");
   $("btnGravarConf").disabled = true;
+  let msg;
   try{
     await despacharFila();
     const div = payload.linhas.filter(l => l.resultado === "DIVERGENTE").length;
-    setMsg(div ? "" : "ok", div
-      ? `Conferência do lote ${payload.lote} gravada com ${div} ${div === 1 ? "divergência" : "divergências"}.`
-      : `Conferência do lote ${payload.lote} gravada — tudo OK.`);
+    msg = ["ok", `Lote ${payload.lote} gravado` +
+      (div ? ` com ${div} ${div === 1 ? "divergência" : "divergências"}` : ", tudo OK") +
+      ". Tela limpa para o próximo lote."];
   }catch(e){
-    setMsg("err", "Não gravou (" + e.message + ") — ficou na fila, toque em Reenviar pendentes.");
-  }finally{
-    atualizarBotaoConf();
+    msg = ["err", `Lote ${payload.lote} ficou na fila (${e.message}) — sai no Reenviar pendentes. ` +
+      "Tela limpa para o próximo lote."];
   }
+  proximoLote();
+  setMsg(msg[0], msg[1]);
+}
+
+/* Gravou, acabou: lote, produto e marcas saem da tela para o próximo lote
+   não nascer com o anterior. Quem está em cada OP fica — o posto é da
+   esteira, não do produto, e não muda de um lote para o outro. */
+function proximoLote(){
+  const equipe = new Map(S.opColab);
+  limparTela();
+  S.opColab = equipe;
+  S.dataEmb = hojeISO(); $("inData").value = S.dataEmb;
+  renderConf();
+  const cod = $("inConfCod"); if(cod){ cod.value = ""; cod.focus(); }
 }
 
 /* Divergência é do lote. Gravou o 25055 e digitou 25056: as marcas do
