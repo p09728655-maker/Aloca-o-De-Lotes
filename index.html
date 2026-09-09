@@ -190,18 +190,21 @@
 
   /* ---------- abas ---------- */
   .abas{display:flex; gap:6px; margin-top:10px; border-bottom:1px solid var(--line)}
+  .abas[hidden]{display:none}
   .abas button{flex:1 1 0; border-radius:9px 9px 0 0; border-bottom:none; background:transparent;
     color:var(--mut); font-size:14px; letter-spacing:.06em; text-transform:uppercase; min-height:44px}
   .abas button.on{background:var(--panel); color:var(--amber); border-color:var(--line);
     box-shadow:inset 0 -3px 0 var(--amber)}
   [data-aba][hidden]{display:none !important}
 
-  .prodchip{flex:1 1 320px; font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--mut);
-    letter-spacing:.03em; padding-bottom:2px}
+  .prodchip{flex:1 1 240px; font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--mut);
+    letter-spacing:.03em; padding-bottom:calc(15px + 11px)}
+  .prodchip:empty{display:none}
   .confbar .confmeta{order:9; margin-left:auto; align-self:center; font-style:normal;
     font-family:"IBM Plex Mono"; font-size:12px; color:var(--amber); padding-bottom:15px}
   .confbar .confmeta:empty{display:none}
-  .confbar .fld{padding-bottom:0}
+  .confbar .fld{position:relative; padding-bottom:15px}
+  .confbar .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
   .prodchip b{color:var(--ink); font-family:"Inter"; font-weight:600; letter-spacing:0}
 
   /* Tablet deitado: duas colunas, e 30 trilhos cabem numa tela sem rolar.
@@ -245,11 +248,11 @@
   .opgrupo.rep select{border-color:var(--red); color:var(--red)}
   .opgrupo.antes b{color:var(--mut2)}
 
-  /* A peça nasce OK e o toque marca divergência: numa amostra quase tudo
-     está certo, e obrigar 21 toques para dizer "tudo certo" faria o líder
-     bater tudo no automático — que é pior que não conferir. */
+  /* Cada peça leva um toque: OK ou DIV. Sem marca é "não conferida", e
+     Gravar não libera. Dois botões, e não um ciclo no toque da linha: um
+     toque a mais não vira OK em divergência sem ninguém ver. */
   .pconf{display:flex; align-items:center; gap:9px; padding:4px 11px;
-    border-bottom:1px solid var(--line); cursor:pointer; user-select:none; min-height:40px}
+    border-bottom:1px solid var(--line); user-select:none; min-height:40px}
   .pconf:last-child{border-bottom:none}
   .pconf:active{background:var(--panel2)}
   .pconf .tr{font-family:"Oswald"; font-weight:600; font-size:13px; min-width:34px; height:30px;
@@ -259,9 +262,13 @@
     text-overflow:ellipsis; white-space:nowrap}
   .pconf .txt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
   .pconf .marca{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none;
-    padding:4px 9px; border-radius:6px; background:var(--green-dim); color:var(--green)}
+    padding:0 10px; min-height:32px; min-width:44px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--mut2); cursor:pointer}
+  .pconf .marca.ok.on{background:var(--green-dim); color:var(--green); border-color:var(--green-dim)}
+  .pconf .marca.dv.on{background:#4a1512; color:var(--red); border-color:#4a1512}
+  .pconf.pend .txt{color:var(--ink)}
+  .pconf.ok .txt{color:var(--mut)}
   .pconf.div{background:rgba(255,59,48,.08)}
-  .pconf.div .marca{background:#4a1512; color:var(--red)}
   .pconf.div .txt b{color:var(--red)}
   .obsdiv{padding:0 11px 8px 54px; border-bottom:1px solid var(--line)}
   .obsdiv input{font-size:13px; min-height:38px}
@@ -415,7 +422,16 @@
 <div class="box" id="boxConf" data-aba="conf" hidden>
   <!-- sem h2: a aba já diz "Conferência do lote", e no tablet cada 40px
        de altura é meia peça a menos na tela -->
-  <div class="confbar" id="confBarra" hidden>
+  <!-- O produto se busca aqui mesmo: o líder do tablet não precisa passar
+       pelo Mapa dos trilhos para conferir um lote. Mesma lista de produtos
+       salvos do campo do mapa. -->
+  <div class="confbar" id="confBarra">
+    <div class="fld" style="min-width:170px">
+      <label for="inConfCod">Código do produto</label>
+      <input type="text" id="inConfCod" list="listaProdutos" inputmode="numeric"
+             autocomplete="off" placeholder="ex.: 501.118.001">
+      <span class="achou" id="confAchou"></span>
+    </div>
     <div class="prodchip" id="confProd"></div>
     <em class="confmeta" id="confMeta"></em>
     <div class="fld"><label for="inLote">Lote</label>
@@ -470,6 +486,9 @@
       ficar pública. Só mexa aqui para apontar para outra implantação.</p>
     <p class="hint">Sem essa URL o app funciona e imprime, mas não salva: o mapa
       fica na fila local até você configurar.</p>
+    <label class="check"><input type="checkbox" id="cfgTablet">
+      <span><b>Tablet da esteira: só a Conferência do lote</b> — esconde o Mapa dos
+      trilhos e o Relatório. Mapa se monta e relatório se tira no computador.</span></label>
     <p class="hint"><a href="https://docs.google.com/spreadsheets/d/1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g/edit"
       target="_blank" rel="noopener">Abrir a planilha do mapa</a></p>
     <p class="hint versao" id="cfgVersao"></p>
@@ -538,7 +557,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.2.2";
+const VERSAO = "3.4.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -549,7 +568,8 @@ const VERSAO = "3.2.2";
    ninguém digitar endereço nenhum com o dedo na esteira. O ⚙ continua lá
    para quem precisar apontar para outra implantação. */
 const CFG_PADRAO = {
-  api: "https://script.google.com/macros/s/AKfycbzQmy9XJI_zFDNhPUw56w_GwmV7fzM58ecvJMksGLXD-TN4_TZgPzb6DSEp7IlROPFL/exec"
+  api: "https://script.google.com/macros/s/AKfycbzQmy9XJI_zFDNhPUw56w_GwmV7fzM58ecvJMksGLXD-TN4_TZgPzb6DSEp7IlROPFL/exec",
+  tablet: false   // true = só a aba Conferência; mapa e relatório ficam no computador
 };
 const CFG_KEY  = "trilhosCfg";
 const FILA_KEY = "trilhosFila";
@@ -758,8 +778,8 @@ function limparTela(){
   S.loteConf = ""; S.confSalva = true;
   $("inLote").value = "";
   S.nTrilhos = 28; S.trilhos = novosTrilhos(28); S.inicioOp = new Set();
-  $("inCod").value = ""; $("inDesc").value = ""; $("inVel").value = ""; $("inEsq").value = "";
-  $("inTrilhos").value = "28"; $("achouCod").className = "achou"; $("achouCod").textContent = "";
+  sincronizarCod(""); $("inDesc").value = ""; $("inVel").value = ""; $("inEsq").value = "";
+  $("inTrilhos").value = "28"; setAchou("achou", "");
   localStorage.removeItem(RASC_KEY);
   render();
 }
@@ -887,10 +907,18 @@ function atualizarBotoes(){
    ================================================================== */
 const chaveConf = (t, j) => t + "|" + j;
 
-/* Peça nasce OK e o toque marca divergência. Exigir 21 toques para dizer
-   "tudo certo" faz o líder bater tudo no automático, que é pior do que
-   não conferir — e a assinatura do que ficou gravado é o nome dele. */
-const estadoConf = (t, j) => S.conf.get(chaveConf(t, j)) || { div: false, obs: "" };
+/* Peça nasce SEM marca: OK e divergente são os dois toques possíveis, e
+   nada é OK só porque ninguém olhou. Gravar exige todas as peças marcadas.
+   (Decisão do PPCP: OK automático deixava a conferência passar em branco.) */
+const estadoConf = (t, j) => S.conf.get(chaveConf(t, j)) || { pend: true, div: false, obs: "" };
+function pecasPendentes(){
+  let n = 0;
+  for(let t = 1; t <= S.nTrilhos; t++){
+    const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
+    itens.forEach((x, j) => { if(estadoConf(t, j).pend) n++; });
+  }
+  return n;
+}
 
 /* As OPs que têm peça. A 0 é o trecho antes do primeiro posto — a caixa
    entrando na esteira —, e por isso não cobra colaborador. */
@@ -923,13 +951,12 @@ function renderConf(){
   /* Sempre visível. Escondida, ela "não aparecia" para quem abria o app
      sem mapa — e dizer o que falta é mais simples que sumir. */
   const lista = $("listaConf");
-  $("confBarra").hidden = !totalItens();
   renderProdChip();
   if(!totalItens()){
     lista.innerHTML = `<div class="vazio-tela">A conferência é de um lote de um produto.
-      <b>Abra o mapa</b> na aba <b>Mapa dos trilhos</b> — digite o código do produto —
-      e as peças aparecem aqui, agrupadas por OP, para dizer quem estava em cada uma
-      e o que veio errado.</div>`;
+      Digite o <b>código do produto</b> acima e as peças aparecem aqui, agrupadas
+      por OP, para dizer quem estava em cada uma e o que veio errado. Depois, o
+      <b>lote</b>.</div>`;
     $("confMeta").textContent = "";
     atualizarBotaoConf();
     return;
@@ -949,9 +976,10 @@ function renderConf(){
   }
 
   const div = [...S.conf.values()].filter(e => e.div).length;
-  $("confMeta").textContent = div
-    ? `${div} ${div === 1 ? "divergência" : "divergências"}`
-    : "toque na peça que estiver errada";
+  const pend = pecasPendentes(), tot = totalItens();
+  $("confMeta").textContent =
+    (pend ? `${tot - pend} de ${tot} conferidas` : `${tot} conferidas`) +
+    (div ? ` · ${div} ${div === 1 ? "divergência" : "divergências"}` : "");
   atualizarBotaoConf();
   /* Marcar divergência e escolher quem está na OP não passa pelo render() do
      mapa, então o rascunho tem de ser guardado aqui também — senão a tela
@@ -960,9 +988,9 @@ function renderConf(){
 }
 
 function renderProdChip(){
-  $("confProd").innerHTML = S.cod
-    ? `${escapa(codErp(S.cod))} · <b>${escapa(S.desc || "sem descrição")}</b>`
-    : `<b>produto sem código</b> — volte ao mapa e preencha`;
+  $("confProd").innerHTML = S.cod && totalItens()
+    ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs`
+    : "";
 }
 
 function grupoOp(op){
@@ -993,17 +1021,21 @@ function grupoOp(op){
 function linhaConf(t, j, x){
   const e = estadoConf(t, j);
   const el = document.createElement("div");
-  el.className = "pconf" + (e.div ? " div" : "");
+  el.className = "pconf " + (e.pend ? "pend" : e.div ? "div" : "ok");
   el.innerHTML = `<span class="tr">${t}</span>
     <span class="txt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(x.desc)}</span>
-    <span class="marca">${e.div ? "⚠ DIVERGENTE" : "✓ OK"}</span>`;
-  el.addEventListener("click", () => {
-    if(e.div) S.conf.delete(chaveConf(t, j));
-    else      S.conf.set(chaveConf(t, j), { div: true, obs: "" });
+    <button type="button" class="marca ok${!e.pend && !e.div ? " on" : ""}">✓ OK</button>
+    <button type="button" class="marca dv${e.div ? " on" : ""}">⚠ DIV</button>`;
+  const marcar = div => {
+    /* tocar de novo na marca que já está desmarca: volta a "não conferida" */
+    if(!e.pend && e.div === div) S.conf.delete(chaveConf(t, j));
+    else S.conf.set(chaveConf(t, j), { div, obs: div ? (e.obs || "") : "" });
     if(!S.loteConf) S.loteConf = S.lote.trim();
     S.confSalva = false;
     renderConf();
-  });
+  };
+  el.querySelector(".marca.ok").addEventListener("click", () => marcar(false));
+  el.querySelector(".marca.dv").addEventListener("click", () => marcar(true));
   return el;
 }
 
@@ -1020,7 +1052,8 @@ function campoObs(t, j, e){
 }
 
 function podeConferir(){
-  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !opsSemColab().length && !opsRepetidas().length);
+  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !pecasPendentes()
+            && !opsSemColab().length && !opsRepetidas().length);
 }
 
 function atualizarBotaoConf(){
@@ -1029,6 +1062,7 @@ function atualizarBotaoConf(){
   b.disabled = !podeConferir();
   b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
     : !normCod(S.cod) ? "falta o código do produto"
+    : pecasPendentes() ? `${pecasPendentes()} ${pecasPendentes() === 1 ? "peça ainda sem marca" : "peças ainda sem marca"} — cada peça leva OK ou DIV`
     : opsSemColab().length ? "falta dizer quem está nas OPs " + opsSemColab().join(", ")
     : "a mesma pessoa está nas OPs " + opsRepetidas().join(", ") + " — cada OP tem o seu colaborador");
 }
@@ -1047,7 +1081,7 @@ function linhasDaConferencia(){
     itens.forEach((x, j) => {
       const e = estadoConf(t, j);
       out.push({ trilho: t, op, cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd,
-                 mat, nome, resultado: e.div ? "DIVERGENTE" : "OK",
+                 mat, nome, resultado: e.div ? "DIVERGENTE" : e.pend ? "NAO_CONFERIDA" : "OK",
                  obs: e.div ? e.obs : "" });
     });
   }
@@ -1091,16 +1125,16 @@ async function gravarConferencia(){
 function trocarLoteDasMarcas(lote){
   if(!S.conf.size || !S.loteConf || S.loteConf === lote) return true;
   if(!S.confSalva && !confirm(
-    `As divergências marcadas no lote ${S.loteConf} ainda não foram gravadas.\n\n` +
-    `Trocar para o lote ${lote || "(vazio)"} descarta essas marcas. Continuar?`)){
+    `A conferência do lote ${S.loteConf} ainda não foi gravada.\n\n` +
+    `Trocar para o lote ${lote || "(vazio)"} descarta as marcas. Continuar?`)){
     S.lote = S.loteConf; $("inLote").value = S.loteConf; atualizarBotaoConf(); guardarRascunho();
     return false;
   }
-  const n = S.conf.size, antigo = S.loteConf;
+  const antigo = S.loteConf;
   S.conf = new Map(); S.loteConf = lote; S.confSalva = true;
   renderConf();
-  setMsg("", `Lote ${lote || "novo"}: ${n === 1 ? "a divergência" : `as ${n} divergências`} ` +
-    `do lote ${antigo} ${n === 1 ? "saiu" : "saíram"} da tela. Marque o que houver neste lote.`);
+  setMsg("", `Lote ${lote || "novo"}: as marcas do lote ${antigo} saíram da tela. ` +
+    `Confira peça a peça — OK ou DIV — e diga quem está em cada OP.`);
   return true;
 }
 
@@ -1122,10 +1156,12 @@ async function abrirConferencia(){
   /* Casa pela descrição dentro do trilho: o mapa pode ter mudado desde a
      conferência, e marcar divergência no item errado seria pior que não
      marcar nada. O que não achar par fica sem marca, para o líder rever. */
-  out.linhas.filter(l => l.resultado === "DIVERGENTE").forEach(l => {
+  out.linhas.forEach(l => {
     const itens = (S.trilhos[l.trilho - 1] || { itens: [] }).itens;
     const j = itens.findIndex(x => x.desc === l.desc_item);
-    if(j >= 0) S.conf.set(chaveConf(l.trilho, j), { div: true, obs: l.obs || "" });
+    if(j < 0) return;
+    const div = l.resultado === "DIVERGENTE";
+    S.conf.set(chaveConf(l.trilho, j), { div, obs: div ? (l.obs || "") : "" });
   });
   if(out.data_emb){ S.dataEmb = out.data_emb; $("inData").value = out.data_emb; }
   renderConf();
@@ -1137,6 +1173,8 @@ async function abrirConferencia(){
    ================================================================== */
 const ABA_KEY = "trilhosAba";
 function mostrarAba(a){
+  if(CFG.tablet) a = "conf";
+  $("abas").hidden = !!CFG.tablet;
   document.querySelectorAll("[data-aba]").forEach(el => {
     if(el.parentElement && el.parentElement.id === "abas"){
       el.classList.toggle("on", el.dataset.aba === a);
@@ -1400,7 +1438,7 @@ function aplicarMapa(m){
   S.trilhos = novosTrilhos(S.nTrilhos);
   (m.trilhos || []).forEach((tr, i) => { if(i < S.nTrilhos) S.trilhos[i] = { itens: (tr.itens || []).slice() }; });
   S.inicioOp = new Set(m.inicioOp || []);
-  $("inCod").value = S.cod ? codErp(S.cod) : "";
+  sincronizarCod(S.cod);
   $("inDesc").value = S.desc;
   $("inTrilhos").value = String(S.nTrilhos);
   $("inVel").value = S.vel; $("inEsq").value = S.esq;
@@ -1413,6 +1451,16 @@ function aplicarMapa(m){
    existir, a tela fica como está — é assim que um produto novo começa.
    ================================================================== */
 let codPedido = "";
+
+/* O mesmo produto tem dois campos de código, um por aba. O aviso ("mapa
+   salvo, aberto na tela") e o valor andam juntos nos dois. */
+function setAchou(cls, txt){
+  ["achouCod", "confAchou"].forEach(id => { const el = $(id); if(el){ el.className = cls; el.textContent = txt; } });
+}
+function sincronizarCod(cod){
+  const v = cod ? codErp(cod) : "";
+  ["inCod", "inConfCod"].forEach(id => { const el = $(id); if(el && normCod(el.value) !== normCod(v)) el.value = v; });
+}
 
 /* Desfaz o que linhasDoMapa() fez: uma linha por trilho vira o mapa da tela
    de novo. A divisa de OP volta pela mudança do número da OP entre um
@@ -1435,39 +1483,61 @@ function mapaDeLinhas(cod, cab, linhas){
            vel: cab.velocidade, esq: cab.n_esquema, trilhos, inicioOp: [...ops] };
 }
 
-async function abrirProduto(bruto){
+/* `daConf` = veio do campo da aba Conferência. Lá o mapa na tela é sempre
+   um mapa salvo (o tablet não monta mapa), então trocar de produto não
+   pergunta nada — só avisa se houver divergência marcada e não gravada. */
+async function abrirProduto(bruto, daConf){
   const cod = normCod(bruto);
+  if(cod && cod === normCod(S.cod) && totalItens()) return;   // mesmo produto já aberto
+  const anterior = S.cod;
   S.cod = cod;
   renderProdChip();
-  const el = $("achouCod");
-  if(!cod){ el.className = "achou"; el.textContent = ""; atualizarBotoes(); return; }
+  if(!cod){ setAchou("achou", ""); sincronizarCod(""); atualizarBotoes(); return; }
 
   const cab = S.produtos.find(p => normCod(p.cod) === cod);
+  if(totalItens() && S.conf.size && !S.confSalva && !confirm(
+    `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\n` +
+    `Trocar para ${(cab && cab.desc) || codErp(cod)} descarta as marcas. Continuar?`)){
+    S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
+    return;
+  }
   if(!cab){
-    el.className = "achou";
-    el.textContent = "produto novo — monte o mapa e salve";
+    sincronizarCod(cod);
+    if(daConf){
+      /* As peças do produto anterior não podem ficar na tela debaixo de um
+         código novo — a conferência seria gravada no produto errado. */
+      aplicarMapa({ cod, desc: "", nTrilhos: S.nTrilhos, trilhos: [], inicioOp: [] });
+      setAchou("achou err", "sem mapa salvo — o mapa se monta no computador");
+      return;
+    }
+    setAchou("achou", "produto novo — monte o mapa e salve");
     atualizarBotoes();
     return;
   }
-  if(totalItens() && !confirm(
+  const mapaSalvoNaTela = !!S.produtos.find(p => normCod(p.cod) === normCod(anterior));
+  if(totalItens() && !(daConf && mapaSalvoNaTela) && !confirm(
     `${cab.desc || codErp(cod)} já tem mapa salvo (${cab.n_trilhos} trilhos).\n\n` +
     `Abrir o mapa salvo descarta o que está na tela agora. Continuar?`)){
+    S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
     return;
   }
 
-  el.className = "achou"; el.textContent = "abrindo…";
+  setAchou("achou", "abrindo…"); sincronizarCod(cod);
   codPedido = cod;
   try{
     const out = await chamar({ acao: "mapa", cod });
     if(codPedido !== cod) return;              // o líder já digitou outro código
-    if(!out.achou){ el.textContent = "produto novo — monte o mapa e salve"; return; }
+    if(!out.achou){ setAchou("achou", "produto novo — monte o mapa e salve"); return; }
 
     aplicarMapa(mapaDeLinhas(cod, out.mapa, out.linhas));
-    el.className = "achou ok"; el.textContent = "mapa salvo, aberto na tela";
+    setAchou("achou ok", daConf ? `mapa aberto — ${totalItens()} peças em ${totalOps()} OPs. Digite o lote.`
+                                : "mapa salvo, aberto na tela");
   }catch(e){
-    el.className = "achou err"; el.textContent = "não abriu: " + e.message;
+    setAchou("achou err", "não abriu: " + e.message);
   }
 }
+$("inConfCod").addEventListener("change", ev => abrirProduto(ev.target.value, true));
+$("inConfCod").addEventListener("blur",   ev => abrirProduto(ev.target.value, true));
 
 /* ==================================================================
    GRAVAÇÃO — Apps Script + fila local
@@ -2050,14 +2120,18 @@ $("btnLimpar").addEventListener("click", () => {
    ================================================================== */
 $("btnCfg").addEventListener("click", () => {
   $("cfgApi").value = CFG.api || "";
+  $("cfgTablet").checked = !!CFG.tablet;
   $("cfgVersao").textContent = "App v" + VERSAO;
   $("dlgCfg").showModal();
 });
 $("cfgCancel").addEventListener("click", () => $("dlgCfg").close());
 $("cfgOk").addEventListener("click", async () => {
-  CFG = Object.assign({}, CFG, { api: $("cfgApi").value.trim() });
+  CFG = Object.assign({}, CFG, { api: $("cfgApi").value.trim(), tablet: $("cfgTablet").checked });
   localStorage.setItem(CFG_KEY, JSON.stringify(CFG));
   $("dlgCfg").close();
+  let aba = "mapa";
+  try{ aba = localStorage.getItem(ABA_KEY) || "mapa"; }catch(e){}
+  mostrarAba(aba);
   await carregarLista();
 });
 

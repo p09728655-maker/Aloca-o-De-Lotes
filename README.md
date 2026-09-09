@@ -48,9 +48,9 @@ A esteira não para. Num produto de 21 itens, confirmar peça por peça em **tod
 caixa é 21 toques por caixa enquanto as caixas continuam vindo — foi por isso que a
 versão anterior do app carregava uma conferência que a linha não usava.
 
-O que ficou é **amostragem**: uma caixa por lote. E a peça **nasce OK** — o toque
-marca divergência, não o contrário. Exigir 21 toques para dizer "tudo certo" faz o
-líder bater tudo no automático, que é pior do que não conferir.
+O que ficou é **amostragem**: uma caixa por lote. Cada peça leva **um toque: OK ou
+DIV**. Peça sem toque é "não conferida", e o botão Gravar só libera com todas
+marcadas — nada fica OK só porque ninguém olhou. A barra mostra quantas faltam.
 
 As peças aparecem **agrupadas pela OP**, com o seletor de quem está nela no cabeçalho
 do grupo: a pessoa fica ao lado das peças por que responde. Preenchidas as OPs e o
@@ -155,6 +155,15 @@ No tablet, em pé, a conferência não pode morar embaixo de 30 trilhos. O app t
 abas — **Mapa dos trilhos**, **Conferência do lote** e **Relatório** — e cada uma
 ocupa a tela inteira. A aba fica gravada no aparelho: o tablet da esteira abre na
 Conferência e fica nela.
+
+A Conferência tem o seu próprio campo de **código do produto**, com a mesma lista de
+mapas salvos: o líder digita o código, o mapa abre ali mesmo, digita o lote e confere.
+Não precisa passar pelo Mapa dos trilhos. Produto sem mapa salvo avisa: o mapa se
+monta no computador.
+
+No ⚙ há a opção **Tablet da esteira: só a Conferência do lote**. Ligada, o app esconde
+as abas de Mapa e Relatório — mapa se monta e relatório se tira no computador, o
+tablet só confere. A opção fica gravada no aparelho.
 
 Em tela larga (tablet deitado) trilhos e peças aparecem em **duas colunas**: o mapa
 de 30 trilhos cabe sem rolar. Trilho vazio ocupa uma linha só, com `+` e `OP`.
