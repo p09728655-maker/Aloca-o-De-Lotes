@@ -146,6 +146,11 @@
   .chip .ctxt i{font-style:normal; font-family:var(--f-mono); font-size:10px; color:var(--mut2)}
   .chip.emb{border-color:#3a2f52}
   .chip.emb .ctxt b{color:var(--roxo)}
+  /* "suspenso" é etiqueta de estado, não de tipo: fica fora do texto que
+     corta com reticências, senão some justo na descrição comprida. */
+  .tag{flex:none; font-family:var(--f-tit); font-size:9.5px; letter-spacing:.05em;
+    color:var(--steel); border:1px solid var(--steel); border-radius:5px;
+    padding:1px 5px; white-space:nowrap}
   .chip button{min-height:28px; min-width:30px; padding:0; font-size:14px; line-height:1;
     border-radius:6px; flex:none}
 
@@ -383,6 +388,11 @@
       white-space:nowrap}
     #folha td.fins{font-size:7.5pt; font-style:italic; color:#333}
     #folha td.fpeca{font-size:9.5pt}
+    /* a coluna Insumo é 7,5pt em itálico cinza: "(suspenso)" escrito ali
+       passava batido em quem lê a folha em pé na esteira. Vira etiqueta. */
+    #folha .fsusp{font-family:var(--f-tit); font-style:normal; font-weight:700;
+      font-size:6.5pt; letter-spacing:.08em; text-transform:uppercase; color:#000;
+      border:.3mm solid #000; border-radius:.8mm; padding:0 1mm; white-space:nowrap}
     #folha td.ftr{font-family:var(--f-tit); font-size:12.5pt; font-weight:700;
       text-align:center}
     #folha tr.fvazio td{color:#999; padding:.7mm 2mm}
@@ -593,6 +603,10 @@
     <label class="check"><input type="checkbox" id="itInsumo">
       <span><b>É insumo de embalagem</b> — isomanta, isopor, tabuleiro, caixa, fita.
       Sai na coluna <i>Insumo</i> da folha impressa, separado da peça.</span></label>
+    <label class="check"><input type="checkbox" id="itSusp">
+      <span><b>Fica suspenso</b> — pendurado no suporte acima da esteira, e não
+      deitado no trilho. É o caso da isomanta. Continua no mesmo trilho; só sai
+      marcado na tela e na folha impressa.</span></label>
   </div>
   <div class="foot">
     <button class="gho" id="itExcluir" style="color:var(--red); margin-right:auto">Excluir</button>
@@ -635,7 +649,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.9.0";
+const VERSAO = "3.10.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -669,7 +683,7 @@ let CFG = lerCfg();
    ================================================================== */
 const S = {
   cod: "", desc: "", nTrilhos: 28, vel: "", esq: "",
-  trilhos: [],              // índice 0 = trilho 1 → { itens:[{cod,desc,qtd,insumo}] }
+  trilhos: [],              // índice 0 = trilho 1 → { itens:[{cod,desc,qtd,insumo,suspenso}] }
   inicioOp: new Set(),      // trilhos onde começa uma OP nova
   produtos: [],             // cabeçalhos dos mapas já salvos na planilha
   edit: null,               // { t, j } — j < 0 é item novo
@@ -724,6 +738,15 @@ const fmtVel = v => {
    é só de coluna na folha impressa, e de cor do chip na tela. */
 const RE_INSUMO = /ISOMANTA|ISOPOR|TABULEIRO|PAPEL\s*CARTAO|^CX\b|\bCX\s|ETIQUETA|\bFITA\b|\bCOLA\b|STRETCH/;
 const ehInsumo = d => RE_INSUMO.test(semAcento(d));
+
+/* A isomanta continua na sequência do trilho — é ali que ela está na
+   planilha da linha —, mas não deitada nele: vem pendurada no suporte
+   acima da esteira. Quem embala procurava no trilho e não achava, então a
+   folha impressa passou a dizer. É marca, não estrutura: não muda trilho,
+   contagem nem OP. Proposta pela descrição igual à de insumo, e o líder
+   desmarca no item que não for suspenso. */
+const RE_SUSPENSO = /ISOMANTA/;
+const ehSuspenso = d => RE_SUSPENSO.test(semAcento(d));
 
 function setStatus(kind, txt){
   const el = $("status"); el.className = "status" + (kind ? " " + kind : ""); el.innerHTML = txt;
@@ -957,8 +980,9 @@ function linhaTrilho(t){
       chip.className = "chip" + (x.insumo ? " emb" : "");
       chip.innerHTML =
         `<span class="ctxt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(curto(x.desc))}` +
-        (x.cod ? ` <i>${escapa(codErp(x.cod))}</i>` : "") + `</span>
-         <button class="gho" data-a="menos" aria-label="menos um">−</button>
+        (x.cod ? ` <i>${escapa(codErp(x.cod))}</i>` : "") + `</span>` +
+        (x.suspenso ? `<span class="tag">suspenso</span>` : "") +
+        `<button class="gho" data-a="menos" aria-label="menos um">−</button>
          <button class="gho" data-a="mais" aria-label="mais um">+</button>
          <button class="gho" data-a="tira" aria-label="tirar do trilho">×</button>`;
       chip.querySelector(".ctxt").addEventListener("click", () => abrirItem(t, j));
@@ -1232,6 +1256,7 @@ function linhaConf(t, j, x){
   el.className = "pconf " + (e.pend ? "pend" : e.div ? "div" : "ok");
   el.innerHTML = `<span class="tr">${t}</span>
     <span class="txt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(x.desc)}</span>
+    ${x.suspenso ? '<span class="tag">suspenso</span>' : ""}
     <span class="est">${e.pend ? "—" : e.div ? "" : "✓ OK"}</span>
     <button type="button" class="marca dv${e.div ? " on" : ""}">⚠ DIV</button>`;
   /* DIV é da peça. Tocar de novo desfaz: volta a "não conferida". */
@@ -1646,6 +1671,7 @@ function abrirItem(t, j){
   $("itQtd").value    = x ? fmtQtd(x.qtd) : "1";
   $("itCod").value    = x ? codErp(x.cod) : "";
   $("itInsumo").checked = x ? !!x.insumo : false;
+  $("itSusp").checked   = x ? !!x.suspenso : false;
   $("itExcluir").hidden = j < 0;
   $("dlgItem").showModal();
   setTimeout(() => $("itDesc").focus(), 40);
@@ -1655,7 +1681,10 @@ function abrirItem(t, j){
    líder desmarcar custa menos que ele lembrar de marcar toda vez. Só
    propõe enquanto ele não escreveu nada de código nem mexeu na caixa. */
 $("itDesc").addEventListener("input", () => {
-  if(S.edit && S.edit.j < 0) $("itInsumo").checked = ehInsumo($("itDesc").value);
+  if(S.edit && S.edit.j < 0){
+    $("itInsumo").checked = ehInsumo($("itDesc").value);
+    $("itSusp").checked   = ehSuspenso($("itDesc").value);
+  }
 });
 
 $("itOk").addEventListener("click", () => {
@@ -1665,7 +1694,8 @@ $("itOk").addEventListener("click", () => {
     cod: normCod($("itCod").value),
     desc,
     qtd: Math.max(1, numDec($("itQtd").value) || 1),
-    insumo: $("itInsumo").checked
+    insumo: $("itInsumo").checked,
+    suspenso: $("itSusp").checked
   };
   const { t, j } = S.edit;
   if(j < 0) limparConfPorMudancaDoMapa();   // item novo desloca as marcas do trilho
@@ -1766,7 +1796,7 @@ function mapaDeLinhas(cod, cab, linhas){
       if(l.op > opAnterior){ ops.add(l.trilho); opAnterior = l.op; }
       if(l.desc_item) trilhos[l.trilho - 1].itens.push({
         cod: normCod(l.cod_item), desc: l.desc_item,
-        qtd: numDec(l.qtd) || 1, insumo: !!l.insumo });
+        qtd: numDec(l.qtd) || 1, insumo: !!l.insumo, suspenso: !!l.suspenso });
     });
   return { cod, desc: cab.desc, nTrilhos: nT,
            vel: cab.velocidade, esq: cab.n_esquema, trilhos, inicioOp: [...ops] };
@@ -1890,10 +1920,11 @@ function linhasDoMapa(){
   for(let t = 1; t <= S.nTrilhos; t++){
     const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
     const op = opDoTrilho(t);
-    if(!itens.length){ out.push({ trilho: t, op, seq: 1, cod_item: "", desc_item: "", qtd: "", insumo: false }); continue; }
+    if(!itens.length){ out.push({ trilho: t, op, seq: 1, cod_item: "", desc_item: "", qtd: "", insumo: false, suspenso: false }); continue; }
     itens.forEach((x, i) => out.push({
       trilho: t, op, seq: i + 1,
-      cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd, insumo: !!x.insumo
+      cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd,
+      insumo: !!x.insumo, suspenso: !!x.suspenso
     }));
   }
   return out;
@@ -2021,15 +2052,20 @@ function montarFolha(){
   const corpo = Array.from({ length: S.nTrilhos }, (_, i) => {
     const t = i + 1;
     const itens = (S.trilhos[i] || { itens: [] }).itens;
-    const txt = x => (x.qtd > 1 ? fmtQtd(x.qtd) + " " : "") + x.desc;
+    /* A marca vai colada no item, e não numa coluna nova: a folha já tem
+       cinco colunas em A4 e quem lê precisa saber QUAL item é o suspenso
+       quando o trilho tem dois. Como ela é etiqueta e não texto, o escape
+       desceu para dentro do `txt`: o que sai daqui já é HTML pronto. */
+    const txt = x => escapa((x.qtd > 1 ? fmtQtd(x.qtd) + " " : "") + x.desc)
+                   + (x.suspenso ? ' <span class="fsusp">suspenso</span>' : "");
     const insumo = itens.filter(x => x.insumo).map(txt).join(" + ");
     const peca   = itens.filter(x => !x.insumo).map(txt).join(" + ");
     const vazio  = !itens.length;
     const ini    = S.inicioOp.has(t);
     return `<tr class="${ini ? "fini" : ""}${vazio ? " fvazio" : ""}">
        <td class="fop">${ini ? "OP " + String(opDoTrilho(t)).padStart(2, "0") : ""}</td>
-       <td class="fins">${escapa(insumo)}</td>
-       <td class="fpeca">${vazio ? "trilho livre" : escapa(peca)}</td>
+       <td class="fins">${insumo}</td>
+       <td class="fpeca">${vazio ? "trilho livre" : peca}</td>
        <td class="ftr">${t}</td>
        ${vazio ? "<td></td>" : '<td class="fok"></td>'}
      </tr>`;
@@ -2255,7 +2291,7 @@ function lerFormatoApp(nomeAba, linhas, out){
       trilhos[t - 1].itens.push({
         cod: normCod(cel(l, b.cod)), desc,
         qtd: Math.max(1, numDec(cel(l, b.qtd)) || 1),
-        insumo: ehInsumo(desc)
+        insumo: ehInsumo(desc), suspenso: ehSuspenso(desc)
       });
     });
   });
@@ -2376,7 +2412,7 @@ function lerBlocoLinha(nomeAba, bloco, out){
       trilhos[alvo - 1].itens.push({
         cod: "", desc,
         qtd: Math.max(1, numDec(cel(l, iQtd)) || 1),
-        insumo: ehInsumo(desc)
+        insumo: ehInsumo(desc), suspenso: ehSuspenso(desc)
       });
     }
     /* Entre a OP e a QTDE fica a coluna do marcador de insumo — nas cinco
@@ -2384,7 +2420,8 @@ function lerBlocoLinha(nomeAba, bloco, out){
     if(iQtd > 0) for(let c = (iOp >= 0 ? iOp + 1 : 0); c < iQtd; c++){
       const v = cel(l, c);
       if(v && !/^\d+$/.test(v) && !/^op\s*-?\s*\d+/i.test(v)){
-        trilhos[alvo - 1].itens.push({ cod: "", desc: v, qtd: 1, insumo: true });
+        trilhos[alvo - 1].itens.push({ cod: "", desc: v, qtd: 1,
+                                       insumo: true, suspenso: ehSuspenso(v) });
       }
     }
   });

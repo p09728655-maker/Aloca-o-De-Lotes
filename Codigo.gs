@@ -32,7 +32,12 @@ var AB_CONF  = 'CONFERENCIA';
    no Power BI sem relacionamento nenhum. */
 var CAB_MAPA = ['COD_PRODUTO', 'DESC_PRODUTO', 'N_TRILHOS', 'VELOCIDADE', 'N_ESQUEMA',
                 'TRILHO', 'OP', 'SEQ', 'COD_ITEM', 'DESC_ITEM', 'QTD', 'INSUMO',
-                'ATUALIZADO_EM'];
+                'ATUALIZADO_EM', 'SUSPENSO'];
+/* SUSPENSO entra DEPOIS de ATUALIZADO_EM, e não ao lado de INSUMO, que era o
+   lugar natural dele. Motivo: aba() só sabe acrescentar coluna no fim. Enfiada
+   no meio, a coluna nova cairia em cima da data das linhas ja gravadas e o app
+   leria carimbo de hora como marca de suspenso. Coluna em branco nas linhas
+   antigas quer dizer "nao suspenso", que e a resposta certa para elas. */
 
 var CAB_COLAB = ['MATRICULA', 'NOME', 'ATIVO', 'CADASTRADO_EM'];
 
@@ -124,7 +129,7 @@ function salvarMapa(ss, p) {
   var novas = p.linhas.map(function (l) {
     return [cod, p.desc || '', p.n_trilhos || 0, p.velocidade || '', p.n_esquema || '',
             l.trilho, l.op || 0, l.seq || 1, l.cod_item || '', l.desc_item || '',
-            l.qtd || '', l.insumo ? 'SIM' : '', ts];
+            l.qtd || '', l.insumo ? 'SIM' : '', ts, l.suspenso ? 'SIM' : ''];
   });
   /* Grava as novas ANTES de apagar as antigas. Apagando primeiro, uma falha
      no meio (cota, timeout, celula invalida) deixava o produto sem mapa
@@ -204,7 +209,8 @@ function lerMapa(ss, codBruto) {
     linhas.push({ trilho: Number(r[5]) || 0, op: Number(r[6]) || 0, seq: Number(r[7]) || 1,
                   cod_item: String(r[8] || ''), desc_item: String(r[9] || ''),
                   qtd: (r[10] === '' || r[10] === null) ? 0 : r[10],
-                  insumo: String(r[11] || '') === 'SIM' });
+                  insumo: String(r[11] || '') === 'SIM',
+                  suspenso: String(r[13] || '') === 'SIM' });
   });
   if (!cab) return { ok: true, achou: false };
   return { ok: true, achou: true, mapa: cab, linhas: linhas };
@@ -509,12 +515,14 @@ function testar() {
   var erros = [];
 
   /* Trilho 1 vazio, 2 com a caixa antes do primeiro posto (OP 0), e 3 com
-     peça e insumo juntos: são os três casos que já quebraram alguma coisa. */
+     peça e insumo juntos: são os três casos que já quebraram alguma coisa.
+     A isomanta do trilho 3 vai marcada como suspensa — é a única linha que
+     prova a coluna SUSPENSO indo e voltando. */
   var linhas = [
-    { trilho: 1, op: 0, seq: 1, cod_item: '',          desc_item: '',                  qtd: '', insumo: false },
-    { trilho: 2, op: 0, seq: 1, cod_item: '607001700', desc_item: 'CX DE TESTE',       qtd: 1,  insumo: true  },
-    { trilho: 3, op: 1, seq: 1, cod_item: '760001006', desc_item: 'PECA DE TESTE',     qtd: 2,  insumo: false },
-    { trilho: 3, op: 1, seq: 2, cod_item: '',          desc_item: 'ISOMANTA DE TESTE', qtd: 1,  insumo: true  }
+    { trilho: 1, op: 0, seq: 1, cod_item: '',          desc_item: '',                  qtd: '', insumo: false, suspenso: false },
+    { trilho: 2, op: 0, seq: 1, cod_item: '607001700', desc_item: 'CX DE TESTE',       qtd: 1,  insumo: true,  suspenso: false },
+    { trilho: 3, op: 1, seq: 1, cod_item: '760001006', desc_item: 'PECA DE TESTE',     qtd: 2,  insumo: false, suspenso: false },
+    { trilho: 3, op: 1, seq: 2, cod_item: '',          desc_item: 'ISOMANTA DE TESTE', qtd: 1,  insumo: true,  suspenso: true  }
   ];
 
   try {
@@ -541,9 +549,14 @@ function testar() {
       else {
         if (t2.op !== 0)        erros.push('trilho antes do 1o posto voltou com OP ' + t2.op + ', esperava 0');
         if (t2.insumo !== true) erros.push('a marca de insumo nao voltou');
+        if (t2.suspenso !== false) erros.push('a caixa voltou marcada como suspensa');
       }
       if (t3.length !== 2)      erros.push('o trilho com dois itens voltou com ' + t3.length);
-      else if (Number(t3[0].qtd) !== 2) erros.push('a quantidade voltou ' + t3[0].qtd + ', esperava 2');
+      else {
+        if (Number(t3[0].qtd) !== 2) erros.push('a quantidade voltou ' + t3[0].qtd + ', esperava 2');
+        if (t3[0].suspenso !== false) erros.push('a peca voltou marcada como suspensa');
+        if (t3[1].suspenso !== true)  erros.push('a marca de suspenso nao voltou');
+      }
     }
   } catch (err) {
     erros.push('excecao: ' + (err && err.message ? err.message : err));
