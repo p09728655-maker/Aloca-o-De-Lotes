@@ -190,18 +190,21 @@
 
   /* ---------- abas ---------- */
   .abas{display:flex; gap:6px; margin-top:10px; border-bottom:1px solid var(--line)}
+  .abas[hidden]{display:none}
   .abas button{flex:1 1 0; border-radius:9px 9px 0 0; border-bottom:none; background:transparent;
     color:var(--mut); font-size:14px; letter-spacing:.06em; text-transform:uppercase; min-height:44px}
   .abas button.on{background:var(--panel); color:var(--amber); border-color:var(--line);
     box-shadow:inset 0 -3px 0 var(--amber)}
   [data-aba][hidden]{display:none !important}
 
-  .prodchip{flex:1 1 320px; font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--mut);
-    letter-spacing:.03em; padding-bottom:2px}
+  .prodchip{flex:1 1 240px; font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--mut);
+    letter-spacing:.03em; padding-bottom:calc(15px + 11px)}
+  .prodchip:empty{display:none}
   .confbar .confmeta{order:9; margin-left:auto; align-self:center; font-style:normal;
     font-family:"IBM Plex Mono"; font-size:12px; color:var(--amber); padding-bottom:15px}
   .confbar .confmeta:empty{display:none}
-  .confbar .fld{padding-bottom:0}
+  .confbar .fld{position:relative; padding-bottom:15px}
+  .confbar .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
   .prodchip b{color:var(--ink); font-family:"Inter"; font-weight:600; letter-spacing:0}
 
   /* Tablet deitado: duas colunas, e 30 trilhos cabem numa tela sem rolar.
@@ -415,7 +418,16 @@
 <div class="box" id="boxConf" data-aba="conf" hidden>
   <!-- sem h2: a aba já diz "Conferência do lote", e no tablet cada 40px
        de altura é meia peça a menos na tela -->
-  <div class="confbar" id="confBarra" hidden>
+  <!-- O produto se busca aqui mesmo: o líder do tablet não precisa passar
+       pelo Mapa dos trilhos para conferir um lote. Mesma lista de produtos
+       salvos do campo do mapa. -->
+  <div class="confbar" id="confBarra">
+    <div class="fld" style="min-width:170px">
+      <label for="inConfCod">Código do produto</label>
+      <input type="text" id="inConfCod" list="listaProdutos" inputmode="numeric"
+             autocomplete="off" placeholder="ex.: 501.118.001">
+      <span class="achou" id="confAchou"></span>
+    </div>
     <div class="prodchip" id="confProd"></div>
     <em class="confmeta" id="confMeta"></em>
     <div class="fld"><label for="inLote">Lote</label>
@@ -470,6 +482,9 @@
       ficar pública. Só mexa aqui para apontar para outra implantação.</p>
     <p class="hint">Sem essa URL o app funciona e imprime, mas não salva: o mapa
       fica na fila local até você configurar.</p>
+    <label class="check"><input type="checkbox" id="cfgTablet">
+      <span><b>Tablet da esteira: só a Conferência do lote</b> — esconde o Mapa dos
+      trilhos e o Relatório. Mapa se monta e relatório se tira no computador.</span></label>
     <p class="hint"><a href="https://docs.google.com/spreadsheets/d/1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g/edit"
       target="_blank" rel="noopener">Abrir a planilha do mapa</a></p>
     <p class="hint versao" id="cfgVersao"></p>
@@ -538,7 +553,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.2.2";
+const VERSAO = "3.3.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -549,7 +564,8 @@ const VERSAO = "3.2.2";
    ninguém digitar endereço nenhum com o dedo na esteira. O ⚙ continua lá
    para quem precisar apontar para outra implantação. */
 const CFG_PADRAO = {
-  api: "https://script.google.com/macros/s/AKfycbzQmy9XJI_zFDNhPUw56w_GwmV7fzM58ecvJMksGLXD-TN4_TZgPzb6DSEp7IlROPFL/exec"
+  api: "https://script.google.com/macros/s/AKfycbzQmy9XJI_zFDNhPUw56w_GwmV7fzM58ecvJMksGLXD-TN4_TZgPzb6DSEp7IlROPFL/exec",
+  tablet: false   // true = só a aba Conferência; mapa e relatório ficam no computador
 };
 const CFG_KEY  = "trilhosCfg";
 const FILA_KEY = "trilhosFila";
@@ -758,8 +774,8 @@ function limparTela(){
   S.loteConf = ""; S.confSalva = true;
   $("inLote").value = "";
   S.nTrilhos = 28; S.trilhos = novosTrilhos(28); S.inicioOp = new Set();
-  $("inCod").value = ""; $("inDesc").value = ""; $("inVel").value = ""; $("inEsq").value = "";
-  $("inTrilhos").value = "28"; $("achouCod").className = "achou"; $("achouCod").textContent = "";
+  sincronizarCod(""); $("inDesc").value = ""; $("inVel").value = ""; $("inEsq").value = "";
+  $("inTrilhos").value = "28"; setAchou("achou", "");
   localStorage.removeItem(RASC_KEY);
   render();
 }
@@ -923,13 +939,12 @@ function renderConf(){
   /* Sempre visível. Escondida, ela "não aparecia" para quem abria o app
      sem mapa — e dizer o que falta é mais simples que sumir. */
   const lista = $("listaConf");
-  $("confBarra").hidden = !totalItens();
   renderProdChip();
   if(!totalItens()){
     lista.innerHTML = `<div class="vazio-tela">A conferência é de um lote de um produto.
-      <b>Abra o mapa</b> na aba <b>Mapa dos trilhos</b> — digite o código do produto —
-      e as peças aparecem aqui, agrupadas por OP, para dizer quem estava em cada uma
-      e o que veio errado.</div>`;
+      Digite o <b>código do produto</b> acima e as peças aparecem aqui, agrupadas
+      por OP, para dizer quem estava em cada uma e o que veio errado. Depois, o
+      <b>lote</b>.</div>`;
     $("confMeta").textContent = "";
     atualizarBotaoConf();
     return;
@@ -960,9 +975,9 @@ function renderConf(){
 }
 
 function renderProdChip(){
-  $("confProd").innerHTML = S.cod
-    ? `${escapa(codErp(S.cod))} · <b>${escapa(S.desc || "sem descrição")}</b>`
-    : `<b>produto sem código</b> — volte ao mapa e preencha`;
+  $("confProd").innerHTML = S.cod && totalItens()
+    ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs`
+    : "";
 }
 
 function grupoOp(op){
@@ -1137,6 +1152,8 @@ async function abrirConferencia(){
    ================================================================== */
 const ABA_KEY = "trilhosAba";
 function mostrarAba(a){
+  if(CFG.tablet) a = "conf";
+  $("abas").hidden = !!CFG.tablet;
   document.querySelectorAll("[data-aba]").forEach(el => {
     if(el.parentElement && el.parentElement.id === "abas"){
       el.classList.toggle("on", el.dataset.aba === a);
@@ -1400,7 +1417,7 @@ function aplicarMapa(m){
   S.trilhos = novosTrilhos(S.nTrilhos);
   (m.trilhos || []).forEach((tr, i) => { if(i < S.nTrilhos) S.trilhos[i] = { itens: (tr.itens || []).slice() }; });
   S.inicioOp = new Set(m.inicioOp || []);
-  $("inCod").value = S.cod ? codErp(S.cod) : "";
+  sincronizarCod(S.cod);
   $("inDesc").value = S.desc;
   $("inTrilhos").value = String(S.nTrilhos);
   $("inVel").value = S.vel; $("inEsq").value = S.esq;
@@ -1413,6 +1430,16 @@ function aplicarMapa(m){
    existir, a tela fica como está — é assim que um produto novo começa.
    ================================================================== */
 let codPedido = "";
+
+/* O mesmo produto tem dois campos de código, um por aba. O aviso ("mapa
+   salvo, aberto na tela") e o valor andam juntos nos dois. */
+function setAchou(cls, txt){
+  ["achouCod", "confAchou"].forEach(id => { const el = $(id); if(el){ el.className = cls; el.textContent = txt; } });
+}
+function sincronizarCod(cod){
+  const v = cod ? codErp(cod) : "";
+  ["inCod", "inConfCod"].forEach(id => { const el = $(id); if(el && normCod(el.value) !== normCod(v)) el.value = v; });
+}
 
 /* Desfaz o que linhasDoMapa() fez: uma linha por trilho vira o mapa da tela
    de novo. A divisa de OP volta pela mudança do número da OP entre um
@@ -1435,39 +1462,61 @@ function mapaDeLinhas(cod, cab, linhas){
            vel: cab.velocidade, esq: cab.n_esquema, trilhos, inicioOp: [...ops] };
 }
 
-async function abrirProduto(bruto){
+/* `daConf` = veio do campo da aba Conferência. Lá o mapa na tela é sempre
+   um mapa salvo (o tablet não monta mapa), então trocar de produto não
+   pergunta nada — só avisa se houver divergência marcada e não gravada. */
+async function abrirProduto(bruto, daConf){
   const cod = normCod(bruto);
+  if(cod && cod === normCod(S.cod) && totalItens()) return;   // mesmo produto já aberto
+  const anterior = S.cod;
   S.cod = cod;
   renderProdChip();
-  const el = $("achouCod");
-  if(!cod){ el.className = "achou"; el.textContent = ""; atualizarBotoes(); return; }
+  if(!cod){ setAchou("achou", ""); sincronizarCod(""); atualizarBotoes(); return; }
 
   const cab = S.produtos.find(p => normCod(p.cod) === cod);
+  if(totalItens() && S.conf.size && !S.confSalva && !confirm(
+    `As divergências marcadas no lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foram gravadas.\n\n` +
+    `Trocar para ${(cab && cab.desc) || codErp(cod)} descarta essas marcas. Continuar?`)){
+    S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
+    return;
+  }
   if(!cab){
-    el.className = "achou";
-    el.textContent = "produto novo — monte o mapa e salve";
+    sincronizarCod(cod);
+    if(daConf){
+      /* As peças do produto anterior não podem ficar na tela debaixo de um
+         código novo — a conferência seria gravada no produto errado. */
+      aplicarMapa({ cod, desc: "", nTrilhos: S.nTrilhos, trilhos: [], inicioOp: [] });
+      setAchou("achou err", "sem mapa salvo — o mapa se monta no computador");
+      return;
+    }
+    setAchou("achou", "produto novo — monte o mapa e salve");
     atualizarBotoes();
     return;
   }
-  if(totalItens() && !confirm(
+  const mapaSalvoNaTela = !!S.produtos.find(p => normCod(p.cod) === normCod(anterior));
+  if(totalItens() && !(daConf && mapaSalvoNaTela) && !confirm(
     `${cab.desc || codErp(cod)} já tem mapa salvo (${cab.n_trilhos} trilhos).\n\n` +
     `Abrir o mapa salvo descarta o que está na tela agora. Continuar?`)){
+    S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
     return;
   }
 
-  el.className = "achou"; el.textContent = "abrindo…";
+  setAchou("achou", "abrindo…"); sincronizarCod(cod);
   codPedido = cod;
   try{
     const out = await chamar({ acao: "mapa", cod });
     if(codPedido !== cod) return;              // o líder já digitou outro código
-    if(!out.achou){ el.textContent = "produto novo — monte o mapa e salve"; return; }
+    if(!out.achou){ setAchou("achou", "produto novo — monte o mapa e salve"); return; }
 
     aplicarMapa(mapaDeLinhas(cod, out.mapa, out.linhas));
-    el.className = "achou ok"; el.textContent = "mapa salvo, aberto na tela";
+    setAchou("achou ok", daConf ? `mapa aberto — ${totalItens()} peças em ${totalOps()} OPs. Digite o lote.`
+                                : "mapa salvo, aberto na tela");
   }catch(e){
-    el.className = "achou err"; el.textContent = "não abriu: " + e.message;
+    setAchou("achou err", "não abriu: " + e.message);
   }
 }
+$("inConfCod").addEventListener("change", ev => abrirProduto(ev.target.value, true));
+$("inConfCod").addEventListener("blur",   ev => abrirProduto(ev.target.value, true));
 
 /* ==================================================================
    GRAVAÇÃO — Apps Script + fila local
@@ -2050,14 +2099,18 @@ $("btnLimpar").addEventListener("click", () => {
    ================================================================== */
 $("btnCfg").addEventListener("click", () => {
   $("cfgApi").value = CFG.api || "";
+  $("cfgTablet").checked = !!CFG.tablet;
   $("cfgVersao").textContent = "App v" + VERSAO;
   $("dlgCfg").showModal();
 });
 $("cfgCancel").addEventListener("click", () => $("dlgCfg").close());
 $("cfgOk").addEventListener("click", async () => {
-  CFG = Object.assign({}, CFG, { api: $("cfgApi").value.trim() });
+  CFG = Object.assign({}, CFG, { api: $("cfgApi").value.trim(), tablet: $("cfgTablet").checked });
   localStorage.setItem(CFG_KEY, JSON.stringify(CFG));
   $("dlgCfg").close();
+  let aba = "mapa";
+  try{ aba = localStorage.getItem(ABA_KEY) || "mapa"; }catch(e){}
+  mostrarAba(aba);
   await carregarLista();
 });
 

@@ -156,6 +156,15 @@ abas — **Mapa dos trilhos**, **Conferência do lote** e **Relatório** — e c
 ocupa a tela inteira. A aba fica gravada no aparelho: o tablet da esteira abre na
 Conferência e fica nela.
 
+A Conferência tem o seu próprio campo de **código do produto**, com a mesma lista de
+mapas salvos: o líder digita o código, o mapa abre ali mesmo, digita o lote e confere.
+Não precisa passar pelo Mapa dos trilhos. Produto sem mapa salvo avisa: o mapa se
+monta no computador.
+
+No ⚙ há a opção **Tablet da esteira: só a Conferência do lote**. Ligada, o app esconde
+as abas de Mapa e Relatório — mapa se monta e relatório se tira no computador, o
+tablet só confere. A opção fica gravada no aparelho.
+
 Em tela larga (tablet deitado) trilhos e peças aparecem em **duas colunas**: o mapa
 de 30 trilhos cabe sem rolar. Trilho vazio ocupa uma linha só, com `+` e `OP`.
 
