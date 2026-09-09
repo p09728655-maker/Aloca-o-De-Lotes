@@ -119,7 +119,6 @@ function salvarMapa(ss, p) {
 
   var sh = aba(ss, AB_MAPA, CAB_MAPA);
   var antigas = linhasDoProduto(sh, cod);
-  apagarLinhas(sh, antigas);
 
   var ts = new Date();
   var novas = p.linhas.map(function (l) {
@@ -127,9 +126,15 @@ function salvarMapa(ss, p) {
             l.trilho, l.op || 0, l.seq || 1, l.cod_item || '', l.desc_item || '',
             l.qtd || '', l.insumo ? 'SIM' : '', ts];
   });
+  /* Grava as novas ANTES de apagar as antigas. Apagando primeiro, uma falha
+     no meio (cota, timeout, celula invalida) deixava o produto sem mapa
+     nenhum na planilha. As linhas antigas estao antes das novas, entao os
+     indices continuam valendo depois do append. */
   var ini = sh.getLastRow() + 1;
   garantirLinhas(sh, ini + novas.length - 1);
   sh.getRange(ini, 1, novas.length, CAB_MAPA.length).setValues(novas);
+  SpreadsheetApp.flush();
+  apagarLinhas(sh, antigas);
 
   return { ok: true, cod: cod, gravadas: novas.length, substituidas: antigas.length };
 }
@@ -274,7 +279,6 @@ function gravarConferencia(ss, p) {
 
   var sh = aba(ss, AB_CONF, CAB_CONF);
   var antigas = linhasDoLote(sh, lote, cod);
-  apagarLinhas(sh, antigas);
 
   var ts = new Date();
   var dataEmb = paraData(p.data_emb);
@@ -285,9 +289,14 @@ function gravarConferencia(ss, p) {
             l.resultado === 'DIVERGENTE' ? 'DIVERGENTE' : 'OK', l.obs || '',
             String(p.conf_mat || ''), p.conf_nome || ''];
   });
+  /* Grava as novas ANTES de apagar as antigas: apagando primeiro, uma falha
+     no meio deixava o lote sem conferencia nenhuma. As antigas estao antes
+     das novas, entao os indices continuam valendo depois do append. */
   var ini = sh.getLastRow() + 1;
   garantirLinhas(sh, ini + novas.length - 1);
   sh.getRange(ini, 1, novas.length, CAB_CONF.length).setValues(novas);
+  SpreadsheetApp.flush();
+  apagarLinhas(sh, antigas);
 
   var div = 0;
   novas.forEach(function (r) { if (r[12] === 'DIVERGENTE') div++; });

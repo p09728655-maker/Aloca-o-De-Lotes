@@ -624,7 +624,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.7.3";
+const VERSAO = "3.8.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -641,6 +641,7 @@ const CFG_PADRAO = {
 const CFG_KEY  = "trilhosCfg";
 const FILA_KEY = "trilhosFila";
 const RASC_KEY = "trilhosRascunho";
+const REJ_KEY  = "trilhosRecusados";
 const CONFERENTE_KEY = "trilhosConferente";
 
 function lerCfg(){
@@ -738,7 +739,13 @@ async function chamar(payload){
   let out;
   try{ out = JSON.parse(txt); }
   catch(e){ throw new Error("resposta inesperada do Apps Script — confira a URL do /exec"); }
-  if(!out.ok) throw new Error(out.erro || "erro no Apps Script");
+  if(!out.ok){
+    /* Recusa da planilha, não falha de rede: reenviar o mesmo dado dá o
+       mesmo erro para sempre, então quem chamou precisa saber a diferença. */
+    const e = new Error(out.erro || "erro no Apps Script");
+    e.recusado = true;
+    throw e;
+  }
   return out;
 }
 
@@ -1280,6 +1287,7 @@ function proximoLote(){
   S.opColab = equipe;
   S.dataEmb = hojeISO(); $("inData").value = S.dataEmb;
   renderConf();
+  guardarRascunho();   /* senão o disco guarda a data do lote anterior */
   const cod = $("inConfCod"); if(cod){ cod.value = ""; cod.focus(); }
 }
 
@@ -1313,7 +1321,14 @@ async function abrirConferencia(){
   let out;
   try{ out = await chamar({ acao: "conferencia", lote, cod }); }
   catch(e){ return; }
-  if(!out.achou || S.lote.trim() !== lote) return;
+  /* A planilha demora alguns segundos. Nesse tempo o líder já pode ter
+     trocado de lote, trocado de produto ou começado a marcar peça: aplicar
+     a resposta assim mesmo apaga o que ele acabou de fazer e grava OK por
+     cima da divergência. Só entra se a tela ainda for a mesma. */
+  if(!out.achou || S.lote.trim() !== lote || normCod(S.cod) !== cod) return;
+  if(S.conf.size && !S.confSalva && !confirm(
+    `O lote ${lote} já tem conferência gravada.\n\n` +
+    `Abrir o que está na planilha descarta o que você marcou agora. Continuar?`)) return;
 
   S.conf = new Map(); S.opColab = new Map();
   S.loteConf = lote; S.confSalva = true;
@@ -1627,7 +1642,12 @@ function lerRascunho(){
 
 function aplicarMapa(m){
   /* Conferência é do lote, não do produto: abrir outro mapa não pode
-     carregar as marcas do anterior para cima dele. */
+     carregar as marcas do anterior para cima dele. Já QUEM está em cada OP
+     é da esteira, não do produto: o posto 03 tem a mesma pessoa o dia
+     inteiro. Zerar aqui obrigava o líder a reescolher a equipe a cada lote,
+     que é o caminho curto para tocar no primeiro nome e gravar rodízio que
+     não existiu. Fica, podado ao número de OPs do mapa novo. */
+  const equipe = new Map(S.opColab);
   S.conf = new Map(); S.opColab = new Map();
   S.loteConf = ""; S.confSalva = true;
   S.cod = normCod(m.cod || "");
@@ -1637,6 +1657,10 @@ function aplicarMapa(m){
   S.trilhos = novosTrilhos(S.nTrilhos);
   (m.trilhos || []).forEach((tr, i) => { if(i < S.nTrilhos) S.trilhos[i] = { itens: (tr.itens || []).slice() }; });
   S.inicioOp = new Set(m.inicioOp || []);
+  /* Mapa em branco (sem rede, ou produto sem mapa) não tem OP para podar:
+     a equipe fica inteira, senão errar um dígito no código custa reescolher
+     a esteira toda. */
+  equipe.forEach((mat, op) => { if(!S.inicioOp.size || op <= S.inicioOp.size) S.opColab.set(op, mat); });
   sincronizarCod(S.cod);
   $("inDesc").value = S.desc;
   $("inTrilhos").value = String(S.nTrilhos);
@@ -1702,13 +1726,9 @@ async function abrirProduto(bruto, daConf){
   }
   if(!cab){
     sincronizarCod(cod);
-    if(daConf){
-      /* As peças do produto anterior não podem ficar na tela debaixo de um
-         código novo — a conferência seria gravada no produto errado. */
-      aplicarMapa({ cod, desc: "", nTrilhos: S.nTrilhos, trilhos: [], inicioOp: [] });
-      setAchou("achou err", "sem mapa salvo — o mapa se monta no computador");
-      return;
-    }
+    /* As peças do produto anterior não podem ficar na tela debaixo de um
+       código novo — a conferência seria gravada no produto errado. */
+    if(daConf) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
     setAchou("achou", "produto novo — monte o mapa e salve");
     atualizarBotoes();
     return;
@@ -1726,14 +1746,32 @@ async function abrirProduto(bruto, daConf){
   try{
     const out = await chamar({ acao: "mapa", cod });
     if(codPedido !== cod) return;              // o líder já digitou outro código
-    if(!out.achou){ setAchou("achou", "produto novo — monte o mapa e salve"); return; }
+    if(!out.achou){
+      if(daConf) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
+      setAchou("achou", "produto novo — monte o mapa e salve");
+      return;
+    }
 
     aplicarMapa(mapaDeLinhas(cod, out.mapa, out.linhas));
     setAchou("achou ok", daConf ? `mapa aberto — ${totalItens()} peças em ${totalOps()} OPs. Digite o lote.`
                                 : "mapa salvo, aberto na tela");
   }catch(e){
+    /* O código já mudou na tela, mas as peças ainda são do produto anterior:
+       deixar assim grava a conferência no produto errado. Sem rede, a tela
+       fica vazia com o código pedido; no computador, volta ao que estava. */
+    codPedido = "";
+    if(daConf) return semMapaNaTela(cod, "sem conexão — não abriu o mapa deste produto");
+    S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
     setAchou("achou err", "não abriu: " + e.message);
+    atualizarBotoes();
   }
+}
+
+/* Código na tela sem as peças dele: mapa vazio em vez das peças do produto
+   anterior, para o Gravar não liberar em cima do produto errado. */
+function semMapaNaTela(cod, aviso){
+  aplicarMapa({ cod, desc: "", nTrilhos: S.nTrilhos, trilhos: [], inicioOp: [] });
+  setAchou("achou err", aviso);
 }
 $("inConfCod").addEventListener("change", ev => abrirProduto(ev.target.value, true));
 $("inConfCod").addEventListener("blur",   ev => abrirProduto(ev.target.value, true));
@@ -1744,12 +1782,35 @@ $("inConfCod").addEventListener("blur",   ev => abrirProduto(ev.target.value, tr
    ================================================================== */
 const lerFila = () => { try{ return JSON.parse(localStorage.getItem(FILA_KEY) || "[]"); }catch(e){ return []; } };
 const salvarFila = f => localStorage.setItem(FILA_KEY, JSON.stringify(f));
+const lerRecusados = () => { try{ return JSON.parse(localStorage.getItem(REJ_KEY) || "[]"); }catch(e){ return []; } };
+const salvarRecusados = r => { try{ localStorage.setItem(REJ_KEY, JSON.stringify(r)); }catch(e){} };
 
 function pintarFila(){
-  const n = lerFila().length;
-  $("fila").hidden = !n;
-  $("fila").textContent = n ? `${n} ${n === 1 ? "envio pendente" : "envios pendentes"}` : "";
-  $("btnReenviar").hidden = !n;
+  const n = lerFila().length, rec = lerRecusados().length;
+  const p = [];
+  if(n) p.push(`${n} ${n === 1 ? "envio pendente" : "envios pendentes"}`);
+  if(rec) p.push(`<b style="color:var(--red)">${rec} ${rec === 1 ? "recusado" : "recusados"} pela planilha</b>`);
+  $("fila").hidden = !p.length;
+  $("fila").innerHTML = p.join(" · ");
+  $("btnReenviar").hidden = !(n || rec);
+  $("btnReenviar").textContent = rec && !n ? "Ver recusados" : "Reenviar pendentes";
+}
+
+/* O que a planilha recusou volta para a tela, nunca some calado: com um
+   envio ruim na frente, a fila antiga parava e todos os lotes atrás dele
+   ficavam presos no tablet até alguém limpar os dados do app. */
+function mostrarRecusados(){
+  const rec = lerRecusados();
+  if(!rec.length) return false;
+  const linhas = rec.map(r => `• ${r.acao === "conferir" ? "lote " + r.lote : "mapa " + codErp(r.cod || "")}: ${r.erro}`).join("\n");
+  if(confirm(`A planilha recusou ${rec.length} ${rec.length === 1 ? "envio" : "envios"}:\n\n${linhas}\n\n` +
+             `OK tenta enviar de novo. Cancelar mantém guardado no tablet.`)){
+    const fila = lerFila();
+    rec.forEach(r => fila.push(r.payload));
+    salvarFila(fila); salvarRecusados([]); pintarFila();
+    return true;
+  }
+  return false;
 }
 
 /* Uma linha por trilho, inclusive o vazio: é assim que o número de trilhos
@@ -1770,13 +1831,24 @@ function linhasDoMapa(){
 
 async function despacharFila(){
   const fila = lerFila();
-  let enviados = 0;
+  let enviados = 0, recusados = 0;
   while(fila.length){
     try{ await chamar(fila[0]); }
-    catch(e){ salvarFila(fila); pintarFila(); throw e; }
+    catch(e){
+      if(!e.recusado){ salvarFila(fila); pintarFila(); throw e; }   // sem rede: espera
+      /* Recusado pela planilha: sai da fila para não travar o que vem
+         atrás, mas fica guardado e visível no rodapé. */
+      const p = fila.shift();
+      const rec = lerRecusados();
+      rec.push({ payload: p, acao: p.acao, lote: p.lote || "", cod: p.cod || "",
+                 erro: e.message, quando: new Date().toISOString() });
+      salvarRecusados(rec); salvarFila(fila); recusados++;
+      continue;
+    }
     fila.shift(); enviados++; salvarFila(fila);
   }
   salvarFila(fila); pintarFila();
+  if(recusados) throw new Error(`a planilha recusou ${recusados} ${recusados === 1 ? "envio" : "envios"} — toque em Ver recusados`);
   return enviados;
 }
 
@@ -1816,6 +1888,7 @@ async function salvarMapa(){
 
 $("btnSalvar").addEventListener("click", salvarMapa);
 $("btnReenviar").addEventListener("click", async () => {
+  if(!lerFila().length && !mostrarRecusados()) return;
   setMsg("", "Reenviando…");
   try{
     const n = await despacharFila();
@@ -2411,7 +2484,11 @@ $("cfgProcurar").addEventListener("click", async () => {
                   trilhos: r.trilhos, inicioOp: r.inicioOp });
     /* depois do aplicarMapa, que zera a conferência de propósito */
     S.lote = r.lote || ""; $("inLote").value = S.lote;
-    if(r.dataEmb){ S.dataEmb = r.dataEmb; $("inData").value = r.dataEmb; }
+    /* Data de outro dia só volta se houver conferência em curso: o tablet
+       que abre na segunda não pode gravar o lote com a data de sexta. */
+    if(r.dataEmb && (r.dataEmb === hojeISO() || r.confSalva === false)){
+      S.dataEmb = r.dataEmb; $("inData").value = r.dataEmb;
+    }
     S.opColab = new Map(r.opColab || []);
     S.conf = new Map(r.conf || []);
     S.loteConf = r.loteConf || (S.conf.size ? S.lote.trim() : "");
