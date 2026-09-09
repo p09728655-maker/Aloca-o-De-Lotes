@@ -248,11 +248,11 @@
   .opgrupo.rep select{border-color:var(--red); color:var(--red)}
   .opgrupo.antes b{color:var(--mut2)}
 
-  /* A peça nasce OK e o toque marca divergência: numa amostra quase tudo
-     está certo, e obrigar 21 toques para dizer "tudo certo" faria o líder
-     bater tudo no automático — que é pior que não conferir. */
+  /* Cada peça leva um toque: OK ou DIV. Sem marca é "não conferida", e
+     Gravar não libera. Dois botões, e não um ciclo no toque da linha: um
+     toque a mais não vira OK em divergência sem ninguém ver. */
   .pconf{display:flex; align-items:center; gap:9px; padding:4px 11px;
-    border-bottom:1px solid var(--line); cursor:pointer; user-select:none; min-height:40px}
+    border-bottom:1px solid var(--line); user-select:none; min-height:40px}
   .pconf:last-child{border-bottom:none}
   .pconf:active{background:var(--panel2)}
   .pconf .tr{font-family:"Oswald"; font-weight:600; font-size:13px; min-width:34px; height:30px;
@@ -262,9 +262,13 @@
     text-overflow:ellipsis; white-space:nowrap}
   .pconf .txt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
   .pconf .marca{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none;
-    padding:4px 9px; border-radius:6px; background:var(--green-dim); color:var(--green)}
+    padding:0 10px; min-height:32px; min-width:44px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--mut2); cursor:pointer}
+  .pconf .marca.ok.on{background:var(--green-dim); color:var(--green); border-color:var(--green-dim)}
+  .pconf .marca.dv.on{background:#4a1512; color:var(--red); border-color:#4a1512}
+  .pconf.pend .txt{color:var(--ink)}
+  .pconf.ok .txt{color:var(--mut)}
   .pconf.div{background:rgba(255,59,48,.08)}
-  .pconf.div .marca{background:#4a1512; color:var(--red)}
   .pconf.div .txt b{color:var(--red)}
   .obsdiv{padding:0 11px 8px 54px; border-bottom:1px solid var(--line)}
   .obsdiv input{font-size:13px; min-height:38px}
@@ -553,7 +557,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.3.0";
+const VERSAO = "3.4.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -903,10 +907,18 @@ function atualizarBotoes(){
    ================================================================== */
 const chaveConf = (t, j) => t + "|" + j;
 
-/* Peça nasce OK e o toque marca divergência. Exigir 21 toques para dizer
-   "tudo certo" faz o líder bater tudo no automático, que é pior do que
-   não conferir — e a assinatura do que ficou gravado é o nome dele. */
-const estadoConf = (t, j) => S.conf.get(chaveConf(t, j)) || { div: false, obs: "" };
+/* Peça nasce SEM marca: OK e divergente são os dois toques possíveis, e
+   nada é OK só porque ninguém olhou. Gravar exige todas as peças marcadas.
+   (Decisão do PPCP: OK automático deixava a conferência passar em branco.) */
+const estadoConf = (t, j) => S.conf.get(chaveConf(t, j)) || { pend: true, div: false, obs: "" };
+function pecasPendentes(){
+  let n = 0;
+  for(let t = 1; t <= S.nTrilhos; t++){
+    const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
+    itens.forEach((x, j) => { if(estadoConf(t, j).pend) n++; });
+  }
+  return n;
+}
 
 /* As OPs que têm peça. A 0 é o trecho antes do primeiro posto — a caixa
    entrando na esteira —, e por isso não cobra colaborador. */
@@ -964,9 +976,10 @@ function renderConf(){
   }
 
   const div = [...S.conf.values()].filter(e => e.div).length;
-  $("confMeta").textContent = div
-    ? `${div} ${div === 1 ? "divergência" : "divergências"}`
-    : "toque na peça que estiver errada";
+  const pend = pecasPendentes(), tot = totalItens();
+  $("confMeta").textContent =
+    (pend ? `${tot - pend} de ${tot} conferidas` : `${tot} conferidas`) +
+    (div ? ` · ${div} ${div === 1 ? "divergência" : "divergências"}` : "");
   atualizarBotaoConf();
   /* Marcar divergência e escolher quem está na OP não passa pelo render() do
      mapa, então o rascunho tem de ser guardado aqui também — senão a tela
@@ -1008,17 +1021,21 @@ function grupoOp(op){
 function linhaConf(t, j, x){
   const e = estadoConf(t, j);
   const el = document.createElement("div");
-  el.className = "pconf" + (e.div ? " div" : "");
+  el.className = "pconf " + (e.pend ? "pend" : e.div ? "div" : "ok");
   el.innerHTML = `<span class="tr">${t}</span>
     <span class="txt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(x.desc)}</span>
-    <span class="marca">${e.div ? "⚠ DIVERGENTE" : "✓ OK"}</span>`;
-  el.addEventListener("click", () => {
-    if(e.div) S.conf.delete(chaveConf(t, j));
-    else      S.conf.set(chaveConf(t, j), { div: true, obs: "" });
+    <button type="button" class="marca ok${!e.pend && !e.div ? " on" : ""}">✓ OK</button>
+    <button type="button" class="marca dv${e.div ? " on" : ""}">⚠ DIV</button>`;
+  const marcar = div => {
+    /* tocar de novo na marca que já está desmarca: volta a "não conferida" */
+    if(!e.pend && e.div === div) S.conf.delete(chaveConf(t, j));
+    else S.conf.set(chaveConf(t, j), { div, obs: div ? (e.obs || "") : "" });
     if(!S.loteConf) S.loteConf = S.lote.trim();
     S.confSalva = false;
     renderConf();
-  });
+  };
+  el.querySelector(".marca.ok").addEventListener("click", () => marcar(false));
+  el.querySelector(".marca.dv").addEventListener("click", () => marcar(true));
   return el;
 }
 
@@ -1035,7 +1052,8 @@ function campoObs(t, j, e){
 }
 
 function podeConferir(){
-  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !opsSemColab().length && !opsRepetidas().length);
+  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !pecasPendentes()
+            && !opsSemColab().length && !opsRepetidas().length);
 }
 
 function atualizarBotaoConf(){
@@ -1044,6 +1062,7 @@ function atualizarBotaoConf(){
   b.disabled = !podeConferir();
   b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
     : !normCod(S.cod) ? "falta o código do produto"
+    : pecasPendentes() ? `${pecasPendentes()} ${pecasPendentes() === 1 ? "peça ainda sem marca" : "peças ainda sem marca"} — cada peça leva OK ou DIV`
     : opsSemColab().length ? "falta dizer quem está nas OPs " + opsSemColab().join(", ")
     : "a mesma pessoa está nas OPs " + opsRepetidas().join(", ") + " — cada OP tem o seu colaborador");
 }
@@ -1062,7 +1081,7 @@ function linhasDaConferencia(){
     itens.forEach((x, j) => {
       const e = estadoConf(t, j);
       out.push({ trilho: t, op, cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd,
-                 mat, nome, resultado: e.div ? "DIVERGENTE" : "OK",
+                 mat, nome, resultado: e.div ? "DIVERGENTE" : e.pend ? "NAO_CONFERIDA" : "OK",
                  obs: e.div ? e.obs : "" });
     });
   }
@@ -1106,16 +1125,16 @@ async function gravarConferencia(){
 function trocarLoteDasMarcas(lote){
   if(!S.conf.size || !S.loteConf || S.loteConf === lote) return true;
   if(!S.confSalva && !confirm(
-    `As divergências marcadas no lote ${S.loteConf} ainda não foram gravadas.\n\n` +
-    `Trocar para o lote ${lote || "(vazio)"} descarta essas marcas. Continuar?`)){
+    `A conferência do lote ${S.loteConf} ainda não foi gravada.\n\n` +
+    `Trocar para o lote ${lote || "(vazio)"} descarta as marcas. Continuar?`)){
     S.lote = S.loteConf; $("inLote").value = S.loteConf; atualizarBotaoConf(); guardarRascunho();
     return false;
   }
-  const n = S.conf.size, antigo = S.loteConf;
+  const antigo = S.loteConf;
   S.conf = new Map(); S.loteConf = lote; S.confSalva = true;
   renderConf();
-  setMsg("", `Lote ${lote || "novo"}: ${n === 1 ? "a divergência" : `as ${n} divergências`} ` +
-    `do lote ${antigo} ${n === 1 ? "saiu" : "saíram"} da tela. Marque o que houver neste lote.`);
+  setMsg("", `Lote ${lote || "novo"}: as marcas do lote ${antigo} saíram da tela. ` +
+    `Confira peça a peça — OK ou DIV — e diga quem está em cada OP.`);
   return true;
 }
 
@@ -1137,10 +1156,12 @@ async function abrirConferencia(){
   /* Casa pela descrição dentro do trilho: o mapa pode ter mudado desde a
      conferência, e marcar divergência no item errado seria pior que não
      marcar nada. O que não achar par fica sem marca, para o líder rever. */
-  out.linhas.filter(l => l.resultado === "DIVERGENTE").forEach(l => {
+  out.linhas.forEach(l => {
     const itens = (S.trilhos[l.trilho - 1] || { itens: [] }).itens;
     const j = itens.findIndex(x => x.desc === l.desc_item);
-    if(j >= 0) S.conf.set(chaveConf(l.trilho, j), { div: true, obs: l.obs || "" });
+    if(j < 0) return;
+    const div = l.resultado === "DIVERGENTE";
+    S.conf.set(chaveConf(l.trilho, j), { div, obs: div ? (l.obs || "") : "" });
   });
   if(out.data_emb){ S.dataEmb = out.data_emb; $("inData").value = out.data_emb; }
   renderConf();
@@ -1475,8 +1496,8 @@ async function abrirProduto(bruto, daConf){
 
   const cab = S.produtos.find(p => normCod(p.cod) === cod);
   if(totalItens() && S.conf.size && !S.confSalva && !confirm(
-    `As divergências marcadas no lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foram gravadas.\n\n` +
-    `Trocar para ${(cab && cab.desc) || codErp(cod)} descarta essas marcas. Continuar?`)){
+    `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\n` +
+    `Trocar para ${(cab && cab.desc) || codErp(cod)} descarta as marcas. Continuar?`)){
     S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
     return;
   }

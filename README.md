@@ -48,9 +48,9 @@ A esteira não para. Num produto de 21 itens, confirmar peça por peça em **tod
 caixa é 21 toques por caixa enquanto as caixas continuam vindo — foi por isso que a
 versão anterior do app carregava uma conferência que a linha não usava.
 
-O que ficou é **amostragem**: uma caixa por lote. E a peça **nasce OK** — o toque
-marca divergência, não o contrário. Exigir 21 toques para dizer "tudo certo" faz o
-líder bater tudo no automático, que é pior do que não conferir.
+O que ficou é **amostragem**: uma caixa por lote. Cada peça leva **um toque: OK ou
+DIV**. Peça sem toque é "não conferida", e o botão Gravar só libera com todas
+marcadas — nada fica OK só porque ninguém olhou. A barra mostra quantas faltam.
 
 As peças aparecem **agrupadas pela OP**, com o seletor de quem está nela no cabeçalho
 do grupo: a pessoa fica ao lado das peças por que responde. Preenchidas as OPs e o
