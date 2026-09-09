@@ -242,6 +242,7 @@
     flex:none; min-width:64px}
   .opgrupo select{flex:1 1 0; min-width:0; font-size:13.5px; min-height:38px; padding:6px 9px}
   .opgrupo.sem select{border-color:var(--amber)}
+  .opgrupo.rep select{border-color:var(--red); color:var(--red)}
   .opgrupo.antes b{color:var(--mut2)}
 
   /* A peça nasce OK e o toque marca divergência: numa amostra quase tudo
@@ -537,7 +538,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.2.1";
+const VERSAO = "3.2.2";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -904,6 +905,20 @@ function opsComPeca(){
 }
 const opsSemColab = () => opsComPeca().filter(op => op > 0 && !S.opColab.get(op));
 
+/* Uma pessoa, um posto. A mesma matrícula em duas OPs do lote não é
+   rodízio, é o líder tocando no mesmo nome sete vezes para liberar o
+   botão — e o registro de quem estava onde vira ficção. */
+function opsRepetidas(){
+  const porMat = new Map();
+  opsComPeca().forEach(op => {
+    const mat = op > 0 ? S.opColab.get(op) : "";
+    if(mat) porMat.set(mat, (porMat.get(mat) || []).concat(op));
+  });
+  return [...porMat.values()].filter(ops => ops.length > 1).flat().sort((a, b) => a - b);
+}
+const opDoColab = (mat, exceto) =>
+  opsComPeca().find(op => op > 0 && op !== exceto && S.opColab.get(op) === mat) || 0;
+
 function renderConf(){
   /* Sempre visível. Escondida, ela "não aparecia" para quem abria o app
      sem mapa — e dizer o que falta é mais simples que sumir. */
@@ -952,16 +967,20 @@ function renderProdChip(){
 
 function grupoOp(op){
   const el = document.createElement("div");
-  el.className = "opgrupo" + (op === 0 ? " antes" : (S.opColab.get(op) ? "" : " sem"));
+  const meu = S.opColab.get(op);
+  el.className = "opgrupo" + (op === 0 ? " antes" : !meu ? " sem" : opDoColab(meu, op) ? " rep" : "");
   if(op === 0){
     el.innerHTML = "<b>—</b><span style=\"color:var(--mut2); font-size:12.5px\">" +
       "antes da primeira OP: a caixa entrando na esteira</span>";
     return el;
   }
   const opts = ['<option value="">— quem está nesta OP hoje —</option>']
-    .concat(S.colab.map(c =>
-      `<option value="${escapa(c.mat)}"${S.opColab.get(op) === c.mat ? " selected" : ""}>` +
-      `${escapa(c.nome)}</option>`)).join("");
+    .concat(S.colab.map(c => {
+      const outra = opDoColab(c.mat, op);
+      return `<option value="${escapa(c.mat)}"${meu === c.mat ? " selected" : ""}` +
+        `${outra && meu !== c.mat ? " disabled" : ""}>${escapa(c.nome)}` +
+        `${outra ? ` — já na OP ${String(outra).padStart(2, "0")}` : ""}</option>`;
+    })).join("");
   el.innerHTML = `<b>OP ${String(op).padStart(2, "0")}</b><select>${opts}</select>`;
   el.querySelector("select").addEventListener("change", ev => {
     if(ev.target.value) S.opColab.set(op, ev.target.value);
@@ -1001,7 +1020,7 @@ function campoObs(t, j, e){
 }
 
 function podeConferir(){
-  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !opsSemColab().length);
+  return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !opsSemColab().length && !opsRepetidas().length);
 }
 
 function atualizarBotaoConf(){
@@ -1010,7 +1029,8 @@ function atualizarBotaoConf(){
   b.disabled = !podeConferir();
   b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
     : !normCod(S.cod) ? "falta o código do produto"
-    : "falta dizer quem está nas OPs " + opsSemColab().join(", "));
+    : opsSemColab().length ? "falta dizer quem está nas OPs " + opsSemColab().join(", ")
+    : "a mesma pessoa está nas OPs " + opsRepetidas().join(", ") + " — cada OP tem o seu colaborador");
 }
 
 /* Uma linha por peça: leva a OP e QUEM estava nela. É assim que o rodízio
