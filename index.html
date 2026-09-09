@@ -575,7 +575,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.5.0";
+const VERSAO = "3.5.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1338,7 +1338,8 @@ function caixaConferencia(g){
   }).join("");
   const gravadaEm = g.ts ? new Date(g.ts) : null;
   return `<div class="caixa">
-    ${fCab("Conferência da caixa de amostra", g.desc || codErp(g.cod),
+    ${fCab(`Lote ${escapa(g.lote)} · ${escapa(g.desc || codErp(g.cod))}`,
+           `Conferência da caixa de amostra · ${codErp(g.cod)}`,
            "Resultado", div ? `${div} DIV.` : "OK",
            div ? `${div} ${div === 1 ? "divergência" : "divergências"} em ${g.pecas.length} peças`
                : `${g.pecas.length} peças sem divergência`)}
