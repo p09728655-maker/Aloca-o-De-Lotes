@@ -253,10 +253,19 @@
     font-weight:400; text-transform:none; font-family:"Inter"; font-size:14px}
   .opgrupo.rep select{background:#4a1512; color:var(--red); border-color:var(--red)}
   .opgrupo.antes b{color:var(--mut2)}
+  .opgrupo .antes-txt{flex:1 1 0; min-width:0; color:var(--mut2); font-size:12.5px}
+  /* OK é por OP: um toque marca todas as peças dela que ainda não têm
+     marca. Peça já marcada DIV fica DIV. */
+  .opgrupo .okop{flex:none; min-height:46px; min-width:88px; padding:0 14px; border-radius:8px;
+    font-family:"Oswald"; font-size:15px; letter-spacing:.06em; border:1px solid var(--line);
+    background:var(--panel2); color:var(--mut); cursor:pointer; white-space:nowrap}
+  .opgrupo .okop.on{background:var(--green-dim); color:var(--green); border-color:var(--green-dim)}
+  .opgrupo .okop.temdiv{border-color:#4a1512}
+  .opgrupo .okop.temdiv i{font-style:normal; color:var(--red); margin-left:6px}
 
-  /* Cada peça leva um toque: OK ou DIV. Sem marca é "não conferida", e
-     Gravar não libera. Dois botões, e não um ciclo no toque da linha: um
-     toque a mais não vira OK em divergência sem ninguém ver. */
+  /* Sem marca é "não conferida", e Gravar não libera. OK é um toque no
+     cabeçalho da OP; DIV é na peça, porque divergência precisa dizer qual
+     peça veio errada. */
   .pconf{display:flex; align-items:center; gap:9px; padding:4px 11px;
     border-bottom:1px solid var(--line); user-select:none; min-height:40px}
   .pconf:last-child{border-bottom:none}
@@ -270,8 +279,11 @@
   .pconf .marca{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none;
     padding:0 10px; min-height:32px; min-width:44px; border-radius:6px; border:1px solid var(--line);
     background:var(--panel2); color:var(--mut2); cursor:pointer}
-  .pconf .marca.ok.on{background:var(--green-dim); color:var(--green); border-color:var(--green-dim)}
   .pconf .marca.dv.on{background:#4a1512; color:var(--red); border-color:#4a1512}
+  /* estado da peça: só leitura — OK se dá no cabeçalho da OP */
+  .pconf .est{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none; min-width:34px;
+    text-align:center; color:var(--mut2)}
+  .pconf.ok .est{color:var(--green)}
   .pconf.pend .txt{color:var(--ink)}
   .pconf.ok .txt{color:var(--mut)}
   .pconf.div{background:rgba(255,59,48,.08)}
@@ -563,7 +575,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.4.1";
+const VERSAO = "3.5.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -917,6 +929,15 @@ const chaveConf = (t, j) => t + "|" + j;
    nada é OK só porque ninguém olhou. Gravar exige todas as peças marcadas.
    (Decisão do PPCP: OK automático deixava a conferência passar em branco.) */
 const estadoConf = (t, j) => S.conf.get(chaveConf(t, j)) || { pend: true, div: false, obs: "" };
+/* Peças de uma OP, como {t, j}: o OK do cabeçalho anda por aqui. */
+function pecasDaOp(op){
+  const out = [];
+  for(let t = 1; t <= S.nTrilhos; t++){
+    if(opDoTrilho(t) !== op) continue;
+    (S.trilhos[t - 1] || { itens: [] }).itens.forEach((x, j) => out.push({ t, j }));
+  }
+  return out;
+}
 function pecasPendentes(){
   let n = 0;
   for(let t = 1; t <= S.nTrilhos; t++){
@@ -999,13 +1020,38 @@ function renderProdChip(){
     : "";
 }
 
+/* Um toque de OK por OP: marca OK o que ainda não tem marca e deixa o DIV
+   onde está. Tocar de novo com tudo marcado desfaz os OKs (o DIV fica).
+   Rótulo diz o estado: "OK" a fazer, "✓ OK" feito, e quantas DIV. */
+function botaoOkOp(op){
+  const pecas = pecasDaOp(op);
+  const est = pecas.map(p => estadoConf(p.t, p.j));
+  const pend = est.filter(e => e.pend).length, div = est.filter(e => e.div).length;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "okop" + (!pend ? " on" : "") + (div ? " temdiv" : "");
+  b.innerHTML = (pend ? "OK" : "✓ OK") + (div ? `<i>${div} DIV</i>` : "");
+  b.title = pend ? `marca OK as ${pend} peças sem marca desta OP` : "desfaz os OK desta OP";
+  b.addEventListener("click", () => {
+    pecas.forEach(p => {
+      const e = estadoConf(p.t, p.j);
+      if(pend){ if(e.pend) S.conf.set(chaveConf(p.t, p.j), { div: false, obs: "" }); }
+      else if(!e.div) S.conf.delete(chaveConf(p.t, p.j));
+    });
+    if(!S.loteConf) S.loteConf = S.lote.trim();
+    S.confSalva = false;
+    renderConf();
+  });
+  return b;
+}
+
 function grupoOp(op){
   const el = document.createElement("div");
   const meu = S.opColab.get(op);
   el.className = "opgrupo" + (op === 0 ? " antes" : !meu ? " sem" : opDoColab(meu, op) ? " rep" : "");
   if(op === 0){
-    el.innerHTML = "<b>—</b><span style=\"color:var(--mut2); font-size:12.5px\">" +
-      "antes da primeira OP: a caixa entrando na esteira</span>";
+    el.innerHTML = "<b>—</b><span class=\"antes-txt\">antes da primeira OP: a caixa entrando na esteira</span>";
+    el.appendChild(botaoOkOp(0));
     return el;
   }
   const opts = ['<option value="">— quem está nesta OP hoje —</option>']
@@ -1021,6 +1067,7 @@ function grupoOp(op){
     else S.opColab.delete(op);
     renderConf();
   });
+  el.appendChild(botaoOkOp(op));
   return el;
 }
 
@@ -1030,18 +1077,16 @@ function linhaConf(t, j, x){
   el.className = "pconf " + (e.pend ? "pend" : e.div ? "div" : "ok");
   el.innerHTML = `<span class="tr">${t}</span>
     <span class="txt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(x.desc)}</span>
-    <button type="button" class="marca ok${!e.pend && !e.div ? " on" : ""}">✓ OK</button>
+    <span class="est">${e.pend ? "—" : e.div ? "" : "✓ OK"}</span>
     <button type="button" class="marca dv${e.div ? " on" : ""}">⚠ DIV</button>`;
-  const marcar = div => {
-    /* tocar de novo na marca que já está desmarca: volta a "não conferida" */
-    if(!e.pend && e.div === div) S.conf.delete(chaveConf(t, j));
-    else S.conf.set(chaveConf(t, j), { div, obs: div ? (e.obs || "") : "" });
+  /* DIV é da peça. Tocar de novo desfaz: volta a "não conferida". */
+  el.querySelector(".marca.dv").addEventListener("click", () => {
+    if(e.div) S.conf.delete(chaveConf(t, j));
+    else S.conf.set(chaveConf(t, j), { div: true, obs: e.obs || "" });
     if(!S.loteConf) S.loteConf = S.lote.trim();
     S.confSalva = false;
     renderConf();
-  };
-  el.querySelector(".marca.ok").addEventListener("click", () => marcar(false));
-  el.querySelector(".marca.dv").addEventListener("click", () => marcar(true));
+  });
   return el;
 }
 
@@ -1068,7 +1113,7 @@ function atualizarBotaoConf(){
   b.disabled = !podeConferir();
   b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
     : !normCod(S.cod) ? "falta o código do produto"
-    : pecasPendentes() ? `${pecasPendentes()} ${pecasPendentes() === 1 ? "peça ainda sem marca" : "peças ainda sem marca"} — cada peça leva OK ou DIV`
+    : pecasPendentes() ? `${pecasPendentes()} ${pecasPendentes() === 1 ? "peça ainda sem marca" : "peças ainda sem marca"} — OK no cabeçalho da OP, DIV na peça`
     : opsSemColab().length ? "falta dizer quem está nas OPs " + opsSemColab().join(", ")
     : "a mesma pessoa está nas OPs " + opsRepetidas().join(", ") + " — cada OP tem o seu colaborador");
 }
@@ -1140,7 +1185,7 @@ function trocarLoteDasMarcas(lote){
   S.conf = new Map(); S.loteConf = lote; S.confSalva = true;
   renderConf();
   setMsg("", `Lote ${lote || "novo"}: as marcas do lote ${antigo} saíram da tela. ` +
-    `Confira peça a peça — OK ou DIV — e diga quem está em cada OP.`);
+    `Diga quem está em cada OP, DIV na peça errada e OK na OP.`);
   return true;
 }
 
