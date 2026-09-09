@@ -37,16 +37,15 @@ sequência do mapa, lado a lado com painel de MDP. A única diferença é a colu
 saem na folha impressa — `Insumo`, separada de `Descrição da peça` — e a cor do chip
 na tela. O app propõe a marcação pela descrição e o líder desmarca se errar.
 
-**Item suspenso é marca, não estrutura.** A isomanta está na sequência do trilho — é
-ali que ela aparece na planilha da linha —, mas não deitada nele: vem pendurada no
-suporte acima da esteira. Quem embala procurava no trilho e não achava, então o item
-sai com a etiqueta `suspenso` no chip da tela, na linha da conferência e colado ao
-nome na folha impressa (`ISOMANTA 1/1 1900X370 (suspenso)`). A marca **não** muda
-trilho, contagem de trilhos, OP nem conferência: se mudasse, o mapa do app deixaria
-de bater com a planilha `MAPA DOS TRILHOS DA EMBALGEM` que a linha usa hoje. Vem
-proposta pela descrição — hoje só a isomanta — e o líder marca ou desmarca item a
-item, na mesma janela do `É insumo`. Na planilha é a coluna `SUSPENSO`, para o
-Power BI separar o que é pego do suporte do que é pego do trilho.
+**Isomanta é suspensa, e isso é regra, não marca.** Ela está na sequência do trilho
+— é ali que aparece na planilha da linha —, mas não deitada nele: vem pendurada no
+suporte acima da esteira. Quem embala procurava no trilho e não achava, então o
+mapa diz: etiqueta `suspenso` no chip da aba Mapa e `SUSPENSO` colada ao nome na
+folha impressa. Como toda isomanta é suspensa em qualquer produto, o app decide
+pela descrição na hora de desenhar (`RE_SUSPENSO`, em `index.html`): não há caixa
+para marcar, coluna na planilha nem mapa antigo para migrar. A conferência não
+mostra — onde a isomanta fica pendurada não muda o que o conferente olha na caixa.
+Outro insumo que passe a ficar suspenso entra na mesma expressão.
 
 **Trilho pode ter dois itens ou nenhum.** No mapa do ESCRIVANINHA TAURUS o trilho 3
 leva o tampo *e* uma isomanta, e os trilhos 4 a 8 estão vazios. Trilho vazio também é
@@ -148,14 +147,6 @@ Uma linha por trilho:
 | `COD_ITEM` · `DESC_ITEM` · `QTD` | o item; o código pode estar vazio |
 | `INSUMO` | `SIM` quando é embalagem |
 | `ATUALIZADO_EM` | data e hora da última gravação daquele produto |
-| `SUSPENSO` | `SIM` quando o item fica pendurado no suporte, e não deitado no trilho |
-
-`SUSPENSO` está **depois** de `ATUALIZADO_EM`, e não ao lado de `INSUMO`, que era o
-lugar natural dela. Coluna nova só entra no fim: enfiada no meio, cairia em cima da
-data das linhas já gravadas e o app leria carimbo de hora como marca de suspenso.
-Em branco nas linhas antigas quer dizer "não suspenso", que é a resposta certa para
-elas — planilha que já existe não precisa de migração, o `aba()` acrescenta a coluna
-na primeira gravação.
 
 O cabeçalho se repete em toda linha de propósito: assim a aba abre no Power BI sem
 relacionamento nenhum.

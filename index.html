@@ -603,10 +603,6 @@
     <label class="check"><input type="checkbox" id="itInsumo">
       <span><b>É insumo de embalagem</b> — isomanta, isopor, tabuleiro, caixa, fita.
       Sai na coluna <i>Insumo</i> da folha impressa, separado da peça.</span></label>
-    <label class="check"><input type="checkbox" id="itSusp">
-      <span><b>Fica suspenso</b> — pendurado no suporte acima da esteira, e não
-      deitado no trilho. É o caso da isomanta. Continua no mesmo trilho; só sai
-      marcado na tela e na folha impressa.</span></label>
   </div>
   <div class="foot">
     <button class="gho" id="itExcluir" style="color:var(--red); margin-right:auto">Excluir</button>
@@ -649,7 +645,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.10.0";
+const VERSAO = "3.11.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -683,7 +679,7 @@ let CFG = lerCfg();
    ================================================================== */
 const S = {
   cod: "", desc: "", nTrilhos: 28, vel: "", esq: "",
-  trilhos: [],              // índice 0 = trilho 1 → { itens:[{cod,desc,qtd,insumo,suspenso}] }
+  trilhos: [],              // índice 0 = trilho 1 → { itens:[{cod,desc,qtd,insumo}] }
   inicioOp: new Set(),      // trilhos onde começa uma OP nova
   produtos: [],             // cabeçalhos dos mapas já salvos na planilha
   edit: null,               // { t, j } — j < 0 é item novo
@@ -741,10 +737,14 @@ const ehInsumo = d => RE_INSUMO.test(semAcento(d));
 
 /* A isomanta continua na sequência do trilho — é ali que ela está na
    planilha da linha —, mas não deitada nele: vem pendurada no suporte
-   acima da esteira. Quem embala procurava no trilho e não achava, então a
-   folha impressa passou a dizer. É marca, não estrutura: não muda trilho,
-   contagem nem OP. Proposta pela descrição igual à de insumo, e o líder
-   desmarca no item que não for suspenso. */
+   acima da esteira. Quem embala procurava no trilho e não achava, então o
+   mapa passou a dizer. É regra do item, não marca por produto: toda
+   isomanta é suspensa, em qualquer mapa, então isso se decide aqui pela
+   descrição na hora de desenhar — sem caixa para marcar, sem coluna na
+   planilha e sem mapa antigo para migrar. A etiqueta sai na aba Mapa e
+   na folha impressa; na conferência não, porque onde a isomanta fica
+   pendurada não muda o que o conferente olha na caixa. Outro insumo que
+   passe a ficar suspenso entra nesta expressão. */
 const RE_SUSPENSO = /ISOMANTA/;
 const ehSuspenso = d => RE_SUSPENSO.test(semAcento(d));
 
@@ -981,7 +981,7 @@ function linhaTrilho(t){
       chip.innerHTML =
         `<span class="ctxt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(curto(x.desc))}` +
         (x.cod ? ` <i>${escapa(codErp(x.cod))}</i>` : "") + `</span>` +
-        (x.suspenso ? `<span class="tag">suspenso</span>` : "") +
+        (ehSuspenso(x.desc) ? `<span class="tag">suspenso</span>` : "") +
         `<button class="gho" data-a="menos" aria-label="menos um">−</button>
          <button class="gho" data-a="mais" aria-label="mais um">+</button>
          <button class="gho" data-a="tira" aria-label="tirar do trilho">×</button>`;
@@ -1256,7 +1256,6 @@ function linhaConf(t, j, x){
   el.className = "pconf " + (e.pend ? "pend" : e.div ? "div" : "ok");
   el.innerHTML = `<span class="tr">${t}</span>
     <span class="txt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(x.desc)}</span>
-    ${x.suspenso ? '<span class="tag">suspenso</span>' : ""}
     <span class="est">${e.pend ? "—" : e.div ? "" : "✓ OK"}</span>
     <button type="button" class="marca dv${e.div ? " on" : ""}">⚠ DIV</button>`;
   /* DIV é da peça. Tocar de novo desfaz: volta a "não conferida". */
@@ -1671,7 +1670,6 @@ function abrirItem(t, j){
   $("itQtd").value    = x ? fmtQtd(x.qtd) : "1";
   $("itCod").value    = x ? codErp(x.cod) : "";
   $("itInsumo").checked = x ? !!x.insumo : false;
-  $("itSusp").checked   = x ? !!x.suspenso : false;
   $("itExcluir").hidden = j < 0;
   $("dlgItem").showModal();
   setTimeout(() => $("itDesc").focus(), 40);
@@ -1681,10 +1679,7 @@ function abrirItem(t, j){
    líder desmarcar custa menos que ele lembrar de marcar toda vez. Só
    propõe enquanto ele não escreveu nada de código nem mexeu na caixa. */
 $("itDesc").addEventListener("input", () => {
-  if(S.edit && S.edit.j < 0){
-    $("itInsumo").checked = ehInsumo($("itDesc").value);
-    $("itSusp").checked   = ehSuspenso($("itDesc").value);
-  }
+  if(S.edit && S.edit.j < 0) $("itInsumo").checked = ehInsumo($("itDesc").value);
 });
 
 $("itOk").addEventListener("click", () => {
@@ -1694,8 +1689,7 @@ $("itOk").addEventListener("click", () => {
     cod: normCod($("itCod").value),
     desc,
     qtd: Math.max(1, numDec($("itQtd").value) || 1),
-    insumo: $("itInsumo").checked,
-    suspenso: $("itSusp").checked
+    insumo: $("itInsumo").checked
   };
   const { t, j } = S.edit;
   if(j < 0) limparConfPorMudancaDoMapa();   // item novo desloca as marcas do trilho
@@ -1796,7 +1790,7 @@ function mapaDeLinhas(cod, cab, linhas){
       if(l.op > opAnterior){ ops.add(l.trilho); opAnterior = l.op; }
       if(l.desc_item) trilhos[l.trilho - 1].itens.push({
         cod: normCod(l.cod_item), desc: l.desc_item,
-        qtd: numDec(l.qtd) || 1, insumo: !!l.insumo, suspenso: !!l.suspenso });
+        qtd: numDec(l.qtd) || 1, insumo: !!l.insumo });
     });
   return { cod, desc: cab.desc, nTrilhos: nT,
            vel: cab.velocidade, esq: cab.n_esquema, trilhos, inicioOp: [...ops] };
@@ -1920,11 +1914,10 @@ function linhasDoMapa(){
   for(let t = 1; t <= S.nTrilhos; t++){
     const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
     const op = opDoTrilho(t);
-    if(!itens.length){ out.push({ trilho: t, op, seq: 1, cod_item: "", desc_item: "", qtd: "", insumo: false, suspenso: false }); continue; }
+    if(!itens.length){ out.push({ trilho: t, op, seq: 1, cod_item: "", desc_item: "", qtd: "", insumo: false }); continue; }
     itens.forEach((x, i) => out.push({
       trilho: t, op, seq: i + 1,
-      cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd,
-      insumo: !!x.insumo, suspenso: !!x.suspenso
+      cod_item: x.cod || "", desc_item: x.desc, qtd: x.qtd, insumo: !!x.insumo
     }));
   }
   return out;
@@ -2057,7 +2050,7 @@ function montarFolha(){
        quando o trilho tem dois. Como ela é etiqueta e não texto, o escape
        desceu para dentro do `txt`: o que sai daqui já é HTML pronto. */
     const txt = x => escapa((x.qtd > 1 ? fmtQtd(x.qtd) + " " : "") + x.desc)
-                   + (x.suspenso ? ' <span class="fsusp">suspenso</span>' : "");
+                   + (ehSuspenso(x.desc) ? ' <span class="fsusp">suspenso</span>' : "");
     const insumo = itens.filter(x => x.insumo).map(txt).join(" + ");
     const peca   = itens.filter(x => !x.insumo).map(txt).join(" + ");
     const vazio  = !itens.length;
@@ -2291,7 +2284,7 @@ function lerFormatoApp(nomeAba, linhas, out){
       trilhos[t - 1].itens.push({
         cod: normCod(cel(l, b.cod)), desc,
         qtd: Math.max(1, numDec(cel(l, b.qtd)) || 1),
-        insumo: ehInsumo(desc), suspenso: ehSuspenso(desc)
+        insumo: ehInsumo(desc)
       });
     });
   });
@@ -2412,7 +2405,7 @@ function lerBlocoLinha(nomeAba, bloco, out){
       trilhos[alvo - 1].itens.push({
         cod: "", desc,
         qtd: Math.max(1, numDec(cel(l, iQtd)) || 1),
-        insumo: ehInsumo(desc), suspenso: ehSuspenso(desc)
+        insumo: ehInsumo(desc)
       });
     }
     /* Entre a OP e a QTDE fica a coluna do marcador de insumo — nas cinco
@@ -2420,8 +2413,7 @@ function lerBlocoLinha(nomeAba, bloco, out){
     if(iQtd > 0) for(let c = (iOp >= 0 ? iOp + 1 : 0); c < iQtd; c++){
       const v = cel(l, c);
       if(v && !/^\d+$/.test(v) && !/^op\s*-?\s*\d+/i.test(v)){
-        trilhos[alvo - 1].itens.push({ cod: "", desc: v, qtd: 1,
-                                       insumo: true, suspenso: ehSuspenso(v) });
+        trilhos[alvo - 1].itens.push({ cod: "", desc: v, qtd: 1, insumo: true });
       }
     }
   });
