@@ -491,6 +491,9 @@
          do turno e vale para todos os lotes; a tela limpa não apaga. -->
     <div class="fld" style="min-width:200px"><label>Conferido por</label>
       <button type="button" class="quem sem" id="inConferente">— quem está conferindo? —</button></div>
+    <!-- Chamou o produto errado: limpa e recomeça. Quem está nas OPs e o
+         "Conferido por" ficam, como depois de gravar. -->
+    <button class="gho" id="btnLimparConf" style="margin-bottom:15px">Limpar</button>
   </div>
   <div id="listaConf"></div>
 </div>
@@ -621,7 +624,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.7.2";
+const VERSAO = "3.7.3";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1520,6 +1523,12 @@ $("inConferente").addEventListener("click", () => escolherColab({
 }));
 $("inData").addEventListener("change", ev => { S.dataEmb = ev.target.value; guardarRascunho(); });
 $("btnGravarConf").addEventListener("click", gravarConferencia);
+$("btnLimparConf").addEventListener("click", () => {
+  if(S.conf.size && !S.confSalva && !confirm(
+    `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\nLimpar descarta as marcas. Continuar?`)) return;
+  proximoLote();
+  setMsg("", "Tela limpa. Digite o código do produto.");
+});
 
 /* ---- cadastro de colaborador ---- */
 $("btnNovoColab").addEventListener("click", () => {
