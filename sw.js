@@ -9,7 +9,7 @@
  * Ao publicar uma versão nova, mude VERSAO aqui e em index.html. É a troca
  * de bytes deste arquivo que faz o navegador procurar atualização.
  */
-const VERSAO = "3.8.0";
+const VERSAO = "3.9.0";
 const CACHE = "trilhos-" + VERSAO;
 
 const CASCA = [
@@ -32,7 +32,10 @@ const AO_VIVO = ["script.google.com", "script.googleusercontent.com"];
 self.addEventListener("install", ev => {
   // sem skipWaiting: quem decide a hora de trocar é o líder, pelo botão.
   // Trocar no meio de um mapa pela metade seria perder o trabalho dele.
-  ev.waitUntil(caches.open(CACHE).then(c => c.addAll(CASCA)));
+  // cache: "reload" ignora o cache HTTP do navegador: sem isto, a versão
+  // nova podia instalar com o index.html velho que o CDN ainda servia.
+  ev.waitUntil(caches.open(CACHE).then(c =>
+    c.addAll(CASCA.map(u => new Request(u, { cache: "reload" })))));
 });
 
 self.addEventListener("activate", ev => {
@@ -63,8 +66,12 @@ self.addEventListener("fetch", ev => {
     ev.respondWith((async () => {
       try {
         const res = await fetch(req);
-        const c = await caches.open(CACHE);
-        c.put("./index.html", res.clone());
+        // Só guarda resposta boa: deploy no meio ou host fora do ar devolvia
+        // 404/500, e a página de erro virava a casca offline do tablet.
+        if (res && res.ok) {
+          const c = await caches.open(CACHE);
+          try { await c.put("./index.html", res.clone()); } catch (e2) {}
+        }
         return res;
       } catch (e) {
         return (await caches.match("./index.html")) || Response.error();

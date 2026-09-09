@@ -52,8 +52,13 @@ O que ficou é **amostragem**: uma caixa por lote. **OK é por OP, DIV é por pe
 um toque no OK do cabeçalho da OP marca todas as peças dela que ainda não têm marca;
 a peça errada leva DIV, com a observação, e o OK da OP não passa por cima dela.
 Peça sem marca é "não conferida", e o botão Gravar só libera com todas marcadas —
-nada fica OK só porque ninguém olhou. A barra mostra quantas faltam. Uma caixa de
-23 peças com uma divergência sai com 8 ou 9 toques.
+nada fica OK só porque ninguém olhou. A barra mostra quantas faltam e o **rodapé diz
+o que está travando** o Gravar: a peça, a OP sem colaborador, o lote, o conferente.
+Uma caixa de 23 peças com uma divergência sai com 8 ou 9 toques.
+
+Mexer no mapa com uma conferência aberta (trocar trilho de lugar, tirar ou acrescentar
+peça) **apaga as marcas**, com aviso: elas são guardadas por posição, e deslocá-las
+gravaria a divergência na peça errada.
 
 **Quem está em cada OP** acompanha a esteira, não o produto: o posto 03 tem a mesma
 pessoa o dia inteiro. Trocar de produto ou gravar e ir para o próximo lote mantém a
@@ -217,7 +222,8 @@ Sem rede o app continua funcionando: o que está na tela é guardado no aparelho
 toque, e a gravação entra numa fila que sai por *Reenviar pendentes*. Falha de rede
 segura a fila até a próxima tentativa; envio que a **planilha recusa** sai da frente e
 fica separado como *recusado*, com o motivo, para não prender os lotes que vêm atrás.
-*Ver recusados* mostra a lista e devolve tudo para a fila.
+*Ver recusados* mostra a lista e devolve tudo para a fila. O que ficou guardado sai
+sozinho quando a rede volta e quando o app abre, sem depender de alguém lembrar.
 
 ## O que o Importar Excel lê
 

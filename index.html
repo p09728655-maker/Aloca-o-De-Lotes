@@ -18,14 +18,20 @@
 <style>
   :root{
     --bg:#000000; --panel:#111316; --panel2:#17191d; --line:#2b2f36;
-    --ink:#f2f4f7; --mut:#8a929c; --mut2:#5b636e;
+    --ink:#f2f4f7; --mut:#8a929c; --mut2:#78828e;   /* texto de apoio: precisa passar de 4,5:1 */
     --amber:#ff5a1f; --amber-dim:#5a2410; --green:#3fd15f; --green-dim:#184f2b;
     --steel:#5b8bb0; --red:#ff3b30; --roxo:#8b6bd1;
     /* alvo mínimo de toque no tablet — nada abaixo disso é clicável */
     --tap:44px;
+    /* Tablet da fábrica sem acesso ao Google Fonts abria em serifa, com
+       outra largura: nome no botão e descrição da peça cortavam em pontos
+       diferentes. A pilha garante um desenho parecido sem rede. */
+    --f-tit:"Oswald","Arial Narrow",Impact,system-ui,sans-serif;
+    --f-txt:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --f-mono:"IBM Plex Mono","Consolas","Courier New",monospace;
   }
   *{box-sizing:border-box} html,body{margin:0}
-  body{background:var(--bg); color:var(--ink); font-family:"Inter",system-ui,sans-serif;
+  body{background:var(--bg); color:var(--ink); font-family:var(--f-txt);
     -webkit-font-smoothing:antialiased; padding:10px 16px 96px;
     -webkit-tap-highlight-color:rgba(255,90,31,.2)}
 
@@ -34,21 +40,21 @@
     border-bottom:2px solid var(--amber); padding:6px 0; margin-top:-10px;
     box-shadow:0 8px 16px -6px rgba(0,0,0,.9)}
   .brand{display:flex; flex-direction:column; gap:4px; flex:1 1 0}
-  .brand .eyebrow{font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.22em;
+  .brand .eyebrow{font-family:var(--f-mono); font-size:11px; letter-spacing:.22em;
     text-transform:uppercase; color:var(--mut); display:flex; align-items:center; gap:10px}
   .brand .eyebrow img{height:26px; width:auto; display:block; flex:none}
   .brand .eyebrow .sep{color:var(--mut2)}
-  .brand h1{font-family:"Oswald"; font-weight:600; font-size:18px; letter-spacing:.02em; margin:0; line-height:1}
+  .brand h1{font-family:var(--f-tit); font-weight:600; font-size:18px; letter-spacing:.02em; margin:0; line-height:1}
   .brand h1 span{color:var(--amber)}
-  .brand h1 small{font-family:"IBM Plex Mono"; font-size:11px; font-weight:400;
+  .brand h1 small{font-family:var(--f-mono); font-size:11px; font-weight:400;
     letter-spacing:.18em; text-transform:uppercase; color:var(--mut); margin-left:8px}
   .headmeta{display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px 18px; align-items:flex-end}
   .kpi{display:flex; flex-direction:column; align-items:flex-end; line-height:1}
-  .kpi b{font-family:"Oswald"; font-size:20px; font-weight:600}
+  .kpi b{font-family:var(--f-tit); font-size:20px; font-weight:600}
   .kpi small{font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut);
     margin-top:3px; white-space:nowrap}
 
-  .status{font-family:"IBM Plex Mono"; font-size:11.5px; letter-spacing:.05em;
+  .status{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.05em;
     color:var(--mut); padding:7px 0 3px; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .status.err{color:var(--red)} .status.ok{color:var(--green)}
 
@@ -62,11 +68,11 @@
   .setup .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
   .setup > button{margin-bottom:15px}
   .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
-  .fld label{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.16em;
+  .fld label{font-family:var(--f-mono); font-size:10px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--mut)}
   select,input[type=text],input[type=number],input[type=date]{background:var(--panel2); color:var(--ink);
     border:1px solid var(--line); border-radius:8px; padding:8px 10px;
-    font-family:"Inter"; font-size:14px; min-height:var(--tap); width:100%}
+    font-family:var(--f-txt); font-size:14px; min-height:var(--tap); width:100%}
   /* color-scheme dark: sem isto o Chrome pinta o ícone do calendário de
      preto (invisível no fundo escuro) e abre o seletor de data em branco */
   input[type=date]{color-scheme:dark}
@@ -74,11 +80,11 @@
   select:focus,input:focus{outline:2px solid var(--amber); outline-offset:1px}
   .fld.grow{flex:1 1 240px}
   .fld.mini{min-width:96px; max-width:120px}
-  .achou{font-family:"IBM Plex Mono"; font-size:10.5px; letter-spacing:.04em;
+  .achou{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.04em;
     color:var(--mut2); min-height:13px}
   .achou.ok{color:var(--green)} .achou.err{color:var(--red)}
 
-  button{font-family:"Oswald"; font-weight:600; letter-spacing:.04em; font-size:14px;
+  button{font-family:var(--f-tit); font-weight:600; letter-spacing:.04em; font-size:14px;
     background:var(--panel2); color:var(--ink); border:1px solid var(--line);
     border-radius:9px; padding:9px 14px; cursor:pointer; min-height:var(--tap)}
   button:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
@@ -91,10 +97,10 @@
   /* Sem position:sticky: o cabeçalho da página já é sticky em top:0, e o
      título da caixa grudava atrás dele — sumia junto com o contador de
      divergências, que é justamente o que se quer ver enquanto rola. */
-  .box h2{font-family:"Oswald"; font-weight:600; font-size:13px; letter-spacing:.1em;
+  .box h2{font-family:var(--f-tit); font-weight:600; font-size:13px; letter-spacing:.1em;
     text-transform:uppercase; margin:0; padding:9px 13px; border-bottom:1px solid var(--line);
     color:var(--mut); display:flex; align-items:center; gap:10px; background:var(--panel)}
-  .box h2 em{font-style:normal; font-family:"IBM Plex Mono"; font-size:11px;
+  .box h2 em{font-style:normal; font-family:var(--f-mono); font-size:11px;
     letter-spacing:.04em; text-transform:none; color:var(--amber); margin-left:auto}
   .vazio-tela{padding:26px 16px; color:var(--mut2); font-size:13.5px; line-height:1.6; text-align:center}
   .vazio-tela b{color:var(--mut)}
@@ -102,14 +108,14 @@
   /* ---------- trilhos ---------- */
   .opsep{display:flex; align-items:center; gap:9px; padding:6px 13px;
     background:#0b0d10; border-bottom:1px solid var(--line);
-    font-family:"Oswald"; font-size:13px; letter-spacing:.1em; color:var(--amber)}
+    font-family:var(--f-tit); font-size:13px; letter-spacing:.1em; color:var(--amber)}
   .opsep span{flex:1 1 auto}
   .opsep button{min-height:34px; padding:0 12px; font-size:13px}
 
   .trilho{border-bottom:1px solid var(--line); padding:4px 11px; display:flex;
     gap:8px; align-items:flex-start; min-height:40px}
   .trilho:last-child{border-bottom:none}
-  .trilho .num{font-family:"Oswald"; font-weight:700; font-size:16px; width:38px;
+  .trilho .num{font-family:var(--f-tit); font-weight:700; font-size:16px; width:38px;
     height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center;
     background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none}
   .trilho.cheia .num{color:var(--ink); border-color:var(--mut2)}
@@ -136,8 +142,8 @@
     border:1px solid var(--line); border-radius:8px; padding:3px 4px 3px 8px}
   .chip .ctxt{flex:1 1 0; min-width:0; font-size:12.5px; line-height:1.25;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer}
-  .chip .ctxt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
-  .chip .ctxt i{font-style:normal; font-family:"IBM Plex Mono"; font-size:10px; color:var(--mut2)}
+  .chip .ctxt b{font-family:var(--f-tit); font-size:14px; color:var(--amber)}
+  .chip .ctxt i{font-style:normal; font-family:var(--f-mono); font-size:10px; color:var(--mut2)}
   .chip.emb{border-color:#3a2f52}
   .chip.emb .ctxt b{color:var(--roxo)}
   .chip button{min-height:28px; min-width:30px; padding:0; font-size:14px; line-height:1;
@@ -148,27 +154,27 @@
   .actions{background:linear-gradient(180deg,rgba(0,0,0,.4),var(--bg) 40%);
     border-top:1px solid var(--line); padding:10px 16px;
     display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-  .actions .msg{flex:1 1 auto; font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--mut)}
+  .actions .msg{flex:1 1 auto; font-family:var(--f-mono); font-size:11.5px; color:var(--mut)}
   .actions .msg.err{color:var(--red)} .actions .msg.ok{color:var(--green)}
-  .fila{font-family:"IBM Plex Mono"; font-size:11px; color:var(--amber);
+  .fila{font-family:var(--f-mono); font-size:11px; color:var(--amber);
     border:1px solid var(--amber); border-radius:6px; padding:5px 9px}
 
   .atualiza{background:var(--amber); color:#000; padding:11px 16px;
     display:flex; gap:12px; align-items:center; flex-wrap:wrap;
     box-shadow:0 -8px 20px -8px rgba(0,0,0,.9)}
   .atualiza[hidden]{display:none}
-  .atualiza span{flex:1 1 auto; font-family:"Oswald"; font-weight:600;
+  .atualiza span{flex:1 1 auto; font-family:var(--f-tit); font-weight:600;
     font-size:14.5px; letter-spacing:.03em}
   .atualiza button{background:#000; color:var(--amber); border-color:#000}
   .atualiza button.dep{background:transparent; border-color:rgba(0,0,0,.45); color:#000}
   body.tem-aviso{padding-bottom:150px}
 
-  .versao{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut2); letter-spacing:.06em}
+  .versao{font-family:var(--f-mono); font-size:10.5px; color:var(--mut2); letter-spacing:.06em}
 
   dialog{background:var(--panel); color:var(--ink); border:1px solid var(--line);
     border-radius:14px; padding:0; max-width:480px; width:92%}
   dialog::backdrop{background:rgba(0,0,0,.72)}
-  dialog h3{font-family:"Oswald"; font-size:15px; letter-spacing:.08em; text-transform:uppercase;
+  dialog h3{font-family:var(--f-tit); font-size:15px; letter-spacing:.08em; text-transform:uppercase;
     margin:0; padding:14px 16px; border-bottom:1px solid var(--line); color:var(--mut)}
   dialog .body{padding:14px 16px; display:flex; flex-direction:column; gap:11px}
   dialog .foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:9px;
@@ -182,11 +188,11 @@
   /* escolha de qual mapa do arquivo importar */
   .imp{display:flex; gap:11px; align-items:center; padding:11px 12px; width:100%;
     text-align:left; border:1px solid var(--line); border-radius:9px;
-    background:var(--panel2); font-family:"Inter"; font-weight:400; font-size:13.5px}
-  .imp b{font-family:"Oswald"; font-size:15px; letter-spacing:.02em; display:block}
-  .imp small{display:block; font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--mut);
+    background:var(--panel2); font-family:var(--f-txt); font-weight:400; font-size:13.5px}
+  .imp b{font-family:var(--f-tit); font-size:15px; letter-spacing:.02em; display:block}
+  .imp small{display:block; font-family:var(--f-mono); font-size:10.5px; color:var(--mut);
     margin-top:3px; letter-spacing:.04em}
-  .imp .n{font-family:"Oswald"; font-size:20px; color:var(--amber); flex:none}
+  .imp .n{font-family:var(--f-tit); font-size:20px; color:var(--amber); flex:none}
 
   /* ---------- abas ---------- */
   .abas{display:flex; gap:6px; margin-top:10px; border-bottom:1px solid var(--line)}
@@ -197,19 +203,19 @@
     box-shadow:inset 0 -3px 0 var(--amber)}
   [data-aba][hidden]{display:none !important}
 
-  .prodchip{flex:1 1 240px; font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--mut);
+  .prodchip{flex:1 1 240px; font-family:var(--f-mono); font-size:12.5px; color:var(--mut);
     letter-spacing:.03em; padding-bottom:calc(15px + 11px)}
   .prodchip:empty{display:none}
   .confbar .confmeta{order:9; margin-left:auto; align-self:center; font-style:normal;
-    font-family:"IBM Plex Mono"; font-size:12px; color:var(--amber); padding-bottom:15px}
+    font-family:var(--f-mono); font-size:12px; color:var(--amber); padding-bottom:15px}
   .confbar .confmeta:empty{display:none}
   .confbar .fld{position:relative; padding-bottom:15px}
-  #inConferente{font-family:"Oswald"; font-weight:700; font-size:16px; text-transform:uppercase;
+  #inConferente{font-family:var(--f-tit); font-weight:700; font-size:16px; text-transform:uppercase;
     letter-spacing:.04em; background:var(--amber-dim); border-color:var(--amber-dim)}
-  #inConferente.sem{font-family:"Inter"; font-weight:400; font-size:14px; text-transform:none;
+  #inConferente.sem{font-family:var(--f-txt); font-weight:400; font-size:14px; text-transform:none;
     background:var(--panel2); color:var(--mut); border-color:var(--amber)}
   .confbar .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
-  .prodchip b{color:var(--ink); font-family:"Inter"; font-weight:600; letter-spacing:0}
+  .prodchip b{color:var(--ink); font-family:var(--f-txt); font-weight:600; letter-spacing:0}
 
   /* Tablet deitado: duas colunas, e 30 trilhos cabem numa tela sem rolar.
      Em pé (menos de 1000px) continua uma coluna. */
@@ -225,14 +231,14 @@
   .relgrupo{padding:12px 14px; border-bottom:1px solid var(--line)}
   .relgrupo:last-child{border-bottom:none}
   .reltit{display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline; font-size:13.5px}
-  .reltit b{font-family:"Oswald"; font-size:17px; letter-spacing:.03em}
-  .reltit .relcod{font-family:"IBM Plex Mono"; font-size:12px; color:var(--steel)}
-  .reltit .relres{margin-left:auto; font-family:"Oswald"; font-size:12.5px; letter-spacing:.06em;
+  .reltit b{font-family:var(--f-tit); font-size:17px; letter-spacing:.03em}
+  .reltit .relcod{font-family:var(--f-mono); font-size:12px; color:var(--steel)}
+  .reltit .relres{margin-left:auto; font-family:var(--f-tit); font-size:12.5px; letter-spacing:.06em;
     padding:4px 10px; border-radius:6px; background:var(--green-dim); color:var(--green)}
   .reltit .relres.div{background:#4a1512; color:var(--red)}
   .relops{margin-top:7px; font-size:12.5px; color:var(--mut); line-height:1.7}
   .relops b{color:var(--ink); font-weight:500}
-  .relops i{font-style:normal; font-family:"Oswald"; color:var(--amber); letter-spacing:.06em; margin-right:3px}
+  .relops i{font-style:normal; font-family:var(--f-tit); color:var(--amber); letter-spacing:.06em; margin-right:3px}
   .reldiv{margin-top:6px; font-size:12.5px; color:var(--red); line-height:1.5}
   .reldiv i{font-style:normal; color:var(--mut)}
 
@@ -245,21 +251,21 @@
 
   .opgrupo{display:flex; align-items:center; gap:9px; padding:5px 11px;
     background:#0b0d10; border-bottom:1px solid var(--line)}
-  .opgrupo b{font-family:"Oswald"; font-size:15px; letter-spacing:.1em; color:var(--amber);
+  .opgrupo b{font-family:var(--f-tit); font-size:15px; letter-spacing:.1em; color:var(--amber);
     flex:none; min-width:64px}
   /* O nome de quem está na OP é o que o líder lê de longe, em pé: grande,
      em negrito, e com fundo próprio quando preenchido. Vazio fica apagado,
      para o buraco saltar aos olhos. */
   /* Botão, não <select>: a lista nativa do Android é uma folha branca com
      letra miúda que não dá para estilizar. O toque abre a janela de escolha. */
-  .quem{flex:1 1 0; min-width:0; font-size:18px; font-weight:700; font-family:"Oswald";
+  .quem{flex:1 1 0; min-width:0; font-size:18px; font-weight:700; font-family:var(--f-tit);
     letter-spacing:.04em; text-transform:uppercase; min-height:46px; padding:6px 12px;
     background:var(--amber-dim); color:var(--ink); border:1px solid var(--amber-dim); border-radius:8px;
     text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
     display:flex; align-items:center; justify-content:space-between; gap:8px}
   .quem::after{content:"▾"; font-size:14px; opacity:.7; flex:none}
   .quem.sem{background:var(--panel2); color:var(--mut); border-color:var(--amber);
-    font-weight:400; text-transform:none; font-family:"Inter"; font-size:14px}
+    font-weight:400; text-transform:none; font-family:var(--f-txt); font-size:14px}
   .opgrupo.rep .quem{background:#4a1512; color:var(--red); border-color:var(--red)}
   #inConferente{width:100%}
 
@@ -270,25 +276,28 @@
     max-height:min(62vh, 560px); overflow-y:auto; padding-right:2px}
   #quemLista button{min-height:50px; padding:6px 12px; text-align:left; border-radius:9px;
     border:1px solid var(--line); background:var(--panel2); color:var(--ink);
-    font-family:"Oswald"; font-size:15.5px; letter-spacing:.03em; text-transform:uppercase;
+    font-family:var(--f-tit); font-size:15.5px; letter-spacing:.03em; text-transform:uppercase;
     display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0}
   #quemLista button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   #dlgQuem{max-width:440px}
-  #quemLista button i{font-style:normal; font-family:"Oswald"; font-size:12.5px; font-weight:700;
+  #quemLista button i{font-style:normal; font-family:var(--f-tit); font-size:12.5px; font-weight:700;
     letter-spacing:.08em; color:#000; background:var(--amber); padding:5px 9px; border-radius:6px; flex:none}
   #quemLista button.on{background:var(--amber-dim); border-color:var(--amber); color:var(--ink)}
   /* quem já está em outra OP: o nome apaga, a etiqueta acende — é ela
      que o líder precisa ler para saber por que não pode tocar */
-  #quemLista button.usado{background:transparent; border-style:dashed}
+  /* A regra geral de botão desabilitado (opacity .4) apagava o botão
+     inteiro, tarja junto — e a tarja é justamente o que explica por que
+     aquele nome não pode ser tocado. Só o nome apaga. */
+  #quemLista button.usado:disabled{opacity:1; background:transparent; border-style:dashed}
   #quemLista button.usado span{color:var(--mut2)}
-  #quemLista button.ninguem{font-family:"Inter"; text-transform:none; font-size:14px; color:var(--mut)}
+  #quemLista button.ninguem{font-family:var(--f-txt); text-transform:none; font-size:14px; color:var(--mut)}
   #quemLista .nada{grid-column:1 / -1; color:var(--mut2); font-size:13px; padding:10px 4px}
   .opgrupo.antes b{color:var(--mut2)}
   .opgrupo .antes-txt{flex:1 1 0; min-width:0; color:var(--mut2); font-size:12.5px}
   /* OK é por OP: um toque marca todas as peças dela que ainda não têm
      marca. Peça já marcada DIV fica DIV. */
   .opgrupo .okop{flex:none; min-height:46px; min-width:88px; padding:0 14px; border-radius:8px;
-    font-family:"Oswald"; font-size:15px; letter-spacing:.06em; border:1px solid var(--line);
+    font-family:var(--f-tit); font-size:15px; letter-spacing:.06em; border:1px solid var(--line);
     background:var(--panel2); color:var(--mut); cursor:pointer; white-space:nowrap}
   .opgrupo .okop.on{background:var(--green-dim); color:var(--green); border-color:var(--green-dim)}
   .opgrupo .okop.temdiv{border-color:#4a1512}
@@ -298,21 +307,21 @@
      cabeçalho da OP; DIV é na peça, porque divergência precisa dizer qual
      peça veio errada. */
   .pconf{display:flex; align-items:center; gap:9px; padding:4px 11px;
-    border-bottom:1px solid var(--line); user-select:none; min-height:40px}
+    border-bottom:1px solid var(--line); user-select:none; min-height:46px}
   .pconf:last-child{border-bottom:none}
   .pconf:active{background:var(--panel2)}
-  .pconf .tr{font-family:"Oswald"; font-weight:600; font-size:13px; min-width:34px; height:30px;
+  .pconf .tr{font-family:var(--f-tit); font-weight:600; font-size:13px; min-width:34px; height:30px;
     border-radius:6px; display:flex; align-items:center; justify-content:center;
     background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none}
   .pconf .txt{flex:1 1 0; min-width:0; font-size:13px; overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap}
-  .pconf .txt b{font-family:"Oswald"; font-size:14px; color:var(--amber)}
-  .pconf .marca{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none;
-    padding:0 10px; min-height:32px; min-width:44px; border-radius:6px; border:1px solid var(--line);
+  .pconf .txt b{font-family:var(--f-tit); font-size:14px; color:var(--amber)}
+  .pconf .marca{font-family:var(--f-tit); font-size:13px; letter-spacing:.06em; flex:none;
+    padding:0 12px; min-height:40px; min-width:62px; border-radius:6px; border:1px solid var(--line);
     background:var(--panel2); color:var(--mut2); cursor:pointer}
   .pconf .marca.dv.on{background:#4a1512; color:var(--red); border-color:#4a1512}
   /* estado da peça: só leitura — OK se dá no cabeçalho da OP */
-  .pconf .est{font-family:"Oswald"; font-size:12px; letter-spacing:.06em; flex:none; min-width:34px;
+  .pconf .est{font-family:var(--f-tit); font-size:12px; letter-spacing:.06em; flex:none; min-width:34px;
     text-align:center; color:var(--mut2)}
   .pconf.ok .est{color:var(--green)}
   .pconf.pend .txt{color:var(--ink)}
@@ -332,7 +341,7 @@
     body > #folha{display:block !important}
     @page{size:A4 portrait; margin:9mm 10mm}
 
-    #folha{font-family:"Inter",system-ui,sans-serif; color:#000; font-size:10pt;
+    #folha{font-family:var(--f-txt); color:#000; font-size:10pt;
       -webkit-print-color-adjust:exact; print-color-adjust:exact}
     #folha .caixa{break-after:page; page-break-after:always}
     #folha .caixa:last-child{break-after:auto; page-break-after:auto}
@@ -343,13 +352,13 @@
     #folha .fcab .ftit{flex:1 1 0; min-width:0}
     #folha .fcab .ftit small{display:block; font-size:6.5pt; letter-spacing:.24em;
       text-transform:uppercase; color:#555}
-    #folha .fcab .ftit b{display:block; font-family:"Oswald","Inter",sans-serif; font-size:14.5pt;
+    #folha .fcab .ftit b{display:block; font-family:var(--f-tit); font-size:14.5pt;
       font-weight:600; letter-spacing:.04em; text-transform:uppercase; line-height:1.2}
     #folha .fcab .ftit span{display:block; font-size:10.5pt; font-weight:600; margin-top:.5mm}
     #folha .fver{border:.4mm solid #000; padding:1.6mm 3.2mm; text-align:center; flex:none}
     #folha .fver small{display:block; font-size:6pt; letter-spacing:.18em;
       text-transform:uppercase; color:#444}
-    #folha .fver b{display:block; font-family:"Oswald","Inter",sans-serif; font-size:14pt;
+    #folha .fver b{display:block; font-family:var(--f-tit); font-size:14pt;
       font-weight:600; line-height:1.15}
     #folha .fver span{display:block; font-size:7pt; color:#333; margin-top:.5mm}
 
@@ -358,8 +367,10 @@
     #folha .fmeta div:first-child{border-left:none}
     #folha .fmeta small{display:block; font-size:6pt; letter-spacing:.16em;
       text-transform:uppercase; color:#555}
-    #folha .fmeta b{font-family:"Oswald","Inter",sans-serif; font-size:10.5pt;
+    #folha .fmeta b{font-family:var(--f-tit); font-size:10.5pt;
       font-weight:600; white-space:nowrap}
+    /* nome de duas palavras vazava da caixa e era cortado pela margem */
+    #folha .fmeta b.longo{white-space:normal; overflow-wrap:anywhere; line-height:1.15}
 
     #folha table{width:100%; table-layout:fixed; border-collapse:collapse}
     #folha th{font-size:6.5pt; letter-spacing:.14em; text-transform:uppercase;
@@ -368,11 +379,11 @@
       line-height:1.3; overflow:hidden}
     /* a régua grossa marca onde começa a faixa de uma OP nova */
     #folha tr.fini td{border-top:.55mm solid #000}
-    #folha td.fop{font-family:"Oswald","Inter",sans-serif; font-size:11pt; font-weight:600;
+    #folha td.fop{font-family:var(--f-tit); font-size:11pt; font-weight:600;
       white-space:nowrap}
     #folha td.fins{font-size:7.5pt; font-style:italic; color:#333}
     #folha td.fpeca{font-size:9.5pt}
-    #folha td.ftr{font-family:"Oswald","Inter",sans-serif; font-size:12.5pt; font-weight:700;
+    #folha td.ftr{font-family:var(--f-tit); font-size:12.5pt; font-weight:700;
       text-align:center}
     #folha tr.fvazio td{color:#999; padding:.7mm 2mm}
     #folha tr.fvazio td.fpeca{font-size:7.5pt; font-style:italic; color:#aaa}
@@ -490,7 +501,7 @@
     <!-- Quem está conferindo. Fica gravado no aparelho: escolhe no início
          do turno e vale para todos os lotes; a tela limpa não apaga. -->
     <div class="fld" style="min-width:200px"><label>Conferido por</label>
-      <button type="button" class="quem sem" id="inConferente">— quem está conferindo? —</button></div>
+      <button type="button" class="quem sem" id="inConferente">Quem está conferindo?</button></div>
     <!-- Chamou o produto errado: limpa e recomeça. Quem está nas OPs e o
          "Conferido por" ficam, como depois de gravar. -->
     <button class="gho" id="btnLimparConf" style="margin-bottom:15px">Limpar</button>
@@ -624,7 +635,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.8.0";
+const VERSAO = "3.9.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -717,8 +728,17 @@ const ehInsumo = d => RE_INSUMO.test(semAcento(d));
 function setStatus(kind, txt){
   const el = $("status"); el.className = "status" + (kind ? " " + kind : ""); el.innerHTML = txt;
 }
+let MSG_TRAVADA = false, msgTimer = null;
 function setMsg(kind, txt){
   const el = $("msg"); el.className = "msg" + (kind ? " " + kind : ""); el.textContent = txt;
+}
+/* "Lote 25055 gravado" não pode ser apagado no mesmo instante pelo aviso do
+   que falta para o próximo. Segura por alguns segundos. */
+function setMsgFixa(kind, txt, seg){
+  setMsg(kind, txt);
+  MSG_TRAVADA = true;
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { MSG_TRAVADA = false; atualizarBotaoConf(); }, (seg || 6) * 1000);
 }
 
 /* ==================================================================
@@ -727,18 +747,24 @@ function setMsg(kind, txt){
    CORS que o Apps Script não responde. Ler também vai por POST de
    propósito: um caminho testado é melhor que dois meio testados.
    ================================================================== */
+/* "Failed to fetch" (Android) e "Load failed" (iPad) chegavam crus ao líder
+   em pé na esteira. Uma tradução só, aqui, serve as sete mensagens. */
+const SEM_REDE = "sem conexão com a planilha";
 async function chamar(payload){
   if(!CFG.api) throw new Error("Apps Script não configurado (⚙)");
-  const res = await fetch(CFG.api, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-    redirect: "follow"
-  });
+  let res;
+  try{
+    res = await fetch(CFG.api, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    });
+  }catch(e){ throw new Error(SEM_REDE); }
   const txt = await res.text();
   let out;
   try{ out = JSON.parse(txt); }
-  catch(e){ throw new Error("resposta inesperada do Apps Script — confira a URL do /exec"); }
+  catch(e){ throw new Error("a URL do Apps Script não respondeu como esperado — confira o endereço no ⚙"); }
   if(!out.ok){
     /* Recusa da planilha, não falha de rede: reenviar o mesmo dado dá o
        mesmo erro para sempre, então quem chamou precisa saber a diferença. */
@@ -768,7 +794,7 @@ async function carregarLista(){
   }catch(e){
     /* "Failed to fetch" não diz nada para quem está de pé na esteira. Sem
        rede o app continua servindo: monta, imprime e guarda na fila. */
-    const semRede = /failed to fetch|networkerror|load failed/i.test(e.message);
+    const semRede = e.message === SEM_REDE;
     setStatus("err", semRede
       ? "Sem conexão com a planilha — dá para montar e imprimir; a gravação fica na fila. " +
         `<span class="versao">v${VERSAO}</span>`
@@ -820,6 +846,7 @@ const totalItens = () => S.trilhos.reduce((a, t) => a + t.itens.length, 0);
 function ajustarTrilhos(n){
   n = Math.max(1, Math.min(60, n || 1));
   if(n === S.nTrilhos) return true;
+  limparConfPorMudancaDoMapa();
   if(n < S.nTrilhos){
     const perdidos = S.trilhos.slice(n).reduce((a, t) => a + t.itens.length, 0);
     if(perdidos && !confirm(
@@ -837,8 +864,21 @@ function ajustarTrilhos(n){
   return true;
 }
 
+/* A marca de divergência é guardada por "trilho|posição". Mexer no mapa
+   (trocar trilho de lugar, tirar ou acrescentar peça) movia a marca para
+   outra peça sem ninguém ver, e a divergência era gravada na peça errada.
+   Mudou o mapa, a conferência recomeça. */
+function limparConfPorMudancaDoMapa(){
+  if(!S.conf.size) return;
+  const n = S.conf.size;
+  S.conf = new Map(); S.confSalva = true; S.loteConf = "";
+  setMsgFixa("err", `O mapa mudou: ${n === 1 ? "a marca" : `as ${n} marcas`} da conferência ` +
+    `${n === 1 ? "foi apagada" : "foram apagadas"} para não ficar na peça errada. Confira de novo.`, 8);
+}
+
 function trocaTrilho(a, b){
   if(b < 1 || b > S.nTrilhos) return;
+  limparConfPorMudancaDoMapa();
   const tmp = S.trilhos[a - 1]; S.trilhos[a - 1] = S.trilhos[b - 1]; S.trilhos[b - 1] = tmp;
   render();
 }
@@ -927,7 +967,7 @@ function linhaTrilho(t){
       chip.querySelector('[data-a="mais"]').addEventListener("click", () => {
         x.qtd = Math.round((x.qtd + 1) * 1000) / 1000; render(); });
       chip.querySelector('[data-a="tira"]').addEventListener("click", () => {
-        tr.itens.splice(j, 1); render(); });
+        limparConfPorMudancaDoMapa(); tr.itens.splice(j, 1); render(); });
       corpo.appendChild(chip);
     });
   }
@@ -965,6 +1005,10 @@ function podeSalvar(){ return !!(normCod(S.cod) && totalItens()); }
 function atualizarBotoes(){
   $("btnSalvar").disabled = !podeSalvar();
   atualizarBotaoConf();
+  /* O rodapé é um só. Na aba Conferência ele pertence à conferência: quem
+     está na esteira não pode ler "10 itens · 12 trilhos" enquanto o Gravar
+     está travado por outro motivo. */
+  if(ABA_ATIVA === "conf") return;
   if(!S.trilhos.length){ setMsg("", ""); return; }
   if(!totalItens())            setMsg("", "Mapa vazio — toque no + de um trilho para acrescentar a peça.");
   else if(!normCod(S.cod))     setMsg("err", "Falta o código do produto para salvar.");
@@ -1064,7 +1108,7 @@ function renderConf(){
   const div = [...S.conf.values()].filter(e => e.div).length;
   const pend = pecasPendentes(), tot = totalItens();
   $("confMeta").textContent =
-    (pend ? `${tot - pend} de ${tot} conferidas` : `${tot} conferidas`) +
+    (pend ? `${tot - pend} de ${tot} peças conferidas` : `${tot} peças conferidas`) +
     (div ? ` · ${div} ${div === 1 ? "divergência" : "divergências"}` : "");
   atualizarBotaoConf();
   /* Marcar divergência e escolher quem está na OP não passa pelo render() do
@@ -1078,7 +1122,7 @@ function renderConferente(){
   const b = $("inConferente");
   if(!b) return;
   if(S.colab.length && S.conferente && !nomeColab(S.conferente)) S.conferente = "";   // saiu da lista
-  b.textContent = nomeColab(S.conferente) || "— quem está conferindo? —";
+  b.textContent = nomeColab(S.conferente) || "Quem está conferindo?";
   b.className = "quem" + (S.conferente ? "" : " sem");
 }
 
@@ -1096,12 +1140,12 @@ function escolherColab({ titulo, atual, ocupado, aoEscolher }){
     lista.innerHTML = "";
     if(!q && atual){
       const n = document.createElement("button");
-      n.type = "button"; n.className = "ninguem"; n.textContent = "— ninguém (limpar) —";
+      n.type = "button"; n.className = "ninguem"; n.textContent = "Ninguém nesta OP (limpar)";
       n.addEventListener("click", () => { dlg.close(); aoEscolher(""); });
       lista.appendChild(n);
     }
     if(!itens.length){
-      lista.innerHTML += `<div class="nada">${S.colab.length ? "nenhum nome com isso" : "nenhum colaborador cadastrado — use + Colaborador no computador"}</div>`;
+      lista.innerHTML += `<div class="nada">${S.colab.length ? "Nenhum colaborador com esse nome." : "Nenhum colaborador cadastrado — use + Colaborador no computador."}</div>`;
       return;
     }
     itens.forEach(c => {
@@ -1132,6 +1176,7 @@ function renderProdChip(){
 /* Um toque de OK por OP: marca OK o que ainda não tem marca e deixa o DIV
    onde está. Tocar de novo com tudo marcado desfaz os OKs (o DIV fica).
    Rótulo diz o estado: "OK" a fazer, "✓ OK" feito, e quantas DIV. */
+let okOpEm = 0;
 function botaoOkOp(op){
   const pecas = pecasDaOp(op);
   const est = pecas.map(p => estadoConf(p.t, p.j));
@@ -1142,6 +1187,11 @@ function botaoOkOp(op){
   b.innerHTML = (pend ? "OK" : "✓ OK") + (div ? `<i>${div} DIV</i>` : "");
   b.title = pend ? `marca OK as ${pend} peças sem marca desta OP` : "desfaz os OK desta OP";
   b.addEventListener("click", () => {
+    /* Com luva e tela lenta o toque sai dobrado: o segundo desfazia a OP
+       inteira que o primeiro acabou de marcar, e o Gravar travava de novo
+       sem o líder entender. Desfazer só depois de um instante. */
+    if(!pend && Date.now() - okOpEm < 900) return;
+    okOpEm = Date.now();
     pecas.forEach(p => {
       const e = estadoConf(p.t, p.j);
       if(pend){ if(e.pend) S.conf.set(chaveConf(p.t, p.j), { div: false, obs: "" }); }
@@ -1159,13 +1209,13 @@ function grupoOp(op){
   const meu = S.opColab.get(op);
   el.className = "opgrupo" + (op === 0 ? " antes" : !meu ? " sem" : opDoColab(meu, op) ? " rep" : "");
   if(op === 0){
-    el.innerHTML = "<b>—</b><span class=\"antes-txt\">antes da primeira OP: a caixa entrando na esteira</span>";
+    el.innerHTML = "<b>—</b><span class=\"antes-txt\">antes da OP 01 — a caixa entrando na esteira</span>";
     el.appendChild(botaoOkOp(0));
     return el;
   }
   const nome = nomeColab(meu);
   el.innerHTML = `<b>OP ${String(op).padStart(2, "0")}</b>` +
-    `<button type="button" class="quem${nome ? "" : " sem"}">${nome ? escapa(nome) : "— quem está nesta OP hoje —"}</button>`;
+    `<button type="button" class="quem${nome ? "" : " sem"}">${nome ? escapa(nome) : "Quem está nesta OP?"}</button>`;
   el.querySelector(".quem").addEventListener("click", () => escolherColab({
     titulo: `Quem está na OP ${String(op).padStart(2, "0")} hoje?`,
     atual: meu || "",
@@ -1216,12 +1266,20 @@ function atualizarBotaoConf(){
   const b = $("btnGravarConf");
   if(!b) return;
   b.disabled = !podeConferir();
-  b.title = podeConferir() ? "" : (!S.lote.trim() ? "falta o lote"
-    : !normCod(S.cod) ? "falta o código do produto"
-    : pecasPendentes() ? `${pecasPendentes()} ${pecasPendentes() === 1 ? "peça ainda sem marca" : "peças ainda sem marca"} — OK no cabeçalho da OP, DIV na peça`
-    : opsSemColab().length ? "falta dizer quem está nas OPs " + opsSemColab().join(", ")
-    : !S.conferente ? "falta dizer quem está conferindo (Conferido por)"
-    : "a mesma pessoa está nas OPs " + opsRepetidas().join(", ") + " — cada OP tem o seu colaborador");
+  const n = pecasPendentes(), sem = opsSemColab(), rep = opsRepetidas();
+  const ops = l => l.map(op => String(op).padStart(2, "0")).join(" e ");
+  const falta = podeConferir() ? "" :
+      !totalItens()   ? "Digite o código do produto."
+    : !normCod(S.cod) ? "Falta o código do produto."
+    : n               ? `${n} ${n === 1 ? "peça não conferida" : "peças não conferidas"} — OK na OP ou DIV na peça.`
+    : sem.length      ? `Falta quem está ${sem.length === 1 ? "na OP" : "nas OPs"} ${ops(sem)}.`
+    : !S.conferente   ? "Falta quem está conferindo — toque em Conferido por."
+    : rep.length      ? `O mesmo colaborador está nas OPs ${ops(rep)}. Cada OP tem o seu.`
+    : "Falta o lote.";
+  b.title = falta;
+  /* Tela de toque não tem tooltip: sem isto o líder via um botão apagado e
+     nenhuma explicação, que é o motivo mais comum de largar o tablet. */
+  if(ABA_ATIVA === "conf" && !MSG_TRAVADA) setMsg(falta ? "err" : "ok", falta || "Pronto para gravar.");
 }
 
 /* Uma linha por peça: leva a OP e QUEM estava nela. É assim que o rodízio
@@ -1271,11 +1329,11 @@ async function gravarConferencia(){
       (div ? ` com ${div} ${div === 1 ? "divergência" : "divergências"}` : ", tudo OK") +
       ". Tela limpa para o próximo lote."];
   }catch(e){
-    msg = ["err", `Lote ${payload.lote} ficou na fila (${e.message}) — sai no Reenviar pendentes. ` +
-      "Tela limpa para o próximo lote."];
+    msg = ["err", `Lote ${payload.lote} guardado no tablet: ${e.message}. ` +
+      "Sai em Reenviar pendentes. Tela limpa para o próximo lote."];
   }
   proximoLote();
-  setMsg(msg[0], msg[1]);
+  setMsgFixa(msg[0], msg[1], 8);
 }
 
 /* Gravou, acabou: lote, produto e marcas saem da tela para o próximo lote
@@ -1300,15 +1358,15 @@ function trocarLoteDasMarcas(lote){
   if(!S.conf.size || !S.loteConf || S.loteConf === lote) return true;
   if(!S.confSalva && !confirm(
     `A conferência do lote ${S.loteConf} ainda não foi gravada.\n\n` +
-    `Trocar para o lote ${lote || "(vazio)"} descarta as marcas. Continuar?`)){
+    `Trocar para o lote ${lote || "(vazio)"} apaga o que foi marcado. Continuar?`)){
     S.lote = S.loteConf; $("inLote").value = S.loteConf; atualizarBotaoConf(); guardarRascunho();
     return false;
   }
   const antigo = S.loteConf;
   S.conf = new Map(); S.loteConf = lote; S.confSalva = true;
   renderConf();
-  setMsg("", `Lote ${lote || "novo"}: as marcas do lote ${antigo} saíram da tela. ` +
-    `Diga quem está em cada OP, DIV na peça errada e OK na OP.`);
+  setMsgFixa("", `Lote ${lote || "novo"}: a conferência do lote ${antigo} saiu da tela. ` +
+    `DIV na peça errada e OK na OP.`, 6);
   return true;
 }
 
@@ -1328,7 +1386,7 @@ async function abrirConferencia(){
   if(!out.achou || S.lote.trim() !== lote || normCod(S.cod) !== cod) return;
   if(S.conf.size && !S.confSalva && !confirm(
     `O lote ${lote} já tem conferência gravada.\n\n` +
-    `Abrir o que está na planilha descarta o que você marcou agora. Continuar?`)) return;
+    `Abrir o que está na planilha apaga o que você marcou agora. Continuar?`)) return;
 
   S.conf = new Map(); S.opColab = new Map();
   S.loteConf = lote; S.confSalva = true;
@@ -1353,8 +1411,10 @@ async function abrirConferencia(){
    ABAS — uma tela de cada vez
    ================================================================== */
 const ABA_KEY = "trilhosAba";
+let ABA_ATIVA = "mapa";
 function mostrarAba(a){
   if(CFG.tablet) a = "conf";
+  ABA_ATIVA = a;
   $("abas").hidden = !!CFG.tablet;
   document.querySelectorAll("[data-aba]").forEach(el => {
     if(el.parentElement && el.parentElement.id === "abas"){
@@ -1367,6 +1427,9 @@ function mostrarAba(a){
      imprimir — é o caminho de dois toques. */
   if(a === "rel" && !$("relLote").value && S.lote.trim()) $("relLote").value = S.lote.trim();
   try{ localStorage.setItem(ABA_KEY, a); }catch(e){}
+  /* O rodapé é compartilhado: ao entrar na Conferência ele precisa passar a
+     falar dela, senão fica a mensagem do mapa. */
+  if(a === "conf") atualizarBotaoConf(); else atualizarBotoes();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll("#abas button").forEach(b =>
@@ -1377,9 +1440,11 @@ document.querySelectorAll("#abas button").forEach(b =>
    ================================================================== */
 let REL = [];
 
+/* Data editada à mão na planilha volta como texto cru; sem escapar, ia
+   direto para o innerHTML do relatório e da folha impressa. */
 const dataBR = iso => {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || "—");
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : escapa(iso || "—");
 };
 
 /* Uma conferência = lote × produto. As linhas voltam soltas da planilha e
@@ -1428,7 +1493,7 @@ function renderRelatorio(){
         `${g.conferente ? ` · conferido por <b>${escapa(g.conferente)}</b>` : ""}</div>
       ${div.map(p => `<div class="reldiv">⚠ Trilho ${p.trilho} · ${fmtQtd(numDec(p.qtd) || 1)}× ${escapa(p.desc_item)}` +
         (p.obs ? ` — ${escapa(p.obs)}` : "") +
-        ` <i>(${p.op ? "OP " + String(p.op).padStart(2, "0") : "antes da 1ª OP"}${p.nome ? " · " + escapa(p.nome) : ""})</i></div>`).join("")}
+        ` <i>(${p.op ? "OP " + String(p.op).padStart(2, "0") : "antes da OP 01"}${p.nome ? " · " + escapa(p.nome) : ""})</i></div>`).join("")}
     </div>`;
   }).join("");
 }
@@ -1445,7 +1510,7 @@ async function buscarRelatorio(){
     setMsg("", "");
   }catch(e){
     REL = [];
-    $("relCorpo").innerHTML = `<div class="vazio-tela">Não consegui buscar: ${escapa(e.message)}</div>`;
+    $("relCorpo").innerHTML = `<div class="vazio-tela">A planilha não respondeu: ${escapa(e.message)}. Toque em Buscar de novo.</div>`;
   }
 }
 $("relBuscar").addEventListener("click", buscarRelatorio);
@@ -1461,7 +1526,7 @@ function caixaConferencia(g){
     const d = p.resultado === "DIVERGENTE";
     return `<tr class="${ini ? "fini" : ""}${d ? " fdiv" : ""}">
       <td class="fop">${ini ? (p.op ? "OP " + String(p.op).padStart(2, "0") : "—") : ""}</td>
-      <td class="fnome">${ini ? escapa(p.op ? (g.ops.get(p.op) || "________________") : "antes da 1ª OP") : ""}</td>
+      <td class="fnome">${ini ? escapa(p.op ? (g.ops.get(p.op) || "________________") : "antes da OP 01") : ""}</td>
       <td class="ftr">${p.trilho}</td>
       <td class="fpeca">${fmtQtd(numDec(p.qtd) || 1)}× ${escapa(p.desc_item)}</td>
       <td class="fres">${d ? "DIVERGENTE" : "OK"}</td>
@@ -1481,12 +1546,12 @@ function caixaConferencia(g){
       <div><small>Código</small><b>${escapa(codErp(g.cod))}</b></div>
       <div><small>Gravada em</small><b>${gravadaEm && !isNaN(gravadaEm)
         ? gravadaEm.toLocaleDateString("pt-BR") + " " + gravadaEm.toTimeString().slice(0, 5) : "—"}</b></div>
-      <div><small>Conferido por</small><b>${g.conferente ? escapa(g.conferente) : "____________________"}</b></div>
+      <div><small>Conferido por</small><b class="longo">${g.conferente ? escapa(g.conferente) : "____________________"}</b></div>
     </div>
     <table>
       <colgroup>
         <col style="width:9%"><col style="width:19%"><col style="width:7%">
-        <col style="width:40%"><col style="width:12%"><col style="width:13%">
+        <col style="width:37%"><col style="width:15%"><col style="width:13%">
       </colgroup>
       <thead><tr><th>OP</th><th>Quem estava</th><th style="text-align:center">Trilho</th>
         <th>Peça</th><th style="text-align:center">Resultado</th><th>Observação</th></tr></thead>
@@ -1540,7 +1605,7 @@ $("inData").addEventListener("change", ev => { S.dataEmb = ev.target.value; guar
 $("btnGravarConf").addEventListener("click", gravarConferencia);
 $("btnLimparConf").addEventListener("click", () => {
   if(S.conf.size && !S.confSalva && !confirm(
-    `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\nLimpar descarta as marcas. Continuar?`)) return;
+    `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\nLimpar apaga o que foi marcado. Continuar?`)) return;
   proximoLote();
   setMsg("", "Tela limpa. Digite o código do produto.");
 });
@@ -1603,13 +1668,14 @@ $("itOk").addEventListener("click", () => {
     insumo: $("itInsumo").checked
   };
   const { t, j } = S.edit;
+  if(j < 0) limparConfPorMudancaDoMapa();   // item novo desloca as marcas do trilho
   if(j >= 0) S.trilhos[t - 1].itens[j] = item;
   else       S.trilhos[t - 1].itens.push(item);
   $("dlgItem").close(); S.edit = null; render();
 });
 $("itExcluir").addEventListener("click", () => {
   const { t, j } = S.edit;
-  if(j >= 0) S.trilhos[t - 1].itens.splice(j, 1);
+  if(j >= 0){ limparConfPorMudancaDoMapa(); S.trilhos[t - 1].itens.splice(j, 1); }
   $("dlgItem").close(); S.edit = null; render();
 });
 $("itCancel").addEventListener("click", () => { $("dlgItem").close(); S.edit = null; });
@@ -1717,10 +1783,14 @@ async function abrirProduto(bruto, daConf){
   renderProdChip();
   if(!cod){ setAchou("achou", ""); sincronizarCod(""); atualizarBotoes(); return; }
 
-  const cab = S.produtos.find(p => normCod(p.cod) === cod);
+  /* Se a leitura da planilha falhou no arranque, S.produtos está vazio e
+     todo código viraria "produto novo" — no computador isso salva um mapa
+     por cima do que já existe. Sem lista, pergunta ao Apps Script. */
+  const cab = S.produtos.find(p => normCod(p.cod) === cod) ||
+              (S.produtos.length ? null : { desc: "", n_trilhos: 0, incerto: true });
   if(totalItens() && S.conf.size && !S.confSalva && !confirm(
     `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\n` +
-    `Trocar para ${(cab && cab.desc) || codErp(cod)} descarta as marcas. Continuar?`)){
+    `Trocar para ${(cab && cab.desc) || codErp(cod)} apaga o que foi marcado. Continuar?`)){
     S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
     return;
   }
@@ -1734,7 +1804,7 @@ async function abrirProduto(bruto, daConf){
     return;
   }
   const mapaSalvoNaTela = !!S.produtos.find(p => normCod(p.cod) === normCod(anterior));
-  if(totalItens() && !(daConf && mapaSalvoNaTela) && !confirm(
+  if(!cab.incerto && totalItens() && !(daConf && mapaSalvoNaTela) && !confirm(
     `${cab.desc || codErp(cod)} já tem mapa salvo (${cab.n_trilhos} trilhos).\n\n` +
     `Abrir o mapa salvo descarta o que está na tela agora. Continuar?`)){
     S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
@@ -1762,7 +1832,7 @@ async function abrirProduto(bruto, daConf){
     codPedido = "";
     if(daConf) return semMapaNaTela(cod, "sem conexão — não abriu o mapa deste produto");
     S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
-    setAchou("achou err", "não abriu: " + e.message);
+    setAchou("achou err", e.message);
     atualizarBotoes();
   }
 }
@@ -1829,7 +1899,26 @@ function linhasDoMapa(){
   return out;
 }
 
-async function despacharFila(){
+/* Um despacho por vez: Gravar e Reenviar disparados quase juntos faziam
+   dois laços com cópias próprias da fila, e o mesmo envio saía duas vezes. */
+let despachando = null;
+function despacharFila(){
+  if(!despachando) despachando = despacharAgora().finally(() => { despachando = null; });
+  return despachando;
+}
+
+/* Lote de sexta não pode ficar preso no tablet até segunda porque ninguém
+   tocou em Reenviar: assim que a rede volta, ou ao abrir o app, sai sozinho. */
+async function despacharSozinho(){
+  if(!lerFila().length || !CFG.api) return;
+  try{
+    const n = await despacharFila();
+    if(n) setMsgFixa("ok", `${n} ${n === 1 ? "envio guardado saiu" : "envios guardados saíram"} para a planilha.`, 8);
+  }catch(e){ /* sem rede ainda, ou recusado: o rodapé já mostra a fila */ }
+}
+window.addEventListener("online", despacharSozinho);
+
+async function despacharAgora(){
   const fila = lerFila();
   let enviados = 0, recusados = 0;
   while(fila.length){
@@ -1880,7 +1969,7 @@ async function salvarMapa(){
     localStorage.removeItem(RASC_KEY);
     await carregarLista();
   }catch(e){
-    setMsg("err", "Não gravou (" + e.message + ") — ficou na fila, toque em Reenviar pendentes.");
+    setMsg("err", "Mapa guardado no aparelho: " + e.message + ". Toque em Reenviar pendentes quando a rede voltar.");
   }finally{
     atualizarBotoes();
   }
@@ -1894,7 +1983,7 @@ $("btnReenviar").addEventListener("click", async () => {
     const n = await despacharFila();
     setMsg("ok", n ? `${n} ${n === 1 ? "envio saiu" : "envios saíram"}.` : "Nada pendente.");
     await carregarLista();
-  }catch(e){ setMsg("err", "Ainda não foi: " + e.message); }
+  }catch(e){ setMsg("err", "Ainda não foi: " + e.message + ". Os envios continuam guardados."); }
 });
 
 /* ==================================================================
@@ -2500,6 +2589,7 @@ $("cfgProcurar").addEventListener("click", async () => {
     render();
   }
   pintarFila();
+  despacharSozinho();          /* fila que sobrou de ontem sai ao abrir */
   let aba = "mapa";
   try{ aba = localStorage.getItem(ABA_KEY) || "mapa"; }catch(e){}
   mostrarAba(["mapa", "conf", "rel"].includes(aba) ? aba : "mapa");
