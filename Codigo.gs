@@ -61,7 +61,7 @@ function doPost(e) {
   try {
     lock.waitLock(30000);
   } catch (err) {
-    return json({ ok: false, erro: 'servidor ocupado, tente de novo' });
+    return json({ ok: false, erro: 'A planilha esta ocupada com outra gravacao. Tente de novo em alguns segundos.' });
   }
   try {
     if (!e || !e.postData || !e.postData.contents) {
@@ -114,8 +114,8 @@ function doGet(e) {
 function salvarMapa(ss, p) {
   if (!p) return { ok: false, erro: RODE_NO_APP };
   var cod = normCod(p.cod);
-  if (!cod) return { ok: false, erro: 'cod_produto e obrigatorio' };
-  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'mapa vazio' };
+  if (!cod) return { ok: false, erro: 'Falta o codigo do produto.' };
+  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'O mapa esta vazio.' };
 
   var sh = aba(ss, AB_MAPA, CAB_MAPA);
   var antigas = linhasDoProduto(sh, cod);
@@ -132,6 +132,9 @@ function salvarMapa(ss, p) {
      indices continuam valendo depois do append. */
   var ini = sh.getLastRow() + 1;
   garantirLinhas(sh, ini + novas.length - 1);
+  [1, 2, 5, 9, 10].forEach(function (col) {   // codigos e textos: nao viram numero nem formula
+    sh.getRange(ini, col, novas.length, 1).setNumberFormat('@');
+  });
   sh.getRange(ini, 1, novas.length, CAB_MAPA.length).setValues(novas);
   SpreadsheetApp.flush();
   apagarLinhas(sh, antigas);
@@ -142,7 +145,7 @@ function salvarMapa(ss, p) {
 function excluirMapa(ss, p) {
   if (!p) return { ok: false, erro: RODE_NO_APP };
   var cod = normCod(p.cod);
-  if (!cod) return { ok: false, erro: 'cod_produto e obrigatorio' };
+  if (!cod) return { ok: false, erro: 'Falta o codigo do produto.' };
   var sh = aba(ss, AB_MAPA, CAB_MAPA);
   var linhas = linhasDoProduto(sh, cod);
   apagarLinhas(sh, linhas);
@@ -232,7 +235,7 @@ function listarColaboradores(ss) {
 function novoColaborador(ss, p) {
   if (!p) return { ok: false, erro: RODE_NO_APP };
   var mat = String(p.mat || '').trim(), nome = String(p.nome || '').trim();
-  if (!mat || !nome) return { ok: false, erro: 'matricula e nome sao obrigatorios' };
+  if (!mat || !nome) return { ok: false, erro: 'Matricula e nome sao obrigatorios.' };
 
   var sh = aba(ss, AB_COLAB, CAB_COLAB);
   var ult = sh.getLastRow();
@@ -259,9 +262,9 @@ function gravarConferencia(ss, p) {
   if (!p) return { ok: false, erro: RODE_NO_APP };
   var lote = String(p.lote || '').trim();
   var cod = normCod(p.cod);
-  if (!lote) return { ok: false, erro: 'lote e obrigatorio' };
-  if (!cod)  return { ok: false, erro: 'cod_produto e obrigatorio' };
-  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'nenhuma peca para conferir' };
+  if (!lote) return { ok: false, erro: 'Falta o numero do lote.' };
+  if (!cod)  return { ok: false, erro: 'Falta o codigo do produto.' };
+  if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'Nenhuma peca para conferir.' };
 
   /* Uma pessoa, um posto: a mesma matricula em duas OPs do lote e recusada
      aqui tambem, para o app antigo ou um POST a mao nao gravarem rodizio
@@ -271,8 +274,15 @@ function gravarConferencia(ss, p) {
     var op = Number(p.linhas[i].op) || 0, mat = String(p.linhas[i].mat || '').trim();
     if (!op || !mat) continue;
     if (opDaMat[mat] && opDaMat[mat] !== op) {
-      return { ok: false, erro: 'colaborador ' + mat + ' esta na OP ' + opDaMat[mat] +
-               ' e na OP ' + op + ' — cada OP tem o seu colaborador' };
+      return { ok: false, erro: 'O colaborador ' + mat + ' esta na OP ' + dois(opDaMat[mat]) +
+               ' e na OP ' + dois(op) + '. Cada OP tem o seu.' };
+    }
+    /* Peca sem marca nao pode virar OK: a decisao "nada e OK so porque
+       ninguem olhou" tem de valer tambem para app antigo em cache. */
+    var r = String(p.linhas[i].resultado || '');
+    if (r !== 'OK' && r !== 'DIVERGENTE') {
+      return { ok: false, erro: 'A peca do trilho ' + (p.linhas[i].trilho || '?') +
+               ' esta como ' + (r || 'sem resultado') + '. Atualize o app e confira de novo.' };
     }
     opDaMat[mat] = op;
   }
@@ -294,6 +304,12 @@ function gravarConferencia(ss, p) {
      das novas, entao os indices continuam valendo depois do append. */
   var ini = sh.getLastRow() + 1;
   garantirLinhas(sh, ini + novas.length - 1);
+  /* Sem isto o Sheets interpreta o texto: lote '025055' vira o numero 25055
+     e deixa de casar na substituicao (duplicava em vez de substituir), OBS
+     comecando com '=' virava formula, e matricula perdia o zero a esquerda. */
+  [2, 4, 5, 8, 9, 11, 12, 14, 15, 16].forEach(function (col) {
+    sh.getRange(ini, col, novas.length, 1).setNumberFormat('@');
+  });
   sh.getRange(ini, 1, novas.length, CAB_CONF.length).setValues(novas);
   SpreadsheetApp.flush();
   apagarLinhas(sh, antigas);
@@ -316,9 +332,13 @@ function lerConferencia(ss, p) {
   var linhas = linhasDoLote(sh, lote, cod);
   if (!linhas.length) return { ok: true, achou: false };
 
+  /* Um getRange por linha eram 21 chamadas e 2 a 4 segundos de espera no
+     tablet. O bloco inteiro vem de uma vez. */
+  var tudo = sh.getRange(2, 1, sh.getLastRow() - 1, CAB_CONF.length).getValues();
   var out = [], dataEmb = '';
   linhas.forEach(function (n) {
-    var r = sh.getRange(n, 1, 1, CAB_CONF.length).getValues()[0];
+    var r = tudo[n - 2];
+    if (!r) return;
     if (!dataEmb) dataEmb = dataISO(r[2]);
     out.push({ trilho: Number(r[5]) || 0, op: Number(r[6]) || 0,
                cod_item: String(r[7] || ''), desc_item: String(r[8] || ''), qtd: r[9],
@@ -337,7 +357,7 @@ function relatorioConferencia(ss, p) {
   if (!p) return { ok: false, erro: RODE_NO_APP };
   var lote = String(p.lote || '').trim();
   var data = String(p.data || '').trim();
-  if (!lote && !data) return { ok: false, erro: 'informe o lote ou a data' };
+  if (!lote && !data) return { ok: false, erro: 'Informe o lote ou a data.' };
 
   var sh = aba(ss, AB_CONF, CAB_CONF);
   var ult = sh.getLastRow();
@@ -395,6 +415,8 @@ function linhasDoLote(sh, lote, cod) {
 /* ---------------------------------------------------------------- */
 
 /** Só dígitos e letras: o ERP escreve 501.118.001 e o app manda 501118001. */
+function dois(n) { n = String(n || ''); return n.length < 2 ? '0' + n : n; }
+
 function normCod(c) {
   return String(c == null ? '' : c).toUpperCase().replace(/[^0-9A-Z]/g, '');
 }
