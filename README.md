@@ -55,6 +55,10 @@ Peça sem marca é "não conferida", e o botão Gravar só libera com todas marc
 nada fica OK só porque ninguém olhou. A barra mostra quantas faltam. Uma caixa de
 23 peças com uma divergência sai com 8 ou 9 toques.
 
+**Quem está em cada OP** acompanha a esteira, não o produto: o posto 03 tem a mesma
+pessoa o dia inteiro. Trocar de produto ou gravar e ir para o próximo lote mantém a
+equipe escolhida; produto com menos OPs poda as que sobram. Só o *Limpar* zera tudo.
+
 **Conferido por** é quem fez a conferência, escolhido da mesma lista de colaboradores.
 Fica gravado no aparelho: escolhe no início do turno e vale para todos os lotes; a tela
 limpa depois de gravar não apaga. Vai para a planilha nas colunas `MAT_CONFERENTE` e
@@ -210,7 +214,10 @@ o que foi gravado, para quem volta corrigir uma divergência.
 escrever à mão; depois alguém digita no app.
 
 Sem rede o app continua funcionando: o que está na tela é guardado no aparelho a cada
-toque, e a gravação entra numa fila que sai por *Reenviar pendentes*.
+toque, e a gravação entra numa fila que sai por *Reenviar pendentes*. Falha de rede
+segura a fila até a próxima tentativa; envio que a **planilha recusa** sai da frente e
+fica separado como *recusado*, com o motivo, para não prender os lotes que vêm atrás.
+*Ver recusados* mostra a lista e devolve tudo para a fila.
 
 ## O que o Importar Excel lê
 
