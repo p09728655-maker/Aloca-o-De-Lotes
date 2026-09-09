@@ -575,7 +575,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.5.1";
+const VERSAO = "3.5.2";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1364,10 +1364,25 @@ function caixaConferencia(g){
   </div>`;
 }
 
+/* O nome do PDF é o título da página. "Mapa dos Trilhos.pdf" no WhatsApp
+   não diz de que lote é; "Conferência lote 25055 · ESCRIVANINHA.pdf" diz. */
+const TITULO_APP = document.title;
+function imprimirCom(titulo){
+  document.title = titulo.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || TITULO_APP;
+  const volta = () => { document.title = TITULO_APP; window.removeEventListener("afterprint", volta); };
+  window.addEventListener("afterprint", volta);
+  window.print();
+  setTimeout(volta, 60000);   // navegador sem afterprint (alguns Android)
+}
+
 $("btnImprimirRel").addEventListener("click", () => {
   if(!REL.length) return;
   $("folha").innerHTML = REL.map(caixaConferencia).join("");
-  window.print();
+  const g = REL[0];
+  const data = $("relData").value;
+  imprimirCom(REL.length === 1
+    ? `Conferência lote ${g.lote} · ${g.desc || codErp(g.cod)}`
+    : `Conferências ${data ? dataBR(data).replace(/\//g, "-") : "lote " + $("relLote").value.trim()} · ${REL.length} lotes`);
 });
 
 const hojeISO = () => {
@@ -1754,7 +1769,7 @@ function montarFolha(){
 
 $("btnImprimir").addEventListener("click", () => {
   if(!montarFolha()){ setMsg("err", "Monte o mapa antes de imprimir."); return; }
-  window.print();
+  imprimirCom(`Mapa trilhos · ${S.desc || codErp(S.cod)}`);
 });
 
 /* Folha em branco: as mesmas colunas do mapa, com linha alta para escrever
@@ -1792,7 +1807,7 @@ function montarFolhaBranca(){
     </div>`;
   return true;
 }
-$("btnFolhaBranca").addEventListener("click", () => { montarFolhaBranca(); window.print(); });
+$("btnFolhaBranca").addEventListener("click", () => { montarFolhaBranca(); imprimirCom("Mapa trilhos · folha em branco"); });
 
 /* ==================================================================
    IMPORTAR
