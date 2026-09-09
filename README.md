@@ -55,6 +55,11 @@ Peça sem marca é "não conferida", e o botão Gravar só libera com todas marc
 nada fica OK só porque ninguém olhou. A barra mostra quantas faltam. Uma caixa de
 23 peças com uma divergência sai com 8 ou 9 toques.
 
+**Conferido por** é quem fez a conferência, escolhido da mesma lista de colaboradores.
+Fica gravado no aparelho: escolhe no início do turno e vale para todos os lotes; a tela
+limpa depois de gravar não apaga. Vai para a planilha nas colunas `MAT_CONFERENTE` e
+`NOME_CONFERENTE`, e sai no relatório e na folha impressa.
+
 As peças aparecem **agrupadas pela OP**, com o seletor de quem está nela no cabeçalho
 do grupo: a pessoa fica ao lado das peças por que responde. Preenchidas as OPs e o
 número do lote, o botão libera; enquanto falta alguma, ele diz qual.

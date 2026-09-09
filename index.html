@@ -204,6 +204,10 @@
     font-family:"IBM Plex Mono"; font-size:12px; color:var(--amber); padding-bottom:15px}
   .confbar .confmeta:empty{display:none}
   .confbar .fld{position:relative; padding-bottom:15px}
+  #inConferente{font-family:"Oswald"; font-weight:700; font-size:16px; text-transform:uppercase;
+    letter-spacing:.04em; background:var(--amber-dim); border-color:var(--amber-dim)}
+  #inConferente.sem{font-family:"Inter"; font-weight:400; font-size:14px; text-transform:none;
+    background:var(--panel2); color:var(--mut); border-color:var(--amber)}
   .confbar .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
   .prodchip b{color:var(--ink); font-family:"Inter"; font-weight:600; letter-spacing:0}
 
@@ -456,6 +460,10 @@
       <input type="text" id="inLote" inputmode="numeric" autocomplete="off" placeholder="ex.: 25055"></div>
     <div class="fld"><label for="inData">Data da embalagem</label>
       <input type="date" id="inData"></div>
+    <!-- Quem está conferindo. Fica gravado no aparelho: escolhe no início
+         do turno e vale para todos os lotes; a tela limpa não apaga. -->
+    <div class="fld" style="min-width:200px"><label for="inConferente">Conferido por</label>
+      <select id="inConferente"></select></div>
   </div>
   <div id="listaConf"></div>
 </div>
@@ -575,7 +583,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.6.0";
+const VERSAO = "3.7.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -592,6 +600,7 @@ const CFG_PADRAO = {
 const CFG_KEY  = "trilhosCfg";
 const FILA_KEY = "trilhosFila";
 const RASC_KEY = "trilhosRascunho";
+const CONFERENTE_KEY = "trilhosConferente";
 
 function lerCfg(){
   try{ return Object.assign({}, CFG_PADRAO, JSON.parse(localStorage.getItem(CFG_KEY) || "{}")); }
@@ -617,6 +626,7 @@ const S = {
   colab: [],                // equipe, da aba COLABORADORES
   opColab: new Map(),       // nº da OP -> matrícula de quem está nela hoje
   conf: new Map(),          // "trilho|j" -> { div:true, obs:"" }
+  conferente: "",           // matrícula de quem está conferindo — fica no aparelho
   loteConf: "",             // lote dono das marcas em `conf` — trocar o lote limpa
   confSalva: true           // false = há marca que ainda não foi gravada
 };
@@ -979,6 +989,7 @@ function renderConf(){
      sem mapa — e dizer o que falta é mais simples que sumir. */
   const lista = $("listaConf");
   renderProdChip();
+  renderConferente();
   if(!totalItens()){
     lista.innerHTML = `<div class="vazio-tela">A conferência é de um lote de um produto.
       Digite o <b>código do produto</b> acima e as peças aparecem aqui, agrupadas
@@ -1014,6 +1025,16 @@ function renderConf(){
   guardarRascunho();
 }
 
+const nomeColab = mat => (S.colab.find(c => c.mat === mat) || {}).nome || "";
+function renderConferente(){
+  const sel = $("inConferente");
+  if(!sel) return;
+  if(S.colab.length && S.conferente && !nomeColab(S.conferente)) S.conferente = "";   // saiu da lista
+  sel.innerHTML = ['<option value="">— quem está conferindo? —</option>']
+    .concat(S.colab.map(c => `<option value="${escapa(c.mat)}"${S.conferente === c.mat ? " selected" : ""}>${escapa(c.nome)}</option>`))
+    .join("");
+  sel.className = S.conferente ? "" : "sem";
+}
 function renderProdChip(){
   $("confProd").innerHTML = S.cod && totalItens()
     ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs`
@@ -1104,7 +1125,7 @@ function campoObs(t, j, e){
 
 function podeConferir(){
   return !!(S.lote.trim() && normCod(S.cod) && totalItens() && !pecasPendentes()
-            && !opsSemColab().length && !opsRepetidas().length);
+            && !opsSemColab().length && !opsRepetidas().length && S.conferente);
 }
 
 function atualizarBotaoConf(){
@@ -1115,6 +1136,7 @@ function atualizarBotaoConf(){
     : !normCod(S.cod) ? "falta o código do produto"
     : pecasPendentes() ? `${pecasPendentes()} ${pecasPendentes() === 1 ? "peça ainda sem marca" : "peças ainda sem marca"} — OK no cabeçalho da OP, DIV na peça`
     : opsSemColab().length ? "falta dizer quem está nas OPs " + opsSemColab().join(", ")
+    : !S.conferente ? "falta dizer quem está conferindo (Conferido por)"
     : "a mesma pessoa está nas OPs " + opsRepetidas().join(", ") + " — cada OP tem o seu colaborador");
 }
 
@@ -1147,6 +1169,8 @@ async function gravarConferencia(){
     data_emb: S.dataEmb || hojeISO(),
     cod: normCod(S.cod),
     desc: S.desc,
+    conf_mat: S.conferente,
+    conf_nome: nomeColab(S.conferente),
     linhas: linhasDaConferencia()
   };
   const fila = lerFila();
@@ -1274,8 +1298,9 @@ function agruparRelatorio(linhas){
   linhas.forEach(l => {
     const k = l.lote + "|" + l.cod;
     if(!g.has(k)) g.set(k, { lote: l.lote, data: l.data_emb, cod: l.cod, desc: l.desc,
-                             ts: l.ts || "", ops: new Map(), pecas: [] });
+                             ts: l.ts || "", conferente: "", ops: new Map(), pecas: [] });
     const x = g.get(k);
+    if(l.conf_nome && !x.conferente) x.conferente = l.conf_nome;
     if(l.op > 0 && l.nome && !x.ops.has(l.op)) x.ops.set(l.op, l.nome);
     x.pecas.push(l);
     if((l.ts || "") > x.ts) x.ts = l.ts;
@@ -1307,7 +1332,8 @@ function renderRelatorio(){
         <span class="relcod">${escapa(codErp(g.cod))}</span> <span>${escapa(g.desc)}</span>
         <span class="relres${div.length ? " div" : ""}">${div.length
           ? `${div.length} ${div.length === 1 ? "DIVERGÊNCIA" : "DIVERGÊNCIAS"}` : "OK"}</span></div>
-      <div class="relops">${ops || "<i>—</i> sem colaborador registrado"} · ${g.pecas.length} peças</div>
+      <div class="relops">${ops || "<i>—</i> sem colaborador registrado"} · ${g.pecas.length} peças` +
+        `${g.conferente ? ` · conferido por <b>${escapa(g.conferente)}</b>` : ""}</div>
       ${div.map(p => `<div class="reldiv">⚠ Trilho ${p.trilho} · ${fmtQtd(numDec(p.qtd) || 1)}× ${escapa(p.desc_item)}` +
         (p.obs ? ` — ${escapa(p.obs)}` : "") +
         ` <i>(${p.op ? "OP " + String(p.op).padStart(2, "0") : "antes da 1ª OP"}${p.nome ? " · " + escapa(p.nome) : ""})</i></div>`).join("")}
@@ -1363,7 +1389,7 @@ function caixaConferencia(g){
       <div><small>Código</small><b>${escapa(codErp(g.cod))}</b></div>
       <div><small>Gravada em</small><b>${gravadaEm && !isNaN(gravadaEm)
         ? gravadaEm.toLocaleDateString("pt-BR") + " " + gravadaEm.toTimeString().slice(0, 5) : "—"}</b></div>
-      <div><small>Responsável</small><b>____________________</b></div>
+      <div><small>Conferido por</small><b>${g.conferente ? escapa(g.conferente) : "____________________"}</b></div>
     </div>
     <table>
       <colgroup>
@@ -1409,6 +1435,11 @@ $("inLote").addEventListener("input", ev => {
   S.lote = ev.target.value; atualizarBotaoConf(); guardarRascunho();
 });
 $("inLote").addEventListener("change", abrirConferencia);
+$("inConferente").addEventListener("change", ev => {
+  S.conferente = ev.target.value;
+  try{ localStorage.setItem(CONFERENTE_KEY, S.conferente); }catch(e){}
+  renderConferente(); atualizarBotaoConf();
+});
 $("inData").addEventListener("change", ev => { S.dataEmb = ev.target.value; guardarRascunho(); });
 $("btnGravarConf").addEventListener("click", gravarConferencia);
 
@@ -2286,6 +2317,7 @@ $("cfgProcurar").addEventListener("click", async () => {
   S.dataEmb = hojeISO();
   $("inData").value = S.dataEmb;
 
+  try{ S.conferente = localStorage.getItem(CONFERENTE_KEY) || ""; }catch(e){}
   const r = lerRascunho();
   if(r){
     aplicarMapa({ cod: r.cod, desc: r.desc, nTrilhos: r.nTrilhos, vel: r.vel, esq: r.esq,

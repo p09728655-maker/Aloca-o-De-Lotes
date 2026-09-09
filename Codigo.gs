@@ -44,7 +44,8 @@ var CAB_COLAB = ['MATRICULA', 'NOME', 'ATIVO', 'CADASTRADO_EM'];
    lote, e o que está na tela é o que vale. */
 var CAB_CONF = ['TS', 'LOTE', 'DATA_EMB', 'COD_PRODUTO', 'DESC_PRODUTO',
                 'TRILHO', 'OP', 'COD_ITEM', 'DESC_ITEM', 'QTD',
-                'MATRICULA', 'NOME', 'RESULTADO', 'OBS'];
+                'MATRICULA', 'NOME', 'RESULTADO', 'OBS',
+                'MAT_CONFERENTE', 'NOME_CONFERENTE'];   // quem fez a conferencia
 
 /* O editor do Apps Script lista TODAS as funções no seletor do botão
    Executar, e quem clicar em salvarMapa ali recebe os dados vazios. Sem
@@ -281,7 +282,8 @@ function gravarConferencia(ss, p) {
     return [ts, lote, dataEmb, cod, p.desc || '',
             l.trilho, l.op || 0, l.cod_item || '', l.desc_item || '', l.qtd || '',
             String(l.mat || ''), l.nome || '',
-            l.resultado === 'DIVERGENTE' ? 'DIVERGENTE' : 'OK', l.obs || ''];
+            l.resultado === 'DIVERGENTE' ? 'DIVERGENTE' : 'OK', l.obs || '',
+            String(p.conf_mat || ''), p.conf_nome || ''];
   });
   var ini = sh.getLastRow() + 1;
   garantirLinhas(sh, ini + novas.length - 1);
@@ -312,7 +314,8 @@ function lerConferencia(ss, p) {
     out.push({ trilho: Number(r[5]) || 0, op: Number(r[6]) || 0,
                cod_item: String(r[7] || ''), desc_item: String(r[8] || ''), qtd: r[9],
                mat: String(r[10] || ''), nome: String(r[11] || ''),
-               resultado: String(r[12] || 'OK'), obs: String(r[13] || '') });
+               resultado: String(r[12] || 'OK'), obs: String(r[13] || ''),
+               conf_mat: String(r[14] || ''), conf_nome: String(r[15] || '') });
   });
   return { ok: true, achou: true, data_emb: dataEmb, linhas: out };
 }
@@ -342,7 +345,8 @@ function relatorioConferencia(ss, p) {
                trilho: Number(r[5]) || 0, op: Number(r[6]) || 0,
                cod_item: String(r[7] || ''), desc_item: String(r[8] || ''), qtd: r[9],
                mat: String(r[10] || ''), nome: String(r[11] || ''),
-               resultado: String(r[12] || 'OK'), obs: String(r[13] || '') });
+               resultado: String(r[12] || 'OK'), obs: String(r[13] || ''),
+               conf_mat: String(r[14] || ''), conf_nome: String(r[15] || '') });
   });
   return { ok: true, linhas: out };
 }
@@ -427,6 +431,12 @@ function aba(ss, nome, cab) {
     sh.getRange(1, 1, 1, cab.length).setValues([cab]);
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, cab.length).setFontWeight('bold');
+  } else if (sh.getLastColumn() < cab.length) {
+    /* coluna nova numa aba que ja existe: completa o cabecalho, as linhas
+       antigas ficam em branco nela */
+    var de = sh.getLastColumn();
+    sh.getRange(1, de + 1, 1, cab.length - de).setValues([cab.slice(de)]);
+    sh.getRange(1, de + 1, 1, cab.length - de).setFontWeight('bold');
   }
   return sh;
 }
