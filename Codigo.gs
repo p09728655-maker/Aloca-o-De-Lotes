@@ -257,6 +257,20 @@ function gravarConferencia(ss, p) {
   if (!cod)  return { ok: false, erro: 'cod_produto e obrigatorio' };
   if (!p.linhas || !p.linhas.length) return { ok: false, erro: 'nenhuma peca para conferir' };
 
+  /* Uma pessoa, um posto: a mesma matricula em duas OPs do lote e recusada
+     aqui tambem, para o app antigo ou um POST a mao nao gravarem rodizio
+     de mentira. */
+  var opDaMat = {};
+  for (var i = 0; i < p.linhas.length; i++) {
+    var op = Number(p.linhas[i].op) || 0, mat = String(p.linhas[i].mat || '').trim();
+    if (!op || !mat) continue;
+    if (opDaMat[mat] && opDaMat[mat] !== op) {
+      return { ok: false, erro: 'colaborador ' + mat + ' esta na OP ' + opDaMat[mat] +
+               ' e na OP ' + op + ' — cada OP tem o seu colaborador' };
+    }
+    opDaMat[mat] = op;
+  }
+
   var sh = aba(ss, AB_CONF, CAB_CONF);
   var antigas = linhasDoLote(sh, lote, cod);
   apagarLinhas(sh, antigas);
