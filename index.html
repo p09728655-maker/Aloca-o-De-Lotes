@@ -274,10 +274,13 @@
     display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0}
   #quemLista button span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   #dlgQuem{max-width:440px}
-  #quemLista button i{font-style:normal; font-family:"IBM Plex Mono"; font-size:10.5px;
-    letter-spacing:.06em; color:var(--mut2); flex:none}
+  #quemLista button i{font-style:normal; font-family:"Oswald"; font-size:12.5px; font-weight:700;
+    letter-spacing:.08em; color:#000; background:var(--amber); padding:5px 9px; border-radius:6px; flex:none}
   #quemLista button.on{background:var(--amber-dim); border-color:var(--amber); color:var(--ink)}
-  #quemLista button.usado{opacity:.45}
+  /* quem já está em outra OP: o nome apaga, a etiqueta acende — é ela
+     que o líder precisa ler para saber por que não pode tocar */
+  #quemLista button.usado{background:transparent; border-style:dashed}
+  #quemLista button.usado span{color:var(--mut2)}
   #quemLista button.ninguem{font-family:"Inter"; text-transform:none; font-size:14px; color:var(--mut)}
   #quemLista .nada{grid-column:1 / -1; color:var(--mut2); font-size:13px; padding:10px 4px}
   .opgrupo.antes b{color:var(--mut2)}
@@ -618,7 +621,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.7.1";
+const VERSAO = "3.7.2";
 
 /* ==================================================================
    CONFIGURAÇÃO
