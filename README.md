@@ -24,6 +24,40 @@ Um item é **quantidade + descrição**, como está escrito no mapa da linha. O 
 ERP é **opcional**: preenchido quando a planilha importada já traz, digitado quando
 alguém quiser, e nunca adivinhado.
 
+## A tela do mapa é uma tabela
+
+O mapa se monta **digitando na linha**, nas mesmas colunas da folha impressa —
+trilho, OP, quantidade, descrição, código, marcas. Não há diálogo de item: abrir e
+fechar uma janela por peça fazia digitar um mapa de 21 itens custar mais do que
+digitar na planilha, e era por isso que o PPCP continuava digitando na planilha.
+
+Quem digita planilha espera teclado, e é o que a tela dá:
+
+| tecla | o que faz |
+| --- | --- |
+| digitar numa linha livre | cria a peça naquele trilho — não existe "+ item" |
+| `Enter` | desce para o próximo trilho |
+| `Shift+Enter` | abre a 2ª peça no mesmo trilho (o caso do tampo com a isomanta) |
+| `Ctrl+V` | cola um bloco da planilha: uma linha por trilho, `QTDE<tab>DESCRIÇÃO` |
+| apagar a descrição | devolve o trilho para livre, como apagar a linha na planilha |
+
+**Trilho livre é onde se digita**, e por isso não gasta botão nenhum: fica apagado
+para o olho pular direto para o que tem peça, e acende quando recebe o cursor.
+
+`op`, `ins` e `susp` continuam sendo as mesmas três regras de sempre — só saíram da
+frente. São um toque na própria linha, onde a informação já está, e ficam quase
+invisíveis até o cursor chegar ali. **O que está ligado continua aceso o tempo todo**:
+a divisa de OP é uma régua laranja atravessando a tabela, como no mapa impresso, e é
+ela que se lê de longe.
+
+Mapa com 16 trilhos ou mais **sai partido em duas metades lado a lado** — 28 trilhos
+cabem numa tela de computador sem rolar. Quem decide se elas ficam lado a lado ou
+empilhadas é o `flex-wrap` do CSS, então não existe listener de redimensionamento
+para desencontrar o desenho do estado.
+
+Nada disso mudou o que é **gravado**: trilho vazio, faixa de OP, insumo e suspenso
+continuam iguais na planilha e nas colunas que o Power BI consome.
+
 Isso é decisão de projeto, tirada dos mapas reais: as planilhas
 `MAPA DOS TRILHOS DA EMBALGEM` que a linha usa hoje têm `OP`, um marcador de insumo,
 `QTDE` e `DESCRIÇÃO DA PEÇA` — e **nenhuma coluna de código**. A versão anterior do
