@@ -100,59 +100,100 @@
   .box h2{font-family:var(--f-tit); font-weight:600; font-size:13px; letter-spacing:.1em;
     text-transform:uppercase; margin:0; padding:9px 13px; border-bottom:1px solid var(--line);
     color:var(--mut); display:flex; align-items:center; gap:10px; background:var(--panel)}
+  .box h2 .dica{font-family:var(--f-txt); font-weight:400; font-size:11.5px;
+    letter-spacing:0; text-transform:none; color:var(--mut2)}
+  .box h2 .dica b{font-family:var(--f-mono); font-weight:500; color:var(--mut)}
+  @media(max-width:900px){ .box h2 .dica{display:none} }
   .box h2 em{font-style:normal; font-family:var(--f-mono); font-size:11px;
     letter-spacing:.04em; text-transform:none; color:var(--amber); margin-left:auto}
   .vazio-tela{padding:26px 16px; color:var(--mut2); font-size:13.5px; line-height:1.6; text-align:center}
   .vazio-tela b{color:var(--mut)}
 
-  /* ---------- trilhos ---------- */
-  .opsep{display:flex; align-items:center; gap:9px; padding:6px 13px;
-    background:#0b0d10; border-bottom:1px solid var(--line);
-    font-family:var(--f-tit); font-size:13px; letter-spacing:.1em; color:var(--amber)}
-  .opsep span{flex:1 1 auto}
-  .opsep button{min-height:34px; padding:0 12px; font-size:13px}
+  /* ---------- mapa dos trilhos ---------- */
+  /* Tabela, e não um cartão por trilho. O mapa nasce em planilha — a linha
+     preenche a folha impressa, o PPCP digita no computador —, então a tela
+     de montagem tem que aceitar o que quem digita planilha espera: Tab,
+     Enter e Ctrl+V. Os 28 cartões de antes, com quatro botões cada e mais
+     três por peça, davam cerca de 175 alvos de toque numa tela que, por
+     configuração, nem é tocada: o tablet da esteira só abre a Conferência. */
+  #listaTrilhos{display:flex; flex-wrap:wrap; align-items:flex-start}
+  .tmapa{flex:1 1 540px; min-width:0; border-collapse:collapse; table-layout:fixed}
+  .tmapa + .tmapa{border-left:1px solid var(--line)}
+  .tmapa th{font-family:var(--f-tit); font-weight:500; font-size:10px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--mut); text-align:left; white-space:nowrap;
+    padding:6px 7px; border-bottom:1px solid var(--line)}
+  .tmapa th.c{text-align:center}
+  .tmapa td{border-bottom:1px solid var(--line); padding:1px 3px; vertical-align:middle}
+  .tmapa tr:last-child td{border-bottom:none}
+  /* Trilho livre é a maioria enquanto o mapa está sendo montado: fica
+     apagado para o olho pular direto para o que tem peça, e acende inteiro
+     quando recebe o cursor. Não gasta linha nem botão: é onde se digita. */
+  .tmapa tr.livre{color:var(--mut2)}
+  .tmapa tr.livre:focus-within{background:#0e1013}
+  /* A divisa de OP é uma régua atravessando a tabela, como no mapa impresso,
+     em vez de uma linha inteira só para dizer onde a OP começa. */
+  .tmapa tr.inicio > td{border-top:2px solid var(--amber)}
 
-  .trilho{border-bottom:1px solid var(--line); padding:4px 11px; display:flex;
-    gap:8px; align-items:flex-start; min-height:40px}
-  .trilho:last-child{border-bottom:none}
-  .trilho .num{font-family:var(--f-tit); font-weight:700; font-size:16px; width:38px;
-    height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-    background:var(--panel2); border:1px solid var(--line); color:var(--mut); flex:none}
-  .trilho.cheia .num{color:var(--ink); border-color:var(--mut2)}
-  .trilho .corpo{flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:5px;
-    justify-content:center; padding-top:2px}
-  /* Trilho vazio é a maioria enquanto o mapa está sendo montado. Um traço
-     marca o lugar sem gastar altura de tela: 30 trilhos precisam caber. */
-  /* Trilho vazio numa linha só, de 30px: só + e OP. Subir e descer um
-     trilho vazio não move peça nenhuma — quem move é o ↑↓ do trilho cheio. */
-  .trilho.vazia{padding:2px 11px; min-height:0; align-items:center}
-  .trilho.vazia .num{height:26px; width:38px; font-size:13px}
-  .trilho.vazia .acoes{grid-template-columns:1fr 1fr}
-  .trilho .risco{height:2px; border-radius:1px; background:var(--line); width:56px}
+  .tmapa .ctr{text-align:center; padding:0; position:relative}
+  .tmapa .ctr b{font-family:var(--f-tit); font-weight:700; font-size:15px; color:var(--ink)}
+  .tmapa tr.livre .ctr b{font-weight:400; color:var(--mut2)}
+  /* Segunda peça do mesmo trilho: o número não se repete, senão o olho lê
+     dois trilhos onde há um. */
+  .tmapa tr.seg .ctr b{font-size:11px; color:var(--mut2); font-weight:400}
+  .tmapa .mv{display:none; position:absolute; right:1px; top:0; bottom:0;
+    flex-direction:column; justify-content:center; gap:1px}
+  .tmapa tr.cheia:hover .mv, .tmapa tr.cheia:focus-within .mv{display:flex}
+  .tmapa .mv button{min-height:15px; min-width:17px; padding:0; font-size:9px; line-height:1;
+    border-radius:3px; background:var(--panel2); border:1px solid var(--line); color:var(--mut2)}
 
-  /* 2×2 de botões miúdos: adicionar item, marcar início de OP, e mover o
-     trilho inteiro para cima ou para baixo. */
-  .acoes{display:grid; grid-template-columns:1fr 1fr; gap:3px; flex:none}
-  .acoes button{min-height:20px; min-width:32px; padding:0 7px; font-size:11.5px;
-    line-height:1; border-radius:5px; letter-spacing:.02em}
-  .trilho.vazia .acoes button{min-height:22px}
-  .acoes button.on{background:var(--amber-dim); border-color:var(--amber); color:var(--amber)}
+  .tmapa input{background:transparent; border:1px solid transparent; color:var(--ink);
+    font-family:var(--f-txt); font-size:13.5px; padding:5px 7px; min-height:34px;
+    width:100%; border-radius:6px}
+  .tmapa input:hover{border-color:var(--line)}
+  .tmapa input:focus{border-color:var(--amber); background:var(--panel2); outline:none}
+  .tmapa input::placeholder{color:#565e68}
+  .tmapa input.qtd{font-family:var(--f-tit); font-weight:700; font-size:15px;
+    color:var(--amber); text-align:center; padding:5px 2px}
+  .tmapa tr.livre input.qtd{color:var(--mut2)}
+  .tmapa input.cod{font-family:var(--f-mono); font-size:11px; color:var(--mut2); text-align:center}
 
-  .chip{display:flex; align-items:center; gap:6px; background:var(--panel2);
-    border:1px solid var(--line); border-radius:8px; padding:3px 4px 3px 8px}
-  .chip .ctxt{flex:1 1 0; min-width:0; font-size:12.5px; line-height:1.25;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer}
-  .chip .ctxt b{font-family:var(--f-tit); font-size:14px; color:var(--amber)}
-  .chip .ctxt i{font-style:normal; font-family:var(--f-mono); font-size:10px; color:var(--mut2)}
-  .chip.emb{border-color:#3a2f52}
-  .chip.emb .ctxt b{color:var(--roxo)}
+  /* OP, insumo e suspenso: um toque onde a informação já está, em vez de
+     abrir um diálogo com dois checkboxes por item. A regra não mudou — ela
+     só saiu da frente. */
+  .mk{min-height:28px; min-width:30px; padding:0 6px; font-size:10.5px; letter-spacing:.04em;
+    line-height:1; border-radius:5px; background:transparent; border:1px solid transparent;
+    color:#565e68}
+  .tmapa tr:hover .mk, .tmapa tr:focus-within .mk{border-color:var(--line)}
+  .mk.on{border-color:currentColor !important}
+  .mk.op{width:100%; font-size:11px}
+  /* "op", "ins" e "susp" repetidos em 28 linhas viram uma parede de texto
+     cinza. Ficam quase invisíveis até o olho — e o cursor — chegar na
+     linha. A divisa e as marcas LIGADAS continuam acesas o tempo todo:
+     são elas que se lê de longe. */
+  .mk:not(.on){color:#343a42}
+  .tmapa tr:hover .mk:not(.on), .tmapa tr:focus-within .mk:not(.on){color:var(--mut2)}
+  .mk.op.on{color:var(--amber); background:var(--amber-dim)}
+  .mk.ins.on{color:var(--roxo); background:#241c33}
+  .mk.susp.on{color:var(--steel); background:#152431}
+  .tmapa .cmk{white-space:nowrap; text-align:center}
+
+  /* Tela estreita não é onde se monta mapa: a coluna do código sai antes de
+     espremer a descrição da peça, que é a única que a linha lê. */
+  @media(max-width:780px){ .tmapa .ccod{display:none} }
+  /* Dedo, e não mouse: os alvos crescem e as marcas param de depender de
+     hover, que no toque não existe. */
+  @media(pointer:coarse){
+    .tmapa input{min-height:40px}
+    .mk{min-height:36px; min-width:34px; border-color:var(--line)}
+    .tmapa .mv{display:flex}
+    .tmapa .mv button{min-height:17px}
+  }
+
   /* "suspenso" é etiqueta de estado, não de tipo: fica fora do texto que
      corta com reticências, senão some justo na descrição comprida. */
   .tag{flex:none; font-family:var(--f-tit); font-size:9.5px; letter-spacing:.05em;
     color:var(--steel); border:1px solid var(--steel); border-radius:5px;
     padding:1px 5px; white-space:nowrap}
-  .chip button{min-height:28px; min-width:30px; padding:0; font-size:14px; line-height:1;
-    border-radius:6px; flex:none}
 
   .rodape{position:fixed; left:0; right:0; bottom:0; z-index:60;
     display:flex; flex-direction:column}
@@ -225,9 +266,9 @@
   /* Tablet deitado: duas colunas, e 30 trilhos cabem numa tela sem rolar.
      Em pé (menos de 1000px) continua uma coluna. */
   @media(min-width:1000px){
-    #listaTrilhos, #listaConf{columns:2; column-gap:14px; column-rule:1px solid var(--line)}
-    #listaTrilhos > *, #listaConf > *{break-inside:avoid}
-    .opsep, .opgrupo{break-after:avoid}
+    #listaConf{columns:2; column-gap:14px; column-rule:1px solid var(--line)}
+    #listaConf > *{break-inside:avoid}
+    .opgrupo{break-after:avoid}
     .obsdiv{break-before:avoid}
     .vazio-tela{column-span:all}
   }
@@ -482,7 +523,8 @@
 </div>
 
 <div class="box" data-aba="mapa">
-  <h2>Trilhos <em id="selTxt"></em></h2>
+  <!-- A instrução mora aqui, uma vez, e não repetida em cada trilho livre. -->
+  <h2>Trilhos <small class="dica">digite na linha · <b>Enter</b> desce um trilho · <b>Shift+Enter</b> abre 2ª peça no mesmo · <b>Ctrl+V</b> cola da planilha</small><em id="selTxt"></em></h2>
   <div id="listaTrilhos"><div class="vazio-tela">
     Digite o <b>código do produto</b> para abrir o mapa salvo,
     ou use <b>Importar Excel</b> para trazer um mapa que já existe em planilha.
@@ -588,33 +630,6 @@
   </div>
 </dialog>
 
-<dialog id="dlgItem">
-  <h3 id="itemTit">Item do trilho</h3>
-  <div class="body">
-    <div class="fld"><label for="itDesc">Descrição da peça</label>
-      <input type="text" id="itDesc" autocomplete="off"
-             placeholder="como está escrito no mapa da linha"></div>
-    <div style="display:flex; gap:11px">
-      <div class="fld mini"><label for="itQtd">Quantidade</label>
-        <input type="number" id="itQtd" min="1" step="1" value="1" inputmode="numeric"></div>
-      <div class="fld grow"><label for="itCod">Código (opcional)</label>
-        <input type="text" id="itCod" inputmode="numeric" autocomplete="off"></div>
-    </div>
-    <label class="check"><input type="checkbox" id="itInsumo">
-      <span><b>É insumo de embalagem</b> — isomanta, isopor, tabuleiro, caixa, fita.
-      Sai na coluna <i>Insumo</i> da folha impressa, separado da peça.</span></label>
-    <label class="check"><input type="checkbox" id="itSusp">
-      <span><b>Fica suspenso</b> — pendurado no suporte acima da esteira, e não
-      deitado no trilho. É o caso da isomanta. Continua no mesmo trilho; só sai
-      marcado na tela e na folha impressa.</span></label>
-  </div>
-  <div class="foot">
-    <button class="gho" id="itExcluir" style="color:var(--red); margin-right:auto">Excluir</button>
-    <button class="gho" id="itCancel">Cancelar</button>
-    <button class="pri" id="itOk">Salvar item</button>
-  </div>
-</dialog>
-
 <dialog id="dlgImp">
   <h3>Importar mapa</h3>
   <div class="body" id="impCorpo" style="max-height:62vh; overflow-y:auto"></div>
@@ -649,7 +664,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.10.0";
+const VERSAO = "3.11.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -686,7 +701,6 @@ const S = {
   trilhos: [],              // índice 0 = trilho 1 → { itens:[{cod,desc,qtd,insumo,suspenso}] }
   inicioOp: new Set(),      // trilhos onde começa uma OP nova
   produtos: [],             // cabeçalhos dos mapas já salvos na planilha
-  edit: null,               // { t, j } — j < 0 é item novo
 
   /* ---- conferência da caixa de amostra ---- */
   lote: "", dataEmb: "",
@@ -720,7 +734,6 @@ function numDec(x){
 }
 const fmtQtd = n => Number.isInteger(n) ? String(n)
   : (Math.round(n * 1000) / 1000).toString().replace(".", ",");
-const curto = s => { s = String(s || ""); return s.length > 46 ? s.slice(0, 45) + "…" : s; };
 
 /* A velocidade da esteira é número, e é assim que ela vai para a planilha —
    coluna numérica é o que o Power BI quer, e é o que impede o Sheets de
@@ -934,8 +947,37 @@ function render(){
   guardarRascunho();
 }
 
+/* ==================================================================
+   MAPA DOS TRILHOS — a tabela
+   Uma linha por peça; trilho sem peça é uma linha livre, e é nela que se
+   digita a próxima. Tudo se edita onde está: quantidade, descrição,
+   código, a divisa de OP e as marcas de insumo e suspenso. Não há mais
+   diálogo de item — abrir e fechar uma janela por peça era o que fazia
+   digitar um mapa de 21 itens custar mais do que digitar na planilha, e
+   era por isso que o PPCP continuava digitando na planilha.
+   O que está gravado não mudou: trilho vazio, faixa de OP, insumo e
+   suspenso continuam iguais na planilha e no Power BI.
+   ================================================================== */
+
+/* A tabela é redesenhada a cada mudança de ESTRUTURA — peça que entra ou
+   sai, trilho que troca de lugar, divisa de OP —, nunca a cada tecla:
+   redesenhar no meio de uma palavra tiraria o cursor do campo. Digitar
+   mexe no estado e atualiza só os contadores, e o desenho se acerta
+   quando o campo perde o foco. FOCO leva o cursor de volta quando o
+   redesenho é inevitável. */
+let FOCO = null;   // { t, j, campo }
+/* Trocar o innerHTML tira do ar o campo que está com o cursor, e o
+   navegador dispara o focusout dele no meio da troca. Sem esta trava o
+   handler de baixo chamava render() dentro do render. */
+let DESENHANDO = false;
+
 function renderTrilhos(){
   const box = $("listaTrilhos");
+  DESENHANDO = true;
+  try{ desenharTrilhos(box); } finally{ DESENHANDO = false; }
+}
+
+function desenharTrilhos(box){
   if(!S.trilhos.length){
     box.innerHTML = `<div class="vazio-tela">
       Digite o <b>código do produto</b> para abrir o mapa salvo,
@@ -943,78 +985,271 @@ function renderTrilhos(){
     $("selTxt").textContent = "";
     return;
   }
-  box.innerHTML = "";
-  for(let t = 1; t <= S.nTrilhos; t++){
-    if(S.inicioOp.has(t)) box.appendChild(faixaOp(opDoTrilho(t), t));
-    box.appendChild(linhaTrilho(t));
+  /* Mapa grande sai partido em duas metades, como era com os cartões: 28
+     trilhos cabem numa tela de computador sem rolar. Quem decide se ficam
+     lado a lado ou empilhadas é o flex-wrap do CSS — em tela estreita elas
+     descem na ordem, e não existe listener de redimensionamento para
+     desencontrar o desenho do estado. */
+  const corte = S.nTrilhos >= 16 ? Math.ceil(S.nTrilhos / 2) : S.nTrilhos;
+  box.innerHTML = tabelaTrilhos(1, corte)
+    + (corte < S.nTrilhos ? tabelaTrilhos(corte + 1, S.nTrilhos) : "");
+  atualizarResumoMapa();
+  aplicarFoco();
+}
+
+function tabelaTrilhos(de, ate){
+  const linhas = [];
+  for(let t = de; t <= ate; t++){
+    const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
+    if(!itens.length) linhas.push(linhaMapa(t, -1, null, 0, true));
+    else itens.forEach((x, j) => linhas.push(linhaMapa(t, j, x, j, j === itens.length - 1)));
   }
+  return `<table class="tmapa">
+    <colgroup>
+      <col style="width:62px"><col style="width:70px"><col style="width:54px">
+      <col><col class="ccod" style="width:84px"><col style="width:92px"><col style="width:34px">
+    </colgroup>
+    <thead><tr>
+      <th class="c">Trilho</th><th>OP</th><th class="c">Qtd</th>
+      <th>Descrição da peça</th><th class="c ccod">Código</th>
+      <th class="c">Marcas</th><th></th>
+    </tr></thead>
+    <tbody>${linhas.join("")}</tbody></table>`;
+}
+
+
+/* `idx` é a posição da peça dentro do trilho e `ult` diz se é a última:
+   o número do trilho e a divisa de OP saem só na primeira linha, e o
+   botão de acrescentar peça só na última — senão um trilho com duas
+   peças vira dois trilhos aos olhos de quem lê. */
+function linhaMapa(t, j, x, idx, ult){
+  const primeira = idx === 0;
+  const ini = S.inicioOp.has(t);
+  const cls = (x ? "cheia" : "livre")
+    + (ini && primeira ? " inicio" : "")
+    + (primeira ? "" : " seg");
+  const val = v => escapa(v ?? "");
+  return `<tr class="${cls}" data-t="${t}" data-j="${j}">
+    <td class="ctr"><b>${primeira ? t : "·"}</b>${x && primeira ? `<span class="mv">
+        <button type="button" data-a="cima" title="subir o trilho ${t}" aria-label="subir o trilho ${t}">▲</button>
+        <button type="button" data-a="baixo" title="descer o trilho ${t}" aria-label="descer o trilho ${t}">▼</button>
+      </span>` : ""}</td>
+    <td>${primeira ? `<button type="button" class="mk op${ini ? " on" : ""}" data-a="op"
+        title="${ini ? "tirar a divisa: a OP deixa de começar aqui" : "começar uma OP nova neste trilho"}"
+        >${ini ? "OP " + String(opDoTrilho(t)).padStart(2, "0") : "op"}</button>` : ""}</td>
+    <td><input class="qtd" data-c="qtd" inputmode="decimal" autocomplete="off"
+        value="${x ? val(fmtQtd(x.qtd)) : ""}"
+        aria-label="quantidade no trilho ${t}"></td>
+    <td><input class="desc" data-c="desc" autocomplete="off" value="${x ? val(x.desc) : ""}"
+        placeholder="${x ? "" : "livre"}"
+        aria-label="descrição da peça no trilho ${t}"></td>
+    <td class="ccod"><input class="cod" data-c="cod" inputmode="numeric" autocomplete="off"
+        value="${x ? val(codErp(x.cod)) : ""}" aria-label="código do item no trilho ${t}"></td>
+    <td class="cmk">${x ? htmlMarcas(x) : ""}</td>
+    <td>${x && ult ? HTML_ADD : ""}</td>
+  </tr>`;
+}
+
+/* As duas células que a linha livre ainda não tem. Ficam aqui, e não só
+   dentro de `linhaMapa`, porque a peça que nasce ao digitar precisa
+   mostrar a marca proposta no mesmo instante — esperar o redesenho do
+   blur era ver "ISOPOR" digitado e nenhum roxo na tela. */
+const htmlMarcas = x => `
+  <button type="button" class="mk ins${x.insumo ? " on" : ""}" data-a="ins"
+    title="é insumo de embalagem — sai na coluna Insumo da folha impressa">ins</button>
+  <button type="button" class="mk susp${x.suspenso ? " on" : ""}" data-a="susp"
+    title="fica suspenso no suporte acima da esteira, e não deitado no trilho">susp</button>`;
+const HTML_ADD = `<button type="button" class="mk" data-a="add"
+    title="mais uma peça neste mesmo trilho">+</button>`;
+
+function atualizarResumoMapa(){
   const n = totalItens();
   $("selTxt").textContent = n ? `${n} ${n === 1 ? "item" : "itens"} no mapa` : "mapa vazio";
 }
 
-function faixaOp(op, t){
-  const el = document.createElement("div");
-  el.className = "opsep";
-  el.innerHTML = `<span>OP ${String(op).padStart(2, "0")} — começa no trilho ${t}</span>
-    <button class="gho">tirar divisa</button>`;
-  el.querySelector("button").addEventListener("click", () => alternarOp(t));
-  return el;
+/* Atualiza o que muda ao digitar sem redesenhar a tabela. */
+function renderLeve(){
+  atualizarResumoMapa(); renderKpi(); atualizarBotoes(); guardarRascunho();
 }
 
-function linhaTrilho(t){
-  const tr = S.trilhos[t - 1] || { itens: [] };
-  const vazio = !tr.itens.length;
-  const el = document.createElement("div");
-  el.className = "trilho" + (vazio ? " vazia" : " cheia");
+function aplicarFoco(){
+  if(!FOCO) return;
+  const { t, j, campo } = FOCO; FOCO = null;
+  const tr = document.querySelector(`#listaTrilhos tr[data-t="${t}"][data-j="${j}"]`);
+  const el = tr && tr.querySelector(`[data-c="${campo}"]`);
+  if(!el) return;
+  el.focus();
+  if(el.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length);
+}
 
-  const num = document.createElement("span");
-  num.className = "num"; num.textContent = t;
+/* ------------------------------------------------------------------
+   Edição na própria linha
+   ------------------------------------------------------------------ */
+const trDaLinha = el => el.closest && el.closest("#listaTrilhos tr[data-t]");
+const itemDaLinha = tr => {
+  const t = +tr.dataset.t, j = +tr.dataset.j;
+  return j >= 0 ? ((S.trilhos[t - 1] || { itens: [] }).itens[j] || null) : null;
+};
 
-  const corpo = document.createElement("div");
-  corpo.className = "corpo";
-  if(vazio){
-    corpo.innerHTML = '<div class="risco"></div>';
+function pintarMarcas(tr, x){
+  const b = a => tr.querySelector(`[data-a="${a}"]`);
+  if(b("ins"))  b("ins").classList.toggle("on", !!x.insumo);
+  if(b("susp")) b("susp").classList.toggle("on", !!x.suspenso);
+}
+
+/* Digitar numa linha livre é o que cria a peça: não existe "+ item". */
+function criarNaLinha(tr){
+  const t = +tr.dataset.t;
+  limparConfPorMudancaDoMapa();
+  const x = { cod: "", desc: "", qtd: 1, insumo: false, suspenso: false };
+  S.trilhos[t - 1].itens.push(x);
+  tr.dataset.j = String(S.trilhos[t - 1].itens.length - 1);
+  tr.classList.remove("livre"); tr.classList.add("cheia");
+  tr.querySelector(".cmk").innerHTML = htmlMarcas(x);
+  tr.querySelector(".cmk").nextElementSibling.innerHTML = HTML_ADD;
+  return x;
+}
+
+$("listaTrilhos").addEventListener("input", ev => {
+  const el = ev.target, campo = el.dataset && el.dataset.c;
+  if(!campo) return;
+  const tr = trDaLinha(el);
+  if(!tr) return;
+  let x = itemDaLinha(tr);
+  if(!x){
+    if(!el.value.trim()) return;      // ainda vazio: nada a criar
+    x = criarNaLinha(tr);
+  }
+  if(campo === "desc"){
+    x.desc = el.value;
+    /* O app propõe insumo e suspenso pela descrição enquanto ninguém
+       tiver mexido nas marcas à mão. Quem mexeu, manda. */
+    if(!x.marcaManual){
+      x.insumo = ehInsumo(x.desc); x.suspenso = ehSuspenso(x.desc);
+      pintarMarcas(tr, x);
+    }
+  }else if(campo === "qtd"){
+    x.qtd = Math.max(1, numDec(el.value) || 1);
+  }else if(campo === "cod"){
+    x.cod = normCod(el.value);
+  }
+  renderLeve();
+});
+
+/* Descrição apagada é trilho livre de novo — como apagar a linha na
+   planilha. Redesenha SÓ nesse caso: redesenhar a cada campo que perde o
+   foco destruía o botão que o dedo estava clicando entre o apertar e o
+   soltar, e o clique se perdia no caminho. */
+$("listaTrilhos").addEventListener("focusout", ev => {
+  if(DESENHANDO) return;
+  const el = ev.target, campo = el.dataset && el.dataset.c;
+  if(!campo) return;
+  const tr = trDaLinha(el);
+  if(!tr) return;
+  const x = itemDaLinha(tr);
+  if(!x || String(x.desc).trim()) return;
+  limparConfPorMudancaDoMapa();
+  S.trilhos[+tr.dataset.t - 1].itens.splice(+tr.dataset.j, 1);
+  render();
+});
+
+/* Enter desce para o próximo trilho, como a seta do Excel; Shift+Enter
+   abre uma segunda peça no mesmo trilho, que é o caso do tampo com a
+   isomanta. Digitar um mapa inteiro sai sem tirar a mão do teclado. */
+$("listaTrilhos").addEventListener("keydown", ev => {
+  if(ev.key !== "Enter") return;
+  const el = ev.target, campo = el.dataset && el.dataset.c;
+  if(!campo) return;
+  const tr = trDaLinha(el);
+  if(!tr) return;
+  ev.preventDefault();
+  const t = +tr.dataset.t;
+  if(ev.shiftKey){
+    if(!itemDaLinha(tr)) return;
+    limparConfPorMudancaDoMapa();
+    S.trilhos[t - 1].itens.push({ cod: "", desc: "", qtd: 1, insumo: false, suspenso: false });
+    FOCO = { t, j: S.trilhos[t - 1].itens.length - 1, campo: "desc" };
   }else{
-    tr.itens.forEach((x, j) => {
-      const chip = document.createElement("div");
-      chip.className = "chip" + (x.insumo ? " emb" : "");
-      chip.innerHTML =
-        `<span class="ctxt"><b>${fmtQtd(x.qtd)}×</b> ${escapa(curto(x.desc))}` +
-        (x.cod ? ` <i>${escapa(codErp(x.cod))}</i>` : "") + `</span>` +
-        (x.suspenso ? `<span class="tag">suspenso</span>` : "") +
-        `<button class="gho" data-a="menos" aria-label="menos um">−</button>
-         <button class="gho" data-a="mais" aria-label="mais um">+</button>
-         <button class="gho" data-a="tira" aria-label="tirar do trilho">×</button>`;
-      chip.querySelector(".ctxt").addEventListener("click", () => abrirItem(t, j));
-      chip.querySelector('[data-a="menos"]').addEventListener("click", () => {
-        x.qtd = Math.max(1, Math.round((x.qtd - 1) * 1000) / 1000); render(); });
-      chip.querySelector('[data-a="mais"]').addEventListener("click", () => {
-        x.qtd = Math.round((x.qtd + 1) * 1000) / 1000; render(); });
-      chip.querySelector('[data-a="tira"]').addEventListener("click", () => {
-        limparConfPorMudancaDoMapa(); tr.itens.splice(j, 1); render(); });
-      corpo.appendChild(chip);
-    });
+    if(t >= S.nTrilhos) return;
+    FOCO = { t: t + 1, j: (S.trilhos[t] || { itens: [] }).itens.length ? 0 : -1, campo };
   }
+  render();
+});
 
-  const acoes = document.createElement("div");
-  acoes.className = "acoes";
-  acoes.innerHTML =
-    `<button class="gho" data-a="add" title="acrescentar item neste trilho">+</button>
-     <button class="gho${S.inicioOp.has(t) ? " on" : ""}" data-a="op"
-             title="começar uma OP nova neste trilho">OP</button>` +
-    (vazio ? "" :
-    `<button class="gho" data-a="cima" title="subir o trilho">↑</button>
-     <button class="gho" data-a="baixo" title="descer o trilho">↓</button>`);
-  acoes.querySelector('[data-a="add"]').addEventListener("click", () => abrirItem(t, -1));
-  acoes.querySelector('[data-a="op"]').addEventListener("click", () => alternarOp(t));
-  if(!vazio){
-    acoes.querySelector('[data-a="cima"]').addEventListener("click", () => trocaTrilho(t, t - 1));
-    acoes.querySelector('[data-a="baixo"]').addEventListener("click", () => trocaTrilho(t, t + 1));
+/* Tocar num botão da tabela não tira o foco de quem está com ele. Sem
+   isto, o campo Trilhos lá de cima perdia o foco no mesmo instante,
+   disparava o `change`, e o redesenho apagava este botão entre o apertar
+   e o soltar do mouse — o toque não chegava a virar clique. O campo se
+   aplica sozinho pouco depois, e navegar por teclado não passa por aqui. */
+$("listaTrilhos").addEventListener("pointerdown", ev => {
+  if(ev.target.closest && ev.target.closest("button[data-a]")) ev.preventDefault();
+});
+
+$("listaTrilhos").addEventListener("click", ev => {
+  const bt = ev.target.closest && ev.target.closest("button[data-a]");
+  if(!bt) return;
+  const tr = trDaLinha(bt);
+  if(!tr) return;
+  const t = +tr.dataset.t, a = bt.dataset.a;
+  const x = itemDaLinha(tr);
+  if(a === "op"){ alternarOp(t); return; }
+  if(a === "cima"){  trocaTrilho(t, t - 1); return; }
+  if(a === "baixo"){ trocaTrilho(t, t + 1); return; }
+  if(a === "add"){
+    limparConfPorMudancaDoMapa();
+    S.trilhos[t - 1].itens.push({ cod: "", desc: "", qtd: 1, insumo: false, suspenso: false });
+    FOCO = { t, j: S.trilhos[t - 1].itens.length - 1, campo: "desc" };
+    render(); return;
   }
+  if(!x) return;
+  if(a === "ins"){  x.insumo = !x.insumo;     x.marcaManual = true; }
+  if(a === "susp"){ x.suspenso = !x.suspenso; x.marcaManual = true; }
+  pintarMarcas(tr, x);
+  renderLeve();
+});
 
-  el.appendChild(num); el.appendChild(corpo); el.appendChild(acoes);
-  return el;
-}
+/* Colar da planilha: é o caminho que a equipe já usa. Um bloco de células
+   do Excel chega como texto separado por tabulação, uma linha por trilho.
+   Reconhece "QTDE<tab>DESCRIÇÃO" e também a descrição sozinha; a primeira
+   linha colada cai no trilho onde está o cursor e as demais descem daí.
+   Não inventa código nem OP — só peça, que é o que a planilha tem. */
+$("listaTrilhos").addEventListener("paste", ev => {
+  const el = ev.target;
+  if(!el.dataset || el.dataset.c !== "desc") return;
+  const txt = (ev.clipboardData || window.clipboardData).getData("text") || "";
+  const linhas = txt.replace(/\r/g, "").split("\n").map(l => l.trim()).filter(Boolean);
+  if(linhas.length < 2) return;                 // uma célula só: colagem normal
+  const tr = trDaLinha(el);
+  if(!tr) return;
+  ev.preventDefault();
+  const t0 = +tr.dataset.t;
+  const cabem = S.nTrilhos - t0 + 1;
+  const usar = linhas.slice(0, cabem);
+  const ocupados = usar.filter((_, i) => (S.trilhos[t0 + i - 1] || { itens: [] }).itens.length).length;
+  if(ocupados && !confirm(
+      `Colar ${usar.length} ${usar.length === 1 ? "linha" : "linhas"} a partir do trilho ${t0} ` +
+      `substitui o que está em ${ocupados} ${ocupados === 1 ? "trilho" : "trilhos"}.\n\nContinuar?`)) return;
+  if(linhas.length > cabem) setMsgFixa("err",
+    `Couberam ${cabem} das ${linhas.length} linhas coladas: o mapa tem ${S.nTrilhos} trilhos. ` +
+    `Aumente os trilhos e cole o resto.`, 8);
+  limparConfPorMudancaDoMapa();
+  usar.forEach((linha, i) => {
+    const cols = linha.split("\t").map(c => c.trim());
+    let qtd = 1, desc = linha;
+    if(cols.length > 1 && /^[\d.,]+$/.test(cols[0]) && numDec(cols[0]) > 0){
+      qtd = numDec(cols[0]); desc = cols.slice(1).join(" ").trim();
+    }else{
+      desc = cols.join(" ").trim();
+    }
+    if(!desc) return;
+    S.trilhos[t0 + i - 1] = { itens: [{
+      cod: "", desc, qtd: Math.max(1, qtd),
+      insumo: ehInsumo(desc), suspenso: ehSuspenso(desc)
+    }] };
+  });
+  FOCO = { t: Math.min(S.nTrilhos, t0 + usar.length - 1), j: 0, campo: "desc" };
+  render();
+});
 
 function renderKpi(){
   $("kItens").textContent   = totalItens() || "–";
@@ -1655,60 +1890,6 @@ $("colOk").addEventListener("click", async () => {
     setMsg("ok", `${nome} cadastrado.`);
   }catch(e){ erro(e.message); }
 });
-
-/* ==================================================================
-   ITEM DO TRILHO
-   O item é quantidade + descrição, como está escrito no mapa da linha.
-   O código do ERP é opcional: os mapas reais da embalagem nunca tiveram
-   código, e adivinhar código a partir de texto foi de onde vinha metade
-   da complicação da versão anterior. Quem tiver o código, digita.
-   ================================================================== */
-function abrirItem(t, j){
-  S.edit = { t, j };
-  const x = j >= 0 ? S.trilhos[t - 1].itens[j] : null;
-  $("itemTit").textContent = (x ? "Item do trilho " : "Novo item no trilho ") + t;
-  $("itDesc").value   = x ? x.desc : "";
-  $("itQtd").value    = x ? fmtQtd(x.qtd) : "1";
-  $("itCod").value    = x ? codErp(x.cod) : "";
-  $("itInsumo").checked = x ? !!x.insumo : false;
-  $("itSusp").checked   = x ? !!x.suspenso : false;
-  $("itExcluir").hidden = j < 0;
-  $("dlgItem").showModal();
-  setTimeout(() => $("itDesc").focus(), 40);
-}
-
-/* Marcar "insumo" na mão é raro; deixar o app propor pela descrição e o
-   líder desmarcar custa menos que ele lembrar de marcar toda vez. Só
-   propõe enquanto ele não escreveu nada de código nem mexeu na caixa. */
-$("itDesc").addEventListener("input", () => {
-  if(S.edit && S.edit.j < 0){
-    $("itInsumo").checked = ehInsumo($("itDesc").value);
-    $("itSusp").checked   = ehSuspenso($("itDesc").value);
-  }
-});
-
-$("itOk").addEventListener("click", () => {
-  const desc = $("itDesc").value.trim();
-  if(!desc){ $("itDesc").focus(); return; }
-  const item = {
-    cod: normCod($("itCod").value),
-    desc,
-    qtd: Math.max(1, numDec($("itQtd").value) || 1),
-    insumo: $("itInsumo").checked,
-    suspenso: $("itSusp").checked
-  };
-  const { t, j } = S.edit;
-  if(j < 0) limparConfPorMudancaDoMapa();   // item novo desloca as marcas do trilho
-  if(j >= 0) S.trilhos[t - 1].itens[j] = item;
-  else       S.trilhos[t - 1].itens.push(item);
-  $("dlgItem").close(); S.edit = null; render();
-});
-$("itExcluir").addEventListener("click", () => {
-  const { t, j } = S.edit;
-  if(j >= 0){ limparConfPorMudancaDoMapa(); S.trilhos[t - 1].itens.splice(j, 1); }
-  $("dlgItem").close(); S.edit = null; render();
-});
-$("itCancel").addEventListener("click", () => { $("dlgItem").close(); S.edit = null; });
 
 /* ==================================================================
    RASCUNHO LOCAL
@@ -2504,8 +2685,42 @@ $("inCod").addEventListener("blur",   ev => abrirProduto(ev.target.value));
 $("inDesc").addEventListener("input", ev => { S.desc = ev.target.value.trim(); renderProdChip(); guardarRascunho(); });
 $("inVel").addEventListener("input",  ev => { S.vel  = ev.target.value.trim(); guardarRascunho(); });
 $("inEsq").addEventListener("input",  ev => { S.esq  = ev.target.value.trim(); guardarRascunho(); });
-$("inTrilhos").addEventListener("change", ev => {
-  if(ajustarTrilhos(parseInt(ev.target.value, 10))) render();
+/* O número de trilhos se aplica ENQUANTO se digita, e não só quando o
+   campo perde o foco. O motivo é um clique que sumia: o `change` nativo
+   de um campo dispara no blur, e o blur é o mousedown do clique seguinte.
+   Se esse clique for num botão da tabela, o redesenho destruía o botão
+   entre o apertar e o soltar do mouse, o navegador não disparava o
+   `click`, e o toque no OP ou na marca não fazia nada. Aplicando antes,
+   o change do blur chega sem nada para fazer e o clique passa.
+   Por aqui só entra o ajuste que NÃO apaga peça nenhuma: reduzir em cima
+   de trilho ocupado pergunta antes, e ninguém quer essa pergunta a cada
+   dígito digitado. Esse continua esperando o campo ser confirmado. */
+/* Campo vazio ou com bobagem devolve o número que já está valendo, e não
+   1: apagar o campo e sair dele reduzia o mapa para um trilho só. */
+const numTrilhosDoCampo = () => {
+  const n = parseInt($("inTrilhos").value, 10);
+  return Number.isFinite(n) && n >= 1 ? Math.min(60, n) : S.nTrilhos;
+};
+
+let tmrTrilhos = null;
+$("inTrilhos").addEventListener("input", () => {
+  clearTimeout(tmrTrilhos);
+  tmrTrilhos = setTimeout(() => {
+    const n = numTrilhosDoCampo();
+    if(n === S.nTrilhos) return;
+    if(n < S.nTrilhos && S.trilhos.slice(n).some(t => t.itens.length)) return;
+    if(ajustarTrilhos(n)) render();
+  }, 500);
+});
+
+$("inTrilhos").addEventListener("change", () => {
+  clearTimeout(tmrTrilhos);
+  const n = numTrilhosDoCampo();
+  /* Nada mudou — porque o digitar já aplicou, ou porque o campo voltou ao
+     mesmo número. Redesenhar à toa aqui é exatamente o que comia o
+     clique seguinte. */
+  if(n === S.nTrilhos){ $("inTrilhos").value = String(S.nTrilhos); return; }
+  if(ajustarTrilhos(n)) render();
 });
 $("btnLimpar").addEventListener("click", () => {
   if(totalItens() && !confirm("Limpar apaga o mapa que está na tela. O que já foi salvo na planilha continua lá.\n\nContinuar?")) return;
