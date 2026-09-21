@@ -664,7 +664,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.11.0";
+const VERSAO = "3.11.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1174,6 +1174,15 @@ $("listaTrilhos").addEventListener("keydown", ev => {
     FOCO = { t: t + 1, j: (S.trilhos[t] || { itens: [] }).itens.length ? 0 : -1, campo };
   }
   render();
+});
+
+/* Tocar num botão da tabela não tira o foco de quem está com ele. Sem
+   isto, o campo Trilhos lá de cima perdia o foco no mesmo instante,
+   disparava o `change`, e o redesenho apagava este botão entre o apertar
+   e o soltar do mouse — o toque não chegava a virar clique. O campo se
+   aplica sozinho pouco depois, e navegar por teclado não passa por aqui. */
+$("listaTrilhos").addEventListener("pointerdown", ev => {
+  if(ev.target.closest && ev.target.closest("button[data-a]")) ev.preventDefault();
 });
 
 $("listaTrilhos").addEventListener("click", ev => {
@@ -2676,8 +2685,42 @@ $("inCod").addEventListener("blur",   ev => abrirProduto(ev.target.value));
 $("inDesc").addEventListener("input", ev => { S.desc = ev.target.value.trim(); renderProdChip(); guardarRascunho(); });
 $("inVel").addEventListener("input",  ev => { S.vel  = ev.target.value.trim(); guardarRascunho(); });
 $("inEsq").addEventListener("input",  ev => { S.esq  = ev.target.value.trim(); guardarRascunho(); });
-$("inTrilhos").addEventListener("change", ev => {
-  if(ajustarTrilhos(parseInt(ev.target.value, 10))) render();
+/* O número de trilhos se aplica ENQUANTO se digita, e não só quando o
+   campo perde o foco. O motivo é um clique que sumia: o `change` nativo
+   de um campo dispara no blur, e o blur é o mousedown do clique seguinte.
+   Se esse clique for num botão da tabela, o redesenho destruía o botão
+   entre o apertar e o soltar do mouse, o navegador não disparava o
+   `click`, e o toque no OP ou na marca não fazia nada. Aplicando antes,
+   o change do blur chega sem nada para fazer e o clique passa.
+   Por aqui só entra o ajuste que NÃO apaga peça nenhuma: reduzir em cima
+   de trilho ocupado pergunta antes, e ninguém quer essa pergunta a cada
+   dígito digitado. Esse continua esperando o campo ser confirmado. */
+/* Campo vazio ou com bobagem devolve o número que já está valendo, e não
+   1: apagar o campo e sair dele reduzia o mapa para um trilho só. */
+const numTrilhosDoCampo = () => {
+  const n = parseInt($("inTrilhos").value, 10);
+  return Number.isFinite(n) && n >= 1 ? Math.min(60, n) : S.nTrilhos;
+};
+
+let tmrTrilhos = null;
+$("inTrilhos").addEventListener("input", () => {
+  clearTimeout(tmrTrilhos);
+  tmrTrilhos = setTimeout(() => {
+    const n = numTrilhosDoCampo();
+    if(n === S.nTrilhos) return;
+    if(n < S.nTrilhos && S.trilhos.slice(n).some(t => t.itens.length)) return;
+    if(ajustarTrilhos(n)) render();
+  }, 500);
+});
+
+$("inTrilhos").addEventListener("change", () => {
+  clearTimeout(tmrTrilhos);
+  const n = numTrilhosDoCampo();
+  /* Nada mudou — porque o digitar já aplicou, ou porque o campo voltou ao
+     mesmo número. Redesenhar à toa aqui é exatamente o que comia o
+     clique seguinte. */
+  if(n === S.nTrilhos){ $("inTrilhos").value = String(S.nTrilhos); return; }
+  if(ajustarTrilhos(n)) render();
 });
 $("btnLimpar").addEventListener("click", () => {
   if(totalItens() && !confirm("Limpar apaga o mapa que está na tela. O que já foi salvo na planilha continua lá.\n\nContinuar?")) return;

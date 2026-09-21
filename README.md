@@ -50,6 +50,13 @@ invisíveis até o cursor chegar ali. **O que está ligado continua aceso o temp
 a divisa de OP é uma régua laranja atravessando a tabela, como no mapa impresso, e é
 ela que se lê de longe.
 
+O campo **Trilhos** se aplica enquanto se digita, e não só quando o campo perde o
+foco. Não é preciosismo: o `change` de um campo dispara no *blur*, e o blur é o
+mousedown do clique seguinte — o redesenho apagava o botão da tabela entre o apertar e
+o soltar do mouse, e o toque no `OP` ou na marca não fazia nada. Reduzir em cima de
+trilho ocupado continua esperando o campo ser confirmado, porque pergunta antes e
+ninguém quer essa pergunta a cada dígito.
+
 Mapa com 16 trilhos ou mais **sai partido em duas metades lado a lado** — 28 trilhos
 cabem numa tela de computador sem rolar. Quem decide se elas ficam lado a lado ou
 empilhadas é o `flex-wrap` do CSS, então não existe listener de redimensionamento
