@@ -290,7 +290,9 @@ a aba **Ver o mapa**, e ela é **só leitura** — nenhum campo de digitar peça
 botão de marca, nada que estrague o mapa por engano.
 
 O desenho segue a pergunta: o **número do trilho é o maior elemento da linha**, porque
-é o endereço que o olho procura ao voltar da esteira para o tablet; ao lado vem a peça,
+é o endereço que o olho procura ao voltar da esteira para o tablet — e a palavra
+`TRILHO` fica em cima da coluna dele, repetida a cada OP, porque a tela rola e
+cabeçalho que só existe no alto some no primeiro arrasto; ao lado vem a peça,
 com a quantidade em destaque e as etiquetas `insumo` e `suspenso`. As peças ficam
 agrupadas por OP, como na folha impressa, e **trilho livre continua aparecendo** — é o
 que evita empurrar a sequência inteira um endereço para a frente.
