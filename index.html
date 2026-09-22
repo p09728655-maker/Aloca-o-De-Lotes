@@ -84,6 +84,36 @@
     color:var(--mut2); min-height:13px}
   .achou.ok{color:var(--green)} .achou.err{color:var(--red)}
 
+  /* Lista de produtos debaixo do campo do código. Não é <datalist>: o
+     nativo filtra pelo VALOR da opção — o código —, então digitar o nome
+     não achava nada, e o campo aceitava o nome como se fosse código. Foi
+     assim que um mapa foi salvo com "ESCRIVANINHACANTOMALTA" no lugar de
+     501.118.001, e impresso desse jeito na folha da linha. */
+  /* Sai do fluxo em position:fixed, colada ao campo pelo JS: a caixa da
+     Conferência tem overflow:hidden — é ela que arredonda os cantos da
+     tabela — e cortaria a lista pela metade justamente quando ela é mais
+     necessária, com a tela do lote ainda vazia. */
+  .sug{position:fixed; z-index:60; width:420px; max-height:min(52vh, 420px);
+    overflow-y:auto; background:var(--panel2); border:1px solid var(--amber);
+    border-radius:10px; box-shadow:0 18px 30px -10px rgba(0,0,0,.95); padding:4px}
+  .sug[hidden]{display:none}
+  /* O nome ocupa a linha inteira e o código vem embaixo: lado a lado,
+     "COMODA MA…" não identifica produto nenhum. */
+  .sug button{display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+    width:100%; min-width:0; min-height:var(--tap); padding:6px 10px;
+    text-align:left; background:transparent; border:1px solid transparent; border-radius:7px;
+    font-family:var(--f-tit); font-size:15px; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--ink)}
+  .sug button span{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .sug button i{font-style:normal; font-family:var(--f-mono); font-size:11px;
+    letter-spacing:.04em; color:var(--mut); text-transform:none}
+  /* Teclado no computador, dedo no tablet: os dois acendem a mesma linha. */
+  .sug button.ativo{background:var(--amber-dim); border-color:var(--amber)}
+  @media(hover:hover){ .sug button:hover{background:#1f2227} }
+  .sug .nada{padding:10px; color:var(--mut2); font-size:12.5px; line-height:1.55}
+  .sug .nada b{color:var(--mut)}
+  .sug .mais{padding:7px 10px; font-family:var(--f-mono); font-size:10.5px; color:var(--mut2)}
+
   button{font-family:var(--f-tit); font-weight:600; letter-spacing:.04em; font-size:14px;
     background:var(--panel2); color:var(--ink); border:1px solid var(--line);
     border-radius:9px; padding:9px 14px; cursor:pointer; min-height:var(--tap)}
@@ -116,9 +146,12 @@
      Enter e Ctrl+V. Os 28 cartões de antes, com quatro botões cada e mais
      três por peça, davam cerca de 175 alvos de toque numa tela que, por
      configuração, nem é tocada: o tablet da esteira só abre a Conferência. */
-  #listaTrilhos{display:flex; flex-wrap:wrap; align-items:flex-start}
-  .tmapa{flex:1 1 540px; min-width:0; border-collapse:collapse; table-layout:fixed}
-  .tmapa + .tmapa{border-left:1px solid var(--line)}
+  #listaTrilhos{display:block}
+  /* Largura travada: numa tela de 1920 a linha esticada punha o `ins` e o
+     `+` a um metro da descrição, e o olho (e o mouse) tinham de atravessar
+     a tela inteira para marcar uma peça. */
+  .tmapa{width:100%; max-width:1180px; margin:0 auto; min-width:0;
+    border-collapse:collapse; table-layout:fixed}
   .tmapa th{font-family:var(--f-tit); font-weight:500; font-size:10px; letter-spacing:.14em;
     text-transform:uppercase; color:var(--mut); text-align:left; white-space:nowrap;
     padding:6px 7px; border-bottom:1px solid var(--line)}
@@ -488,11 +521,17 @@
 </div>
 
 <div class="setup" data-aba="mapa">
-  <div class="fld" style="min-width:170px">
-    <label for="inCod">Código do produto</label>
-    <input type="text" id="inCod" list="listaProdutos" inputmode="numeric"
-           autocomplete="off" placeholder="ex.: 501.118.001">
-    <datalist id="listaProdutos"></datalist>
+  <!-- Código OU nome. O que o PPCP e a linha sabem de cor é o nome do
+       produto; o código de nove dígitos é o que a planilha guarda e o que
+       sai na folha impressa. O campo aceita os dois e a lista casa os dois.
+       Sem inputmode="numeric": com o teclado numérico do tablet não dá para
+       escrever o nome. -->
+  <div class="fld" style="min-width:230px">
+    <label for="inCod">Código ou nome</label>
+    <input type="text" id="inCod" autocomplete="off" role="combobox"
+           aria-expanded="false" aria-autocomplete="list" aria-controls="sugCod"
+           placeholder="ex.: 501.118.001 ou MALTA">
+    <div class="sug" id="sugCod" role="listbox" hidden></div>
     <span class="achou" id="achouCod"></span>
   </div>
   <div class="fld grow">
@@ -526,7 +565,7 @@
   <!-- A instrução mora aqui, uma vez, e não repetida em cada trilho livre. -->
   <h2>Trilhos <small class="dica">digite na linha · <b>Enter</b> desce um trilho · <b>Shift+Enter</b> abre 2ª peça no mesmo · <b>Ctrl+V</b> cola da planilha</small><em id="selTxt"></em></h2>
   <div id="listaTrilhos"><div class="vazio-tela">
-    Digite o <b>código do produto</b> para abrir o mapa salvo,
+    Digite o <b>código ou o nome do produto</b> para abrir o mapa salvo,
     ou use <b>Importar Excel</b> para trazer um mapa que já existe em planilha.
   </div></div>
 </div>
@@ -538,10 +577,12 @@
        pelo Mapa dos trilhos para conferir um lote. Mesma lista de produtos
        salvos do campo do mapa. -->
   <div class="confbar" id="confBarra">
-    <div class="fld" style="min-width:170px">
-      <label for="inConfCod">Código do produto</label>
-      <input type="text" id="inConfCod" list="listaProdutos" inputmode="numeric"
-             autocomplete="off" placeholder="ex.: 501.118.001">
+    <div class="fld" style="min-width:230px">
+      <label for="inConfCod">Código ou nome</label>
+      <input type="text" id="inConfCod" autocomplete="off" role="combobox"
+             aria-expanded="false" aria-autocomplete="list" aria-controls="sugConfCod"
+             placeholder="ex.: 501.118.001 ou MALTA">
+      <div class="sug" id="sugConfCod" role="listbox" hidden></div>
       <span class="achou" id="confAchou"></span>
     </div>
     <div class="prodchip" id="confProd"></div>
@@ -664,7 +705,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.11.1";
+const VERSAO = "3.12.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -726,6 +767,16 @@ const normCod = s => String(s || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
 /* O ERP escreve 501.118.001 e o app guarda 501118001. É só aparência. */
 const codErp = c => /^\d{9}$/.test(String(c || ""))
   ? String(c).replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3") : String(c || "");
+
+/* Texto em palavras, sem acento e sem pontuação, para a busca por nome:
+   "escriv. canto" casa com "ESCRIVANINHA CANTO MALTA" pelas duas palavras,
+   em qualquer ordem. Diferente de `norm`, que cola tudo numa palavra só. */
+const palavras = s => semAcento(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/* Código do ERP tem dígito e não tem espaço (501.118.001, 501118001). Nome
+   de produto tem espaço, ou é só letra. É essa diferença que impede o nome
+   digitado no lugar do código de virar um produto novo na planilha. */
+const pareceCodigo = t => { const v = String(t || "").trim(); return !!v && !/\s/.test(v) && /\d/.test(v); };
 
 function numDec(x){
   let s = String(x ?? "").trim(); if(!s) return 0;
@@ -821,7 +872,6 @@ async function carregarLista(){
   try{
     const out = await chamar({ acao: "lista" });
     S.produtos = out.produtos || [];
-    montarDatalist();
     try{
       S.colab = (await chamar({ acao: "colaboradores" })).colaboradores || [];
     }catch(e){ S.colab = []; }
@@ -848,17 +898,6 @@ function linhaStatus(){
   if(!CFG.api) p.push('<span style="color:var(--amber)">Apps Script não configurado — não grava</span>');
   p.push(`<span class="versao">v${VERSAO}</span>`);
   setStatus("", p.join(" · "));
-}
-
-function montarDatalist(){
-  const dl = $("listaProdutos");
-  dl.innerHTML = "";
-  S.produtos.forEach(p => {
-    const o = document.createElement("option");
-    o.value = codErp(p.cod);
-    o.label = p.desc || "";
-    dl.appendChild(o);
-  });
 }
 
 /* ==================================================================
@@ -980,19 +1019,18 @@ function renderTrilhos(){
 function desenharTrilhos(box){
   if(!S.trilhos.length){
     box.innerHTML = `<div class="vazio-tela">
-      Digite o <b>código do produto</b> para abrir o mapa salvo,
+      Digite o <b>código ou o nome do produto</b> para abrir o mapa salvo,
       ou use <b>Importar Excel</b> para trazer um mapa que já existe em planilha.</div>`;
     $("selTxt").textContent = "";
     return;
   }
-  /* Mapa grande sai partido em duas metades, como era com os cartões: 28
-     trilhos cabem numa tela de computador sem rolar. Quem decide se ficam
-     lado a lado ou empilhadas é o flex-wrap do CSS — em tela estreita elas
-     descem na ordem, e não existe listener de redimensionamento para
-     desencontrar o desenho do estado. */
-  const corte = S.nTrilhos >= 16 ? Math.ceil(S.nTrilhos / 2) : S.nTrilhos;
-  box.innerHTML = tabelaTrilhos(1, corte)
-    + (corte < S.nTrilhos ? tabelaTrilhos(corte + 1, S.nTrilhos) : "");
+  /* Uma tabela só, do trilho 1 ao último, na ordem da esteira. Partido em
+     duas metades lado a lado cabia numa tela sem rolar, mas custava caro:
+     o trilho 15 ficava no alto da direita, do lado do 1, e a coluna da
+     descrição ficava estreita demais para o nome da peça como ele é escrito
+     ("ESCRIV ENCANTO PRAT/BASE ESQ 497X300X15 MDP 3 (VIRAR UMA COM A
+     OUTRA)"). Rolar a tela é mais barato do que ler o mapa fora de ordem. */
+  box.innerHTML = tabelaTrilhos(1, S.nTrilhos);
   atualizarResumoMapa();
   aplicarFoco();
 }
@@ -1259,7 +1297,13 @@ function renderKpi(){
 
 /* Botão travado sem explicação é o jeito mais rápido de o líder desistir do
    app. Sempre dizer o que falta. */
-function podeSalvar(){ return !!(normCod(S.cod) && totalItens()); }
+/* Nome no lugar do código não salva. O campo CÓDIGO vai para a planilha e
+   sai impresso na folha da linha: um mapa gravado com
+   "ESCRIVANINHACANTOMALTA" ali não casa com nada do ERP e ainda entra na
+   lista de produtos como se fosse outro produto. Código que já existe na
+   planilha passa — arrumar o que já está lá é assunto da planilha. */
+const codValido = c => pareceCodigo(c) || S.produtos.some(p => normCod(p.cod) === normCod(c));
+function podeSalvar(){ return !!(normCod(S.cod) && codValido(S.cod) && totalItens()); }
 
 function atualizarBotoes(){
   $("btnSalvar").disabled = !podeSalvar();
@@ -1271,6 +1315,8 @@ function atualizarBotoes(){
   if(!S.trilhos.length){ setMsg("", ""); return; }
   if(!totalItens())            setMsg("", "Mapa vazio — toque no + de um trilho para acrescentar a peça.");
   else if(!normCod(S.cod))     setMsg("err", "Falta o código do produto para salvar.");
+  else if(!codValido(S.cod))   setMsg("err", `"${codErp(S.cod)}" não é código do ERP — o código tem dígitos (ex.: 501.118.001). ` +
+                                             `Busque o produto pelo nome no campo do código, ou digite o código do ERP.`);
   else if(!totalOps())         setMsg("", `${totalItens()} itens. Sem divisa de OP — marque com o botão OP do trilho onde cada posto começa.`);
   else                         setMsg("ok", `${totalItens()} ${totalItens() === 1 ? "item" : "itens"} · ` +
                                              `${S.nTrilhos} trilhos · ${totalOps()} ${totalOps() === 1 ? "OP" : "OPs"}.`);
@@ -1343,7 +1389,7 @@ function renderConf(){
   renderConferente();
   if(!totalItens()){
     lista.innerHTML = `<div class="vazio-tela">A conferência é de um lote de um produto.
-      Digite o <b>código do produto</b> acima e as peças aparecem aqui, agrupadas
+      Digite o <b>código ou o nome do produto</b> acima e as peças aparecem aqui, agrupadas
       por OP, para dizer quem estava em cada uma e o que veio errado. Depois, o
       <b>lote</b>.</div>`;
     $("confMeta").textContent = "";
@@ -1529,7 +1575,7 @@ function atualizarBotaoConf(){
   const n = pecasPendentes(), sem = opsSemColab(), rep = opsRepetidas();
   const ops = l => l.map(op => String(op).padStart(2, "0")).join(" e ");
   const falta = podeConferir() ? "" :
-      !totalItens()   ? "Digite o código do produto."
+      !totalItens()   ? "Digite o código ou o nome do produto."
     : !normCod(S.cod) ? "Falta o código do produto."
     : n               ? `${n} ${n === 1 ? "peça não conferida" : "peças não conferidas"} — OK na OP ou DIV na peça.`
     : sem.length      ? `Falta quem está ${sem.length === 1 ? "na OP" : "nas OPs"} ${ops(sem)}.`
@@ -1867,7 +1913,7 @@ $("btnLimparConf").addEventListener("click", () => {
   if(S.conf.size && !S.confSalva && !confirm(
     `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\nLimpar apaga o que foi marcado. Continuar?`)) return;
   proximoLote();
-  setMsg("", "Tela limpa. Digite o código do produto.");
+  setMsg("", "Tela limpa. Digite o código ou o nome do produto.");
 });
 
 /* ---- cadastro de colaborador ---- */
@@ -2054,8 +2100,155 @@ function semMapaNaTela(cod, aviso){
   aplicarMapa({ cod, desc: "", nTrilhos: S.nTrilhos, trilhos: [], inicioOp: [] });
   setAchou("achou err", aviso);
 }
-$("inConfCod").addEventListener("change", ev => abrirProduto(ev.target.value, true));
-$("inConfCod").addEventListener("blur",   ev => abrirProduto(ev.target.value, true));
+/* ==================================================================
+   BUSCA DO PRODUTO — pelo código do ERP ou pelo nome
+   Quem está na linha e quem programa conhecem o produto pelo nome
+   ("ESCRIVANINHA CANTO MALTA"); os nove dígitos do ERP ninguém sabe de
+   cor, e a planilha já passa de cem mapas salvos. Antes o campo só
+   aceitava o código: digitar o nome não achava nada e o app tratava o
+   nome COMO SE FOSSE o código — foi assim que nasceu um mapa salvo com o
+   produto "ESCRIVANINHACANTOMALTA", impresso na folha da linha no lugar
+   do 501.118.001.
+   Agora o mesmo campo faz as duas coisas: casa o que foi digitado com o
+   nome e com o código, e o que ele grava é sempre o código do ERP.
+   ================================================================== */
+const MAX_SUG = 40;   // lista maior que isso não se lê: é para escrever mais do nome
+
+/* Todas as palavras digitadas têm de aparecer no nome ou no código, em
+   qualquer ordem: "malta canto" acha "ESCRIVANINHA CANTO MALTA". */
+function buscarProdutos(txt){
+  const alvo = palavras(txt);
+  if(!alvo) return S.produtos.slice();
+  const cod = normCod(txt);
+  const toks = alvo.split(" ");
+  const peso = p => normCod(p.cod) === cod ? 0 : palavras(p.desc).startsWith(alvo) ? 1 : 2;
+  return S.produtos
+    .filter(p => { const pal = palavras(p.desc) + " " + palavras(p.cod);
+                   return toks.every(t => pal.includes(t)); })
+    .sort((a, b) => peso(a) - peso(b) ||
+                    String(a.desc || "").localeCompare(String(b.desc || ""), "pt-BR"));
+}
+
+/* O que fazer com o que ficou escrito no campo quando ninguém escolheu da
+   lista — saiu do campo ou apertou Enter. */
+function resolverProduto(txt, daConf){
+  const t = String(txt || "").trim();
+  if(!t) return abrirProduto("", daConf);
+  /* Sem lista lida (arranque sem rede) todo texto vai para o Apps Script,
+     como sempre foi: é o único jeito de abrir ou montar mapa offline. */
+  if(!S.produtos.length) return abrirProduto(t, daConf);
+
+  const cod = normCod(t);
+  const exato = S.produtos.find(p => normCod(p.cod) === cod);
+  if(exato) return abrirProduto(exato.cod, daConf);
+
+  const achados = buscarProdutos(t);
+  /* Nome escrito inteiro e igual ao da planilha não pede escolha, mesmo
+     que ele seja começo do nome de outro ("HOME ANGEL 1.8"). */
+  const iguais = achados.filter(p => palavras(p.desc) === palavras(t));
+  if(iguais.length === 1) return abrirProduto(iguais[0].cod, daConf);
+  if(achados.length === 1) return abrirProduto(achados[0].cod, daConf);
+  if(achados.length > 1){
+    setAchou("achou", `${achados.length} produtos com esse nome — escolha na lista`);
+    return;
+  }
+  /* Não achou nada: só segue como produto novo o que tem cara de código.
+     Nome digitado no lugar do código não vira produto — o campo que vai
+     para a planilha e para a folha impressa é o código do ERP. */
+  if(pareceCodigo(t)) return abrirProduto(t, daConf);
+  setAchou("achou err", "nenhum produto com esse nome — o código vem do ERP");
+}
+
+/* O mesmo campo nas duas abas: no computador anda pelo teclado (setas,
+   Enter, Esc); no tablet é botão grande de tocar. A escolha grava o
+   código, nunca o texto digitado. */
+function ligarBusca(idIn, idSug, daConf){
+  const inp = $(idIn), pan = $(idSug);
+  let ativo = -1;
+  const botoes = () => [...pan.querySelectorAll("button")];
+
+  function fechar(){
+    pan.hidden = true; ativo = -1;
+    inp.setAttribute("aria-expanded", "false");
+  }
+  function escolher(p){
+    fechar();
+    inp.value = codErp(p.cod);
+    abrirProduto(p.cod, daConf);
+  }
+  /* Colada ao campo, sem passar da direita nem do rodapé da tela. */
+  function posicionar(){
+    const r = inp.getBoundingClientRect();
+    const larg = Math.min(Math.max(r.width, 420), window.innerWidth - 24);
+    pan.style.width     = larg + "px";
+    pan.style.left      = Math.max(12, Math.min(r.left, window.innerWidth - larg - 12)) + "px";
+    pan.style.top       = (r.bottom + 2) + "px";
+    pan.style.maxHeight = Math.min(Math.max(150, window.innerHeight - r.bottom - 14), 560) + "px";
+  }
+  function pintar(){
+    const achados = buscarProdutos(inp.value);
+    pan.innerHTML = "";
+    ativo = -1;
+    if(!S.produtos.length){
+      pan.innerHTML = `<div class="nada">Nenhum mapa salvo lido da planilha — digite o <b>código do ERP</b>.</div>`;
+    }else if(!achados.length){
+      pan.innerHTML = `<div class="nada">Nenhum produto com esse nome. Confira a escrita, ou digite o <b>código do ERP</b> se o produto ainda não tem mapa.</div>`;
+    }else{
+      achados.slice(0, MAX_SUG).forEach(p => {
+        const b = document.createElement("button");
+        b.type = "button"; b.setAttribute("role", "option");
+        b.innerHTML = `<span>${escapa(p.desc || "(sem descrição)")}</span>` +
+                      `<i>${escapa(codErp(p.cod))} · ${p.n_trilhos || 0} trilhos</i>`;
+        /* O clique não pode tirar o foco do campo antes de chegar: o blur é
+           o mousedown do clique, e é ele que dispara a leitura do texto.
+           Sem isto, escolher da lista abria o produto duas vezes. */
+        b.addEventListener("mousedown", ev => ev.preventDefault());
+        b.addEventListener("click", () => escolher(p));
+        pan.appendChild(b);
+      });
+      if(achados.length > MAX_SUG)
+        pan.insertAdjacentHTML("beforeend",
+          `<div class="mais">+${achados.length - MAX_SUG} produtos — escreva mais do nome</div>`);
+    }
+    posicionar();
+    pan.hidden = false;
+    inp.setAttribute("aria-expanded", "true");
+  }
+  function mover(passo){
+    const bs = botoes();
+    if(!bs.length) return;
+    ativo = ativo < 0 ? (passo > 0 ? 0 : bs.length - 1)
+                      : (ativo + passo + bs.length) % bs.length;
+    bs.forEach((b, i) => b.classList.toggle("ativo", i === ativo));
+    bs[ativo].scrollIntoView({ block: "nearest" });
+  }
+
+  inp.addEventListener("input", pintar);
+  inp.addEventListener("focus", pintar);
+  /* Rolar a página com a lista aberta não pode soltar a lista do campo —
+     rolar a própria lista, sim, é para deixar em paz. */
+  window.addEventListener("scroll", ev => { if(!pan.hidden && !pan.contains(ev.target)) posicionar(); }, true);
+  window.addEventListener("resize", () => { if(!pan.hidden) posicionar(); });
+  /* Sair do campo fecha a lista e lê o que ficou escrito — é o mesmo
+     comportamento de antes, quando o campo só aceitava código. */
+  inp.addEventListener("blur", () => { fechar(); resolverProduto(inp.value, daConf); });
+  inp.addEventListener("keydown", ev => {
+    if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){
+      ev.preventDefault();
+      if(pan.hidden) pintar();
+      mover(ev.key === "ArrowDown" ? 1 : -1);
+    }else if(ev.key === "Enter"){
+      ev.preventDefault();
+      const bs = botoes();
+      if(!pan.hidden && ativo >= 0 && bs[ativo]) bs[ativo].click();
+      else { fechar(); resolverProduto(inp.value, daConf); }
+    }else if(ev.key === "Escape" && !pan.hidden){
+      ev.preventDefault(); fechar();
+    }
+  });
+}
+ligarBusca("inCod", "sugCod", false);
+ligarBusca("inConfCod", "sugConfCod", true);
 
 /* ==================================================================
    GRAVAÇÃO — Apps Script + fila local
@@ -2680,8 +2873,6 @@ $("impCancel").addEventListener("click", () => $("dlgImp").close());
 /* ==================================================================
    LIGAÇÕES DA BARRA
    ================================================================== */
-$("inCod").addEventListener("change", ev => abrirProduto(ev.target.value));
-$("inCod").addEventListener("blur",   ev => abrirProduto(ev.target.value));
 $("inDesc").addEventListener("input", ev => { S.desc = ev.target.value.trim(); renderProdChip(); guardarRascunho(); });
 $("inVel").addEventListener("input",  ev => { S.vel  = ev.target.value.trim(); guardarRascunho(); });
 $("inEsq").addEventListener("input",  ev => { S.esq  = ev.target.value.trim(); guardarRascunho(); });

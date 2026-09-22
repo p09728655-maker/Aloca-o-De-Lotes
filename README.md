@@ -57,10 +57,12 @@ o soltar do mouse, e o toque no `OP` ou na marca não fazia nada. Reduzir em cim
 trilho ocupado continua esperando o campo ser confirmado, porque pergunta antes e
 ninguém quer essa pergunta a cada dígito.
 
-Mapa com 16 trilhos ou mais **sai partido em duas metades lado a lado** — 28 trilhos
-cabem numa tela de computador sem rolar. Quem decide se elas ficam lado a lado ou
-empilhadas é o `flex-wrap` do CSS, então não existe listener de redimensionamento
-para desencontrar o desenho do estado.
+A tabela é **uma só, do trilho 1 ao último**, na ordem da esteira. Já foi partida em
+duas metades lado a lado, para caber numa tela sem rolar, e saiu caro: o trilho 15
+ficava no alto da direita, ao lado do 1, e a coluna da descrição ficava estreita
+demais para o nome da peça como a linha escreve — `ESCRIV ENCANTO PRAT/BASE ESQ
+497X300X15 MDP 3 (VIRAR UMA COM A OUTRA)` cortava no meio. Rolar a tela é mais
+barato do que ler o mapa fora de ordem.
 
 Nada disso mudou o que é **gravado**: trilho vazio, faixa de OP, insumo e suspenso
 continuam iguais na planilha e nas colunas que o Power BI consome.
@@ -93,6 +95,41 @@ Power BI separar o que é pego do suporte do que é pego do trilho.
 leva o tampo *e* uma isomanta, e os trilhos 4 a 8 estão vazios. Trilho vazio também é
 gravado: é assim que o número de trilhos da esteira e a fronteira de cada OP voltam
 inteiros da planilha.
+
+## Achar o produto — pelo código ou pelo nome
+
+O campo do produto aceita as duas coisas, nas duas abas. `501.118.001` abre
+direto; `MALTA` lista os mapas salvos com esse nome. A lista casa **todas as
+palavras** digitadas com o nome e com o código, em qualquer ordem e sem acento
+— `canto malta` acha `ESCRIVANINHA CANTO MALTA` —, e mostra embaixo de cada
+nome o código e o número de trilhos, que é o que separa dois produtos de nome
+parecido. No computador anda pelas setas e `Enter`; no tablet é botão de tocar,
+e o campo deixou de abrir o teclado numérico — com ele não dá para escrever o
+nome.
+
+O que a escolha grava é sempre o **código do ERP**: o nome é só o caminho até
+ele. E é por isso que o campo passou a recusar nome que não existe na planilha.
+O `<datalist>` do navegador, que estava ali antes, só compara o que se digita
+com o **código** — digitar o nome não achava nada e o app tratava o nome *como
+se fosse* o código. Foi assim que um mapa foi parar na planilha com o produto
+`ESCRIVANINHACANTOMALTA`, impresso desse jeito no campo `CÓDIGO` da folha que
+fica pendurada na linha.
+
+| o que foi digitado | o que acontece |
+| --- | --- |
+| código que já tem mapa | abre o mapa salvo |
+| nome de um produto só | abre o mapa salvo |
+| nome que serve para mais de um | pede para escolher na lista |
+| código novo (tem dígito, não tem espaço) | produto novo — monta e salva, como sempre |
+| nome que não existe na planilha | avisa, e **não** cria produto |
+
+O *Salvar mapa* trava pelo mesmo motivo: código sem nenhum dígito só passa se já
+existir na planilha. Arrumar o que já foi gravado errado é assunto da planilha,
+não do app — o app só não deixa acontecer de novo.
+
+Sem rede nada disso vale: sem a lista lida da planilha não há como saber o que
+existe, então o campo aceita o que for digitado, como sempre fez. É o que
+permite montar mapa offline.
 
 ## Conferência do lote — uma caixa, não todas
 
@@ -262,7 +299,8 @@ sem adivinhar se `08/09` é agosto ou setembro.
 
 ## Como se usa
 
-**Produto que já tem mapa** — digite o código. O app abre o mapa salvo.
+**Produto que já tem mapa** — digite o código, ou o nome e escolha na lista.
+O app abre o mapa salvo.
 
 **Produto novo, com o mapa já em planilha** — *Importar Excel*. O app lê os dois
 formatos e diz quantos mapas achou no arquivo; toque no que quer abrir, ponha o
@@ -315,7 +353,7 @@ A versão anterior fazia cinco trabalhos empilhados. Quatro saíram:
 
 | Saiu | Por quê |
 |---|---|
-| Busca de lote na programação | só servia para descobrir o código do produto; agora ele é digitado |
+| Busca de lote na programação | só servia para descobrir o código do produto; agora ele é digitado, ou achado pelo nome |
 | Conferência peça a peça em **toda** caixa | a esteira não para; virou amostragem de uma caixa por lote |
 | Rastro e histórico do lote | assunto do ERP |
 | Versionamento do mapa | o histórico de revisões da planilha já resolve |
