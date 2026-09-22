@@ -445,18 +445,24 @@ function linhasDoLote(sh, lote, cod) {
 function dois(n) { n = String(n || ''); return n.length < 2 ? '0' + n : n; }
 
 /* ================================================================
-   LIMPEZA — copia duplicada e codigo que nao e do ERP
+   DUPLICATA — o preco de o codigo ser o nome
 
-   Como nasceu o problema: o campo do codigo aceitava qualquer texto, e o
-   nome do produto digitado ali virava o codigo. Dai a planilha ficou com
-   o mesmo movel salvo duas vezes — uma com 501.118.001 e outra com
-   ESCRIVANINHACANTOMALTA. Na busca do app os dois aparecem com o mesmo
-   nome, e quem abastece nao tem como saber qual e o que vale.
+   O codigo do produto no mapa E o nome dele, sem espaco: ARMARIO ENCANTO
+   vira ARMARIOENCANTO. Decisao do PPCP, e coerente com o processo: os
+   mapas da embalagem nunca tiveram codigo do ERP, e a linha conhece o
+   movel pelo nome. Em troca, escrever o nome de outro jeito cria um
+   produto novo em vez de abrir o que existe:
 
-   Rode SEMPRE listarDuplicados() primeiro: ele nao apaga nada, so mostra
-   o que limparDuplicados() faria. Depois de apagar, o que sai continua no
-   historico de versoes da planilha (Arquivo > Historico de versoes), que
-   e a rede de seguranca desta operacao.
+     COMODA GOLDEN   -> COMODAGOLDEN
+     CÔMODA GOLDEN   -> CMODAGOLDEN     (o normCod tira o O junto com o ^)
+     COMODA GOLDEN 6 GAV -> outro produto ainda
+
+   O app defende as duas primeiras (abre o que existe quando o nome so
+   difere de acento, e pergunta antes de criar um parecido). O que ja
+   entrou na planilha antes disso, quem acha e o relatorio abaixo.
+
+   Nada aqui apaga nada. Apagar mapa e decisao do PPCP: veja qual dos
+   dois esta certo, complete o que faltar, e so entao apagarMapa().
    ================================================================ */
 
 /** Nome comparavel: sem acento, sem pontuacao, uma palavra por espaco. */
@@ -467,116 +473,78 @@ function chaveNome(t) {
 }
 
 /**
- * Codigo do ERP e so digito: 501.118.001 vira 501118001. Letra nenhuma.
- * A regra frouxa de antes ("tem digito e nao tem espaco") deixava passar
- * COMODAMALTA6GAVETAS e HOMERIPADOSUPREMO18CX13 — nome grudado com um
- * numero no meio —, e numa funcao que APAGA linha isso seria apagar o
- * mapa certo achando que e a copia. Codigo com letra, se um dia existir,
- * cai em "decidir" e ninguem perde nada.
- */
-function ehCodigoErp(c) {
-  return /^[0-9]{4,}$/.test(normCod(c));
-}
-
-/**
- * O plano de limpeza, sem tocar em nada. Funcao pura: recebe a lista de
- * produtos e devolve o que fazer com cada um.
+ * Grupos de produtos que sao provavelmente o mesmo movel escrito de dois
+ * jeitos. Funcao pura, para poder ser testada sem planilha.
  *
- *   apagar    — copia sem codigo do ERP que tem gemea com codigo do ERP e
- *               mesmo nome, e que NAO tem mais itens que a gemea.
- *   renomear  — codigo que nao e do ERP e nao tem gemea: o mapa e o unico
- *               que existe, entao apagar perderia trabalho. Quem sabe o
- *               codigo certo e o PPCP; use renomearProduto().
- *   decidir   — nome repetido com dois codigos do ERP, ou a copia sem
- *               codigo tem MAIS itens que a gemea. Nao se apaga no escuro.
+ *   mesmoNome    — o nome, sem acento e sem pontuacao, e identico. Quase
+ *                  sempre e duplicata de verdade.
+ *   umDentroDoOutro — o nome de um comeca com o nome do outro ("COMODA
+ *                  GOLDEN" e "COMODA GOLDEN 6 GAV"). Pode ser duplicata,
+ *                  pode ser produto diferente: quem sabe e o PPCP.
  */
 function planoDeLimpeza(produtos) {
-  var porNome = {};
+  var porNome = {}, mesmoNome = [], umDentroDoOutro = [];
   produtos.forEach(function (p) {
-    var k = chaveNome(p.desc);
-    if (!k) k = '(sem descricao) ' + p.cod;      // sem nome nao agrupa com ninguem
+    var k = chaveNome(p.desc) || chaveNome(p.cod);
+    if (!k) return;
     (porNome[k] = porNome[k] || []).push(p);
   });
 
-  var apagar = [], renomear = [], decidir = [];
   Object.keys(porNome).forEach(function (k) {
-    var grupo = porNome[k];
-    var bons = grupo.filter(function (p) { return ehCodigoErp(p.cod); });
-    var ruins = grupo.filter(function (p) { return !ehCodigoErp(p.cod); });
+    if (porNome[k].length > 1) mesmoNome.push({ nome: k, itens: porNome[k] });
+  });
 
-    if (!ruins.length) {
-      /* Dois codigos do ERP com o mesmo nome podem ser duas caixas do
-         mesmo movel (CX 1/3 e CX 2/3). Nao e duplicata: e o PPCP que diz. */
-      if (bons.length > 1) decidir.push({ nome: k, motivo: 'dois ou mais codigos do ERP com o mesmo nome', itens: grupo });
-      return;
-    }
-    if (!bons.length) {
-      ruins.forEach(function (p) { renomear.push({ nome: k, produto: p }); });
-      return;
-    }
-    if (bons.length > 1) {
-      decidir.push({ nome: k, motivo: 'mais de um codigo do ERP, nao da para saber qual e a gemea', itens: grupo });
-      return;
-    }
-    var bom = bons[0];
-    ruins.forEach(function (p) {
-      if ((p.itens || 0) > (bom.itens || 0)) {
-        decidir.push({ nome: k, motivo: 'a copia sem codigo tem MAIS itens (' + p.itens + ') que ' + bom.cod + ' (' + bom.itens + ')', itens: [p, bom] });
-      } else {
-        apagar.push({ nome: k, produto: p, fica: bom });
-      }
+  var nomes = Object.keys(porNome).sort();
+  nomes.forEach(function (a) {
+    nomes.forEach(function (b) {
+      if (a === b || a.length >= b.length) return;
+      if (b.indexOf(a + ' ') !== 0) return;          // so prefixo em palavra inteira
+      umDentroDoOutro.push({ curto: a, longo: b, itens: porNome[a].concat(porNome[b]) });
     });
   });
-  return { apagar: apagar, renomear: renomear, decidir: decidir };
+  return { mesmoNome: mesmoNome, umDentroDoOutro: umDentroDoOutro };
 }
 
-/** RELATORIO. Nao apaga nada. Rode este primeiro. */
+/** RELATORIO. Nao apaga nada. */
 function listarDuplicados() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var plano = planoDeLimpeza(listarProdutos(ss).produtos);
-  var L = [];
-  L.push('=== APAGAR (' + plano.apagar.length + ') — copia sem codigo do ERP, com gemea ===');
-  plano.apagar.forEach(function (x) {
-    L.push('  ' + x.produto.cod + '  (' + (x.produto.itens || 0) + ' itens, mapa de ' + (x.produto.atualizado || '?').slice(0, 10) + ')' +
-           '   ->  fica ' + x.fica.cod + ' (' + (x.fica.itens || 0) + ' itens, mapa de ' + (x.fica.atualizado || '?').slice(0, 10) + ')   ' + x.nome);
+  var prods = listarProdutos(ss).produtos;
+  var plano = planoDeLimpeza(prods);
+  var L = ['=== ' + prods.length + ' produtos com mapa salvo ===', ''];
+
+  L.push('=== MESMO NOME, CODIGOS DIFERENTES (' + plano.mesmoNome.length + ') ===');
+  plano.mesmoNome.forEach(function (g) {
+    L.push('  ' + g.nome);
+    g.itens.forEach(function (p) {
+      L.push('      ' + p.cod + '   ' + (p.itens || 0) + ' itens   ' + (p.n_trilhos || 0) + ' trilhos   mapa de ' + String(p.atualizado || '?').slice(0, 10));
+    });
+    L.push('      -> decida qual fica e rode apagarMapa("O_OUTRO")');
   });
+
   L.push('');
-  L.push('=== RENOMEAR A MAO (' + plano.renomear.length + ') — sem codigo do ERP e sem gemea ===');
-  plano.renomear.forEach(function (x) {
-    L.push('  ' + x.produto.cod + '  (' + (x.produto.itens || 0) + ' itens)   ' + x.nome +
-           '\n      renomearProduto("' + x.produto.cod + '", "COLE_AQUI_O_CODIGO_DO_ERP")');
-  });
-  L.push('');
-  L.push('=== DECIDIR (' + plano.decidir.length + ') — o script nao mexe ===');
-  plano.decidir.forEach(function (x) {
-    L.push('  ' + x.nome + ': ' + x.motivo);
-    x.itens.forEach(function (p) { L.push('      ' + p.cod + '  ' + (p.itens || 0) + ' itens  mapa de ' + (p.atualizado || '?').slice(0, 10)); });
+  L.push('=== UM NOME DENTRO DO OUTRO (' + plano.umDentroDoOutro.length + ') — pode ser produto diferente ===');
+  plano.umDentroDoOutro.forEach(function (g) {
+    L.push('  "' + g.curto + '"  x  "' + g.longo + '"');
+    g.itens.forEach(function (p) {
+      L.push('      ' + p.cod + '   ' + (p.itens || 0) + ' itens   mapa de ' + String(p.atualizado || '?').slice(0, 10));
+    });
   });
   Logger.log(L.join('\n'));
   return plano;
 }
 
-/** APAGA as copias que o relatorio marcou como APAGAR. Nao toca no resto. */
-function limparDuplicados() {
+/** Apaga o mapa de UM produto. Use depois de decidir, nao antes. */
+function apagarMapa(cod) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var plano = planoDeLimpeza(listarProdutos(ss).produtos);
-  if (!plano.apagar.length) { Logger.log('Nada a apagar.'); return { ok: true, apagados: 0 }; }
-
-  var sh = aba(ss, AB_MAPA, CAB_MAPA);
-  var feitos = [];
-  plano.apagar.forEach(function (x) {
-    var linhas = linhasDoProduto(sh, normCod(x.produto.cod));
-    apagarLinhas(sh, linhas);
-    feitos.push(x.produto.cod + ' (' + linhas.length + ' linhas) — ficou ' + x.fica.cod);
-  });
-  Logger.log('Apagados:\n  ' + feitos.join('\n  ') +
-             '\n\nO historico de versoes da planilha guarda o que saiu.');
-  return { ok: true, apagados: feitos.length, detalhe: feitos };
+  var r = excluirMapa(ss, { cod: cod });
+  Logger.log(JSON.stringify(r) + '  — o historico de versoes da planilha guarda o que saiu.');
+  return r;
 }
 
 /**
- * Troca o codigo de um produto em TODAS as abas, sem perder o mapa. E o
- * caminho para o produto que so existe com o nome no lugar do codigo.
+ * Troca o codigo de um produto em TODAS as abas, sem perder o mapa. Com o
+ * nome no lugar do codigo, renomear o produto e isto aqui — e nao salvar
+ * de novo com o nome novo, que deixaria o mapa velho orfao na planilha.
  * Recusa se o codigo novo ja tiver mapa: juntar dois mapas e decisao do
  * PPCP, nao de script.
  */
@@ -591,8 +559,8 @@ function renomearProduto(de, para) {
   if (linhasDoProduto(sh, novo).length)   return { ok: false, erro: novo + ' ja tem mapa salvo. Junte os dois a mao, ou apague um antes.' };
 
   var trocadas = { MAPA: trocarCodNaAba(sh, 1, velho, novo) };
-  trocadas.CONFERENCIA  = trocarCodNaAba(aba(ss, AB_CONF, CAB_CONF), 4, velho, novo);
-  trocadas.OBSERVACOES  = trocarCodNaAba(aba(ss, AB_OBS,  CAB_OBS),  3, velho, novo);
+  trocadas.CONFERENCIA = trocarCodNaAba(aba(ss, AB_CONF, CAB_CONF), 4, velho, novo);
+  trocadas.OBSERVACOES = trocarCodNaAba(aba(ss, AB_OBS,  CAB_OBS),  3, velho, novo);
   Logger.log(velho + ' -> ' + novo + ': ' + JSON.stringify(trocadas));
   return { ok: true, de: velho, para: novo, linhas: trocadas };
 }

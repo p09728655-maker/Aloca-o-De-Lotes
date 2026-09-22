@@ -625,11 +625,11 @@
        Sem inputmode="numeric": com o teclado numérico do tablet não dá para
        escrever o nome. -->
   <div class="fld" style="min-width:230px">
-    <label for="inCod">Código ou nome</label>
+    <label for="inCod">Produto</label>
     <input type="text" id="inCod" autocomplete="nope-cod" role="combobox"
            inputmode="text" enterkeyhint="search" spellcheck="false"
            aria-expanded="false" aria-autocomplete="list" aria-controls="sugCod"
-           placeholder="ex.: 501.118.001 ou MALTA">
+           placeholder="ex.: ARMARIO ENCANTO">
     <div class="sug" id="sugCod" role="listbox" hidden></div>
     <span class="achou" id="achouCod"></span>
   </div>
@@ -682,11 +682,11 @@
 <div class="box" id="boxVer" data-aba="ver" hidden>
   <div class="confbar" id="verBarra">
     <div class="fld" style="min-width:230px">
-      <label for="inVerCod">Código ou nome</label>
+      <label for="inVerCod">Produto</label>
       <input type="text" id="inVerCod" autocomplete="nope-ver" role="combobox"
              inputmode="text" enterkeyhint="search" spellcheck="false"
              aria-expanded="false" aria-autocomplete="list" aria-controls="sugVerCod"
-             placeholder="ex.: 501.118.001 ou MALTA">
+             placeholder="ex.: ARMARIO ENCANTO">
       <div class="sug" id="sugVerCod" role="listbox" hidden></div>
       <span class="achou" id="verAchou"></span>
     </div>
@@ -715,11 +715,11 @@
        salvos do campo do mapa. -->
   <div class="confbar" id="confBarra">
     <div class="fld" style="min-width:230px">
-      <label for="inConfCod">Código ou nome</label>
+      <label for="inConfCod">Produto</label>
       <input type="text" id="inConfCod" autocomplete="nope-conf" role="combobox"
              inputmode="text" enterkeyhint="search" spellcheck="false"
              aria-expanded="false" aria-autocomplete="list" aria-controls="sugConfCod"
-             placeholder="ex.: 501.118.001 ou MALTA">
+             placeholder="ex.: ARMARIO ENCANTO">
       <div class="sug" id="sugConfCod" role="listbox" hidden></div>
       <span class="achou" id="confAchou"></span>
     </div>
@@ -872,7 +872,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.18.0";
+const VERSAO = "3.19.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -951,14 +951,15 @@ const atualizadoDe = cod => {
   return p ? dataCurta(p.atualizado) : "";
 };
 
-/* Código do ERP é só dígito: 501.118.001 vira 501118001. É essa diferença
-   que impede o nome digitado no lugar do código de virar produto novo na
-   planilha. A primeira versão desta regra pedia só "um dígito em algum
-   lugar, sem espaço", e HOMERIPADOSUPREMO18CX13 passava — o 1.8 e o CX 13
-   do nome viravam os dígitos. Código com letra, se um dia existir no ERP,
-   é só afrouxar aqui; enquanto não existir, o dígito é a única defesa
-   contra o nome virar código. */
-const pareceCodigo = t => /^[0-9]{4,}$/.test(normCod(t));
+/* O código do produto É O NOME — decisão do PPCP, e é o que a linha sabe
+   de cor. "ARMARIO ENCANTO" vira ARMARIOENCANTO, e é essa a chave do mapa.
+   Não existe validação de formato aqui, e é de propósito: os mapas da
+   embalagem nunca tiveram código do ERP, e exigir um faria o campo ser
+   preenchido com qualquer coisa.
+   O preço dessa escolha é que erro de escrita cria produto novo. Duas
+   defesas, as duas abaixo: o mesmo nome escrito com acento abre o produto
+   que já existe, e nome parecido pergunta antes de criar. */
+const dobra = t => normCod(semAcento(t));
 
 function numDec(x){
   let s = String(x ?? "").trim(); if(!s) return 0;
@@ -1088,8 +1089,8 @@ async function carregarLista(){
     renderObs();
     /* O rodapé e o Salvar dependem de S.produtos: no arranque eles são
        decididos com a lista ainda vazia, e o mapa do rascunho aparecia
-       como "não é código do ERP" para sempre, mesmo com o produto
-       salvo na planilha. Com a lista na mão, refaz. */
+       como produto sem mapa para sempre, mesmo estando salvo na
+       planilha. Com a lista na mão, refaz. */
     atualizarBotoes();
     /* A busca por nome já funciona com isto na mão. Antes o status só
        mudava depois dos colaboradores, e uma segunda chamada lenta
@@ -1541,13 +1542,7 @@ function renderKpi(){
 
 /* Botão travado sem explicação é o jeito mais rápido de o líder desistir do
    app. Sempre dizer o que falta. */
-/* Nome no lugar do código não salva. O campo CÓDIGO vai para a planilha e
-   sai impresso na folha da linha: um mapa gravado com
-   "ESCRIVANINHACANTOMALTA" ali não casa com nada do ERP e ainda entra na
-   lista de produtos como se fosse outro produto. Código que já existe na
-   planilha passa — arrumar o que já está lá é assunto da planilha. */
-const codValido = c => pareceCodigo(c) || S.produtos.some(p => normCod(p.cod) === normCod(c));
-function podeSalvar(){ return !!(normCod(S.cod) && codValido(S.cod) && totalItens()); }
+function podeSalvar(){ return !!(normCod(S.cod) && totalItens()); }
 
 function atualizarBotoes(){
   $("btnSalvar").disabled = !podeSalvar();
@@ -1561,8 +1556,6 @@ function atualizarBotoes(){
   if(!S.trilhos.length){ setMsg("", ""); return; }
   if(!totalItens())            setMsg("", "Mapa vazio — toque no + de um trilho para acrescentar a peça.");
   else if(!normCod(S.cod))     setMsg("err", "Falta o código do produto para salvar.");
-  else if(!codValido(S.cod))   setMsg("err", `"${codErp(S.cod)}" não é código do ERP — busque o produto pelo nome, ` +
-                                             `ou digite o código (ex.: 501.118.001).`);
   else if(!totalOps())         setMsg("", `${totalItens()} itens. Sem divisa de OP — marque com o botão OP do trilho onde cada posto começa.`);
   else                         setMsg("ok", `${totalItens()} ${totalItens() === 1 ? "item" : "itens"} · ` +
                                              `${S.nTrilhos} trilhos · ${totalOps()} ${totalOps() === 1 ? "OP" : "OPs"}.`);
@@ -2249,7 +2242,7 @@ function mostrarAba(a){
   if(a === "conf") atualizarBotaoConf();
   /* Ver o mapa é só leitura: o rodapé não tem nada a dizer ali. E o que a
      aba do mapa escreveu não pode ficar na tela de quem abastece — era
-     assim que "não é código do ERP" aparecia debaixo do mapa da esteira,
+     assim que o recado do mapa aparecia debaixo do mapa da esteira,
      onde ninguém pode fazer nada a respeito. */
   else if(a === "ver"){ renderVer(); setMsg("", ""); }
   else atualizarBotoes();
@@ -2574,6 +2567,18 @@ async function abrirProduto(bruto, soLeitura){
     /* As peças do produto anterior não podem ficar na tela debaixo de um
        código novo — a conferência seria gravada no produto errado. */
     if(soLeitura) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
+    /* Com o nome no lugar do código, "MESA SIENNA" e "MESA SIENA" são dois
+       produtos, e o segundo nasce vazio ao lado do mapa pronto do primeiro.
+       Perguntar aqui custa um toque e evita um mapa órfão na planilha. */
+    const parecidos = parecidosCom(bruto).filter(p => normCod(p.cod) !== cod).slice(0, 3);
+    if(parecidos.length && !confirm(
+      `Não existe mapa salvo para "${bruto}".\n\n` +
+      `Parecido com o que já existe:\n` +
+      parecidos.map(p => `  • ${p.desc || codErp(p.cod)} (${p.itens || 0} itens)`).join("\n") +
+      `\n\nÉ produto novo mesmo? OK cria; Cancelar volta.`)){
+      S.cod = anterior; renderProdChip(); sincronizarCod(anterior); atualizarBotoes();
+      return;
+    }
     setAchou("achou", "produto novo — monte o mapa e salve");
     atualizarBotoes();
     return;
@@ -2621,16 +2626,15 @@ function semMapaNaTela(cod, aviso){
   setAchou("achou err", aviso);
 }
 /* ==================================================================
-   BUSCA DO PRODUTO — pelo código do ERP ou pelo nome
-   Quem está na linha e quem programa conhecem o produto pelo nome
-   ("ESCRIVANINHA CANTO MALTA"); os nove dígitos do ERP ninguém sabe de
-   cor, e a planilha já passa de cem mapas salvos. Antes o campo só
-   aceitava o código: digitar o nome não achava nada e o app tratava o
-   nome COMO SE FOSSE o código — foi assim que nasceu um mapa salvo com o
-   produto "ESCRIVANINHACANTOMALTA", impresso na folha da linha no lugar
-   do 501.118.001.
-   Agora o mesmo campo faz as duas coisas: casa o que foi digitado com o
-   nome e com o código, e o que ele grava é sempre o código do ERP.
+   BUSCA DO PRODUTO — pelo nome, que é também o código
+   O código do produto no mapa É o nome dele, sem espaço: "ARMARIO
+   ENCANTO" vira ARMARIOENCANTO. Foi decisão do PPCP e é coerente com o
+   processo — os mapas da embalagem nunca tiveram código do ERP, e a
+   linha conhece o móvel pelo nome. A planilha já passa de cem mapas, e
+   o <datalist> do navegador não servia: ele casa o que se digita com o
+   VALOR da opção e ignora a descrição, então nome com espaço não achava
+   nada. Esta lista casa palavra por palavra, sem acento, com o nome e
+   com o código.
    ================================================================== */
 const MAX_SUG = 40;   // lista maior que isso não se lê: é para escrever mais do nome
 
@@ -2649,6 +2653,21 @@ function buscarProdutos(txt){
                     String(a.desc || "").localeCompare(String(b.desc || ""), "pt-BR"));
 }
 
+/* Parecido é o nome que contém o outro, nos dois sentidos: existe "ARMARIO
+   ENCANTO" e alguém digitou "ARMARIO ENCANTO 2 PORTAS", ou existe o longo e
+   digitaram o curto. Pode ser produto novo de verdade, pode ser o mesmo
+   escrito com mais palavras — quem decide é quem está digitando, mas tem
+   de ser perguntado. Compara palavra inteira, senão MESA acharia MESADA. */
+function parecidosCom(txt){
+  const meus = palavras(txt).split(" ").filter(Boolean);
+  if(!meus.length) return [];
+  return S.produtos.filter(p => {
+    const seus = (palavras(p.desc) || palavras(p.cod)).split(" ").filter(Boolean);
+    if(!seus.length) return false;
+    return seus.every(w => meus.includes(w)) || meus.every(w => seus.includes(w));
+  });
+}
+
 /* O que fazer com o que ficou escrito no campo quando ninguém escolheu da
    lista — saiu do campo ou apertou Enter. */
 function resolverProduto(txt, soLeitura){
@@ -2662,6 +2681,13 @@ function resolverProduto(txt, soLeitura){
   const exato = S.produtos.find(p => normCod(p.cod) === cod);
   if(exato) return abrirProduto(exato.cod, soLeitura);
 
+  /* normCod tira o acento junto com a letra: CÔMODA vira CMODA, e CÔMODA
+     GOLDEN viraria um produto diferente de COMODA GOLDEN. Com o nome no
+     lugar do código, isso é duplicata garantida. Aqui o acento some por
+     transliteração e o produto que já existe é aberto. */
+  const igual = S.produtos.find(p => dobra(p.cod) === dobra(t) || dobra(p.desc) === dobra(t));
+  if(igual) return abrirProduto(igual.cod, soLeitura);
+
   const achados = buscarProdutos(t);
   /* Nome escrito inteiro e igual ao da planilha não pede escolha, mesmo
      que ele seja começo do nome de outro ("HOME ANGEL 1.8"). */
@@ -2672,11 +2698,10 @@ function resolverProduto(txt, soLeitura){
     setAchou("achou", `${achados.length} produtos com esse nome — escolha na lista`);
     return;
   }
-  /* Não achou nada: só segue como produto novo o que tem cara de código.
-     Nome digitado no lugar do código não vira produto — o campo que vai
-     para a planilha e para a folha impressa é o código do ERP. */
-  if(pareceCodigo(t)) return abrirProduto(t, soLeitura);
-  setAchou("achou err", "nenhum produto com esse nome — o código vem do ERP");
+  /* Não achou nada: é produto novo, e o nome digitado é o código dele.
+     Quem pergunta se não é engano de escrita é o abrirProduto, que tem a
+     lista na mão para mostrar o parecido. */
+  return abrirProduto(t, soLeitura);
 }
 
 /* O mesmo campo nas duas abas: no computador anda pelo teclado (setas,
@@ -2723,23 +2748,16 @@ function ligarBusca(idIn, idSug, soLeitura){
     ativo = -1;
     if(!S.produtos.length){
       pan.innerHTML = `<div class="nada">A <b>lista de produtos</b> não foi lida da planilha — sem ela
-        não dá para achar pelo nome. Toque em <b>Tentar de novo</b> no alto da tela, ou digite o
-        <b>código do ERP</b>.</div>`;
+        não dá para achar pelo nome. Toque em <b>Tentar de novo</b> no alto da tela.</div>`;
     }else if(!achados.length){
-      pan.innerHTML = `<div class="nada">Nenhum produto com esse nome. Confira a escrita, ou digite o <b>código do ERP</b> se o produto ainda não tem mapa.</div>`;
+      pan.innerHTML = `<div class="nada">Nenhum produto com esse nome. Confira a escrita — ou monte o mapa e salve, se o produto é novo.</div>`;
     }else{
       achados.slice(0, MAX_SUG).forEach(p => {
         const b = document.createElement("button");
         b.type = "button"; b.setAttribute("role", "option");
-        /* Produto salvo com o nome no lugar do código aparece com o
-           aviso: é o que explica por que o campo fica com o nome sem
-           espaço depois de escolher, e diz qual linha da planilha
-           precisa ser arrumada. */
-        const semErp = !pareceCodigo(p.cod);
         const quando = dataCurta(p.atualizado);
         b.innerHTML = `<span>${escapa(p.desc || "(sem descrição)")}</span>` +
-                      `<i${semErp ? ' class="ruim"' : ""}>${escapa(codErp(p.cod))}` +
-                      `${semErp ? " · sem código do ERP" : ""} · ${p.n_trilhos || 0} trilhos` +
+                      `<i>${escapa(codErp(p.cod))} · ${p.n_trilhos || 0} trilhos` +
                       `${quando ? " · mapa de " + quando : ""}</i>`;
         /* Nada de preventDefault aqui: no Android o mouse é simulado
            depois do toque, e cancelá-lo às vezes leva o clique junto.
