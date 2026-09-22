@@ -872,7 +872,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.17.0";
+const VERSAO = "3.18.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -951,10 +951,14 @@ const atualizadoDe = cod => {
   return p ? dataCurta(p.atualizado) : "";
 };
 
-/* Código do ERP tem dígito e não tem espaço (501.118.001, 501118001). Nome
-   de produto tem espaço, ou é só letra. É essa diferença que impede o nome
-   digitado no lugar do código de virar um produto novo na planilha. */
-const pareceCodigo = t => { const v = String(t || "").trim(); return !!v && !/\s/.test(v) && /\d/.test(v); };
+/* Código do ERP é só dígito: 501.118.001 vira 501118001. É essa diferença
+   que impede o nome digitado no lugar do código de virar produto novo na
+   planilha. A primeira versão desta regra pedia só "um dígito em algum
+   lugar, sem espaço", e HOMERIPADOSUPREMO18CX13 passava — o 1.8 e o CX 13
+   do nome viravam os dígitos. Código com letra, se um dia existir no ERP,
+   é só afrouxar aqui; enquanto não existir, o dígito é a única defesa
+   contra o nome virar código. */
+const pareceCodigo = t => /^[0-9]{4,}$/.test(normCod(t));
 
 function numDec(x){
   let s = String(x ?? "").trim(); if(!s) return 0;
