@@ -73,7 +73,7 @@
   .fld{display:flex; flex-direction:column; gap:5px; min-width:150px}
   .fld label{font-family:var(--f-mono); font-size:10px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--mut)}
-  select,input[type=text],input[type=number],input[type=date]{background:var(--panel2); color:var(--ink);
+  select,textarea,input[type=text],input[type=number],input[type=date]{background:var(--panel2); color:var(--ink);
     border:1px solid var(--line); border-radius:8px; padding:8px 10px;
     font-family:var(--f-txt); font-size:14px; min-height:var(--tap); width:100%}
   /* color-scheme dark: sem isto o Chrome pinta o ícone do calendário de
@@ -112,6 +112,7 @@
     letter-spacing:.04em; color:var(--mut); text-transform:none}
   .sug button i.ruim{color:var(--amber)}
   /* Teclado no computador, dedo no tablet: os dois acendem a mesma linha. */
+  .sug button{touch-action:manipulation; cursor:pointer}
   .sug button.ativo{background:var(--amber-dim); border-color:var(--amber)}
   @media(hover:hover){ .sug button:hover{background:#1f2227} }
   .sug .nada{padding:10px; color:var(--mut2); font-size:12.5px; line-height:1.55}
@@ -414,6 +415,34 @@
   .obsdiv{padding:0 11px 8px 54px; border-bottom:1px solid var(--line)}
   .obsdiv input{font-size:13px; min-height:38px}
 
+  textarea{resize:vertical; line-height:1.4; min-height:76px; font-size:15px}
+
+  /* ---------- observações da linha ---------- */
+  /* Recado da esteira em cima do mapa, na cor do que pede atenção. Não é
+     erro (nada quebrou) nem sucesso: é coisa para o PPCP decidir. */
+  #obsMapa{margin-top:10px; border:1px solid var(--amber); border-radius:12px;
+    background:rgba(255,90,31,.07); padding:9px 12px}
+  #obsMapa:empty{display:none}
+  #obsMapa h4{font-family:var(--f-tit); font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--amber); margin:0 0 7px}
+  .obsit{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px;
+    padding:7px 0; border-top:1px solid var(--line)}
+  .obsit:first-of-type{border-top:none}
+  .obsit .txt{flex:1 1 320px; min-width:0; font-size:13.5px; line-height:1.4}
+  .obsit .txt b{font-family:var(--f-tit); color:var(--amber); letter-spacing:.06em; margin-right:6px}
+  .obsit .quem{flex:none; font-family:var(--f-mono); font-size:11px; color:var(--mut2);
+    background:none; border:none; padding:0; min-height:0; text-transform:none;
+    letter-spacing:.03em; display:block; text-align:left; cursor:default}
+  .obsit .quem::after{content:none}
+  .obsit button.dec{flex:none; min-height:38px; padding:0 13px; font-size:12.5px;
+    border-radius:7px; background:transparent; border:1px solid var(--line); color:var(--mut)}
+  .obsit button.dec.sim{border-color:var(--green); color:var(--green)}
+  #obsLista .obsit{border-top:1px solid var(--line); padding:9px 0}
+  #obsLista .obsit:first-of-type{border-top:none}
+  #obsLista{max-height:min(60vh, 520px); overflow-y:auto}
+  #dlgObsLista{max-width:640px}
+  .obsvazio{color:var(--mut2); font-size:13px; padding:8px 2px}
+
   /* ==================================================================
      VER O MAPA — a tela de quem abastece a esteira
      Lida de pé, a um braço de distância, com peça na mão: número do
@@ -502,17 +531,25 @@
       line-height:1.3; overflow:hidden}
     /* a régua grossa marca onde começa a faixa de uma OP nova */
     #folha tr.fini td{border-top:.55mm solid #000}
+    /* O número do trilho e a OP são os tipos maiores da tabela, e era a
+       entrelinha deles — não o texto da peça — que definia a altura de
+       toda linha: 12,5pt × 1,3 dava 8,5mm por trilho e jogava o mapa de 30
+       para uma segunda página com três linhas. Número não precisa de
+       entrelinha: ele ocupa uma linha só. */
     #folha td.fop{font-family:var(--f-tit); font-size:11pt; font-weight:600;
-      white-space:nowrap}
-    #folha td.fins{font-size:7.5pt; font-style:italic; color:#333}
-    #folha td.fpeca{font-size:9.5pt}
+      white-space:nowrap; line-height:1}
+    /* Sobrou folha depois que a linha parou de quebrar em quatro: a peça e
+       o insumo crescem um ponto. A folha é lida de pé, a dois passos da
+       esteira — espaço em branco ali não vale nada, tamanho de letra vale. */
+    #folha td.fins{font-size:8pt; font-style:italic; color:#333}
+    #folha td.fpeca{font-size:10.5pt}
     /* a coluna Insumo é 7,5pt em itálico cinza: "(suspenso)" escrito ali
        passava batido em quem lê a folha em pé na esteira. Vira etiqueta. */
     #folha .fsusp{font-family:var(--f-tit); font-style:normal; font-weight:700;
       font-size:6.5pt; letter-spacing:.08em; text-transform:uppercase; color:#000;
       border:.3mm solid #000; border-radius:.8mm; padding:0 1mm; white-space:nowrap}
     #folha td.ftr{font-family:var(--f-tit); font-size:12.5pt; font-weight:700;
-      text-align:center}
+      text-align:center; line-height:1}
     #folha tr.fvazio td{color:#999; padding:.7mm 2mm}
     #folha tr.fvazio td.fpeca{font-size:7.5pt; font-style:italic; color:#aaa}
     /* quadradinho para conferir item a item no papel */
@@ -607,6 +644,10 @@
   <button class="gho" id="btnNovoColab">+ Colaborador</button>
 </div>
 
+<!-- O recado da linha aparece para o PPCP em cima do mapa daquele produto:
+     é onde ele está quando pode arrumar. -->
+<div id="obsMapa" data-aba="mapa"></div>
+
 <div class="box" data-aba="mapa">
   <!-- A instrução mora aqui, uma vez, e não repetida em cada trilho livre. -->
   <h2>Trilhos <small class="dica">digite na linha · <b>Enter</b> desce um trilho · <b>Shift+Enter</b> abre 2ª peça no mesmo · <b>Ctrl+V</b> cola da planilha</small><em id="selTxt"></em></h2>
@@ -642,6 +683,10 @@
              enterkeyhint="search" spellcheck="false" placeholder="ex.: ISOMANTA">
     </div>
     <em class="confmeta" id="verMeta"></em>
+    <!-- Quem abastece vê o mapa errado antes de todo mundo, e não pode
+         alterá-lo: o mapa é do PPCP. O que ele pode é avisar. -->
+    <button class="gho" id="btnObs" style="margin-bottom:15px" disabled>Avisar o PPCP</button>
+    <button class="gho" id="btnLimparVer" style="margin-bottom:15px">Limpar</button>
   </div>
   <div id="listaVer"></div>
 </div>
@@ -757,6 +802,34 @@
   </div>
 </dialog>
 
+<dialog id="dlgObs">
+  <h3>Avisar o PPCP</h3>
+  <div class="body">
+    <p class="hint" id="obsProd"></p>
+    <div class="fld"><label for="obsTrilho">Trilho (se for de um só)</label>
+      <input type="text" id="obsTrilho" inputmode="numeric" autocomplete="off"
+             placeholder="ex.: 15 — vazio se for do mapa todo"></div>
+    <div class="fld"><label for="obsTexto">O que você viu</label>
+      <textarea id="obsTexto" rows="3" autocomplete="off"
+        placeholder="ex.: a isomanta do trilho 9 não vem mais nesta caixa"></textarea></div>
+    <div class="fld"><label>Quem está avisando</label>
+      <button type="button" class="quem sem" id="obsQuem">Quem está avisando?</button></div>
+    <p class="hint">O mapa <b>não muda</b> com isto — quem arruma é o PPCP. O recado fica
+      gravado na planilha com o seu nome, o produto e a hora.</p>
+    <p class="hint" id="obsErro" style="color:var(--red)" hidden></p>
+  </div>
+  <div class="foot">
+    <button class="gho" id="obsCancel">Cancelar</button>
+    <button class="pri" id="obsOk">Enviar</button>
+  </div>
+</dialog>
+
+<dialog id="dlgObsLista">
+  <h3>Observações da linha</h3>
+  <div class="body"><div id="obsLista"></div></div>
+  <div class="foot"><button class="gho" id="obsListaFechar">Fechar</button></div>
+</dialog>
+
 <dialog id="dlgColab">
   <h3>Cadastrar colaborador</h3>
   <div class="body">
@@ -783,7 +856,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.13.0";
+const VERSAO = "3.14.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -824,6 +897,7 @@ const S = {
   /* ---- conferência da caixa de amostra ---- */
   lote: "", dataEmb: "",
   colab: [],                // equipe, da aba COLABORADORES
+  obs: [],                  // recados da linha ainda abertos, da aba OBSERVACOES
   opColab: new Map(),       // nº da OP -> matrícula de quem está nela hoje
   conf: new Map(),          // "trilho|j" -> { div:true, obs:"" }
   conferente: "",           // matrícula de quem está conferindo — fica no aparelho
@@ -971,6 +1045,9 @@ async function carregarLista(){
   try{
     const out = await chamar({ acao: "lista" });
     S.produtos = out.produtos || [];
+    /* Os recados da linha vêm junto com a lista, na mesma viagem. */
+    S.obs = out.obs || [];
+    renderObs();
     /* A busca por nome já funciona com isto na mão. Antes o status só
        mudava depois dos colaboradores, e uma segunda chamada lenta
        deixava a tela dizendo "Lendo a planilha…" com a lista já lida. */
@@ -1003,7 +1080,9 @@ async function carregarLista(){
 /* O botão nasce e morre junto com a mensagem de erro: o ouvinte fica na
    barra, que é fixa. */
 $("status").addEventListener("click", ev => {
-  if(ev.target && ev.target.id === "btnRelerLista") carregarLista();
+  if(!ev.target) return;
+  if(ev.target.id === "btnRelerLista") carregarLista();
+  if(ev.target.id === "btnObsLista") abrirListaObs();
 });
 
 function linhaStatus(){
@@ -1012,6 +1091,10 @@ function linhaStatus(){
                            : "nenhum mapa salvo ainda");
   p.push(S.colab.length ? `${S.colab.length} ${S.colab.length === 1 ? "colaborador" : "colaboradores"}`
                         : '<span style="color:var(--amber)">nenhum colaborador cadastrado</span>');
+  /* O recado da linha só serve se o PPCP vir que ele existe. Fica na barra
+     que está sempre na tela, e abre a lista com um toque. */
+  if(S.obs.length) p.push(`<button type="button" class="rever" id="btnObsLista">${S.obs.length} ` +
+    `${S.obs.length === 1 ? "observação da linha" : "observações da linha"}</button>`);
   if(!CFG.api) p.push('<span style="color:var(--amber)">Apps Script não configurado — não grava</span>');
   p.push(`<span class="versao">v${VERSAO}</span>`);
   setStatus("", p.join(" · "));
@@ -1552,17 +1635,28 @@ function renderConf(){
 function renderVer(){
   const lista = $("listaVer");
   if(!lista) return;
+  /* Recado é sobre um mapa: sem mapa na tela não há o que avisar. */
+  $("btnObs").disabled = !totalItens();
+  renderObs();
   const busca = palavras($("inVerBusca") ? $("inVerBusca").value : "");
   const toks = busca ? busca.split(" ") : [];
   const casa = d => !toks.length || toks.every(t => palavras(d).includes(t));
 
   if(!totalItens()){
-    lista.innerHTML = `<div class="vazio-tela">Escolha o produto acima — pelo
-      <b>código</b> ou pelo <b>nome</b> — e o mapa aparece aqui: o trilho de cada peça,
-      na ordem da esteira.</div>`;
+    lista.innerHTML = S.produtos.length
+      ? `<div class="vazio-tela">Escolha o produto acima — pelo
+         <b>código</b> ou pelo <b>nome</b> — e o mapa aparece aqui: o trilho de cada peça,
+         na ordem da esteira.</div>`
+      /* Sem a lista da planilha o campo não acha nada, e dizer "escolha o
+         produto" seria mentira: não há o que escolher. */
+      : `<div class="vazio-tela">A <b>lista de produtos não chegou da planilha</b> — sem ela
+         o campo não acha nenhum produto, nem pelo nome nem pelo código.
+         Toque em <b>Tentar de novo</b> na linha de cima da tela.</div>`;
     $("verMeta").textContent = "";
     return;
   }
+  /* Buscar peça sem mapa aberto não é erro de ninguém: os dois campos ficam
+     lado a lado. Só que a resposta está no mapa, e o mapa ainda não veio. */
 
   let html = "", opAtual = null, achados = 0;
   for(let t = 1; t <= S.nTrilhos; t++){
@@ -1602,6 +1696,146 @@ function renderVer(){
     ? `${achados} ${achados === 1 ? "peça" : "peças"} com esse nome`
     : "";
 }
+
+/* ==================================================================
+   OBSERVAÇÃO DA LINHA — o recado de quem abastece para o PPCP
+   Quem põe a peça no trilho vê o mapa errado antes de todo mundo: peça no
+   trilho trocado, peça que não vem mais, insumo que falta. Ele não altera
+   o mapa — o mapa é do PPCP, e dois donos é o começo de mapa nenhum —, mas
+   o que ele viu não pode morrer na conversa de corredor.
+   O recado é gravado com produto, trilho, nome e hora; aparece para o PPCP
+   em cima do mapa daquele produto e na barra de status; e o PPCP fecha com
+   ARRUMADO ou NÃO PROCEDE, que é a decisão que fecha o ciclo.
+   ================================================================== */
+const obsDoProduto = cod => S.obs.filter(o => normCod(o.cod) === normCod(cod));
+
+function linhaObs(o, comProduto){
+  const quem = o.nome || nomeColab(o.matricula) || o.matricula || "sem nome";
+  const quando = o.ts ? new Date(o.ts).toLocaleDateString("pt-BR") + " " +
+                        new Date(o.ts).toTimeString().slice(0, 5) : "";
+  return `<div class="obsit" data-id="${escapa(o.id)}">
+    <div class="txt">${o.trilho ? `<b>TRILHO ${o.trilho}</b>` : ""}${escapa(o.texto)}
+      <span class="quem">${escapa(quem)} · ${escapa(quando)}` +
+      (comProduto ? ` · ${escapa(o.desc || codErp(o.cod))}` : "") + `</span></div>
+    <button type="button" class="dec sim" data-st="ARRUMADO">Arrumado</button>
+    <button type="button" class="dec" data-st="NAO PROCEDE">Não procede</button>
+  </div>`;
+}
+
+/* Na aba do mapa, só os recados do produto que está aberto: é ali que o
+   PPCP pode arrumar. */
+function renderObs(){
+  const box = $("obsMapa");
+  if(!box) return;
+  const meus = S.cod ? obsDoProduto(S.cod) : [];
+  box.innerHTML = meus.length
+    ? `<h4>${meus.length === 1 ? "A linha avisou" : `A linha avisou (${meus.length})`}</h4>` +
+      meus.map(o => linhaObs(o, false)).join("")
+    : "";
+}
+
+function abrirListaObs(){
+  const lista = $("obsLista");
+  lista.innerHTML = S.obs.length
+    ? S.obs.map(o => linhaObs(o, true)).join("")
+    : `<div class="obsvazio">Nenhuma observação em aberto.</div>`;
+  $("dlgObsLista").showModal();
+}
+$("obsListaFechar").addEventListener("click", () => $("dlgObsLista").close());
+
+/* Arrumado / Não procede: sai da lista de abertas e fica na planilha com a
+   decisão. Vai direto, sem fila: quem decide está no computador, com rede —
+   e recado fechado por engano no meio de uma fila offline seria pior. */
+async function fecharObs(id, status, alvo){
+  const o = S.obs.find(x => x.id === id);
+  if(!o) return;
+  const antes = alvo ? alvo.textContent : "";
+  if(alvo){ alvo.disabled = true; alvo.textContent = "…"; }
+  try{
+    await chamar({ acao: "obs_fechar", id, status, por: S.conferente || "" });
+    S.obs = S.obs.filter(x => x.id !== id);
+    renderObs(); linhaStatus();
+    if(!$("dlgObsLista").open) return;
+    if(S.obs.length) abrirListaObs(); else $("dlgObsLista").close();
+  }catch(e){
+    if(alvo){ alvo.disabled = false; alvo.textContent = antes; }
+    setMsg("err", "Não consegui marcar a observação: " + e.message);
+  }
+}
+["obsMapa", "obsLista"].forEach(id => $(id).addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest("button.dec");
+  if(!b) return;
+  fecharObs(b.parentElement.dataset.id, b.dataset.st, b);
+}));
+
+/* ---- o lado da linha: escrever o recado ---- */
+let obsQuem = "";
+$("btnObs").addEventListener("click", () => {
+  if(!totalItens()) return;
+  obsQuem = S.conferente || "";
+  $("obsProd").innerHTML = `<b>${escapa(S.desc || codErp(S.cod))}</b> · ${codErp(S.cod)}`;
+  $("obsTrilho").value = ""; $("obsTexto").value = "";
+  $("obsErro").hidden = true;
+  pintarObsQuem();
+  $("dlgObs").showModal();
+  $("obsTexto").focus();
+});
+function pintarObsQuem(){
+  const b = $("obsQuem");
+  b.textContent = nomeColab(obsQuem) || "Quem está avisando?";
+  b.className = "quem" + (nomeColab(obsQuem) ? "" : " sem");
+}
+$("obsQuem").addEventListener("click", () => escolherColab({
+  titulo: "Quem está avisando?", atual: obsQuem,
+  /* Fica gravado no aparelho, igual ao "Conferido por": quem abastece
+     escolhe o nome uma vez no turno e não repete a cada recado. */
+  aoEscolher: mat => {
+    obsQuem = mat; S.conferente = mat;
+    try{ localStorage.setItem(CONFERENTE_KEY, S.conferente); }catch(e){}
+    renderConferente(); pintarObsQuem();
+  }
+}));
+$("obsCancel").addEventListener("click", () => $("dlgObs").close());
+$("obsOk").addEventListener("click", async () => {
+  const texto = $("obsTexto").value.trim();
+  const trilho = parseInt($("obsTrilho").value, 10) || 0;
+  const erro = !texto ? "Escreva o que você viu."
+    : !obsQuem ? "Diga quem está avisando."
+    : trilho && (trilho < 1 || trilho > S.nTrilhos) ? `Este mapa vai do trilho 1 ao ${S.nTrilhos}.`
+    : "";
+  if(erro){ $("obsErro").textContent = erro; $("obsErro").hidden = false; return; }
+
+  const o = {
+    id: "o" + Date.now() + Math.random().toString(36).slice(2, 6),
+    cod: normCod(S.cod), desc: S.desc || "", trilho,
+    matricula: obsQuem, nome: nomeColab(obsQuem), texto
+  };
+  $("dlgObs").close();
+  /* Entra na fila como a conferência: sem rede o recado não se perde, sai
+     quando a rede voltar. */
+  const fila = lerFila();
+  fila.push(Object.assign({ acao: "obs_nova" }, o));
+  salvarFila(fila); pintarFila();
+  /* Já aparece na tela do PPCP deste aparelho; o que manda é a planilha,
+     e a próxima leitura confirma. */
+  S.obs = [Object.assign({ ts: new Date().toISOString() }, o)].concat(S.obs);
+  renderObs(); linhaStatus();
+  try{
+    await despacharFila();
+    setMsgFixa("ok", "Recado enviado ao PPCP. O mapa na tela não mudou.", 6);
+  }catch(e){
+    setMsgFixa("", "Sem rede: o recado ficou guardado no aparelho e sai sozinho quando a rede voltar.", 6);
+  }
+});
+
+$("btnLimparVer").addEventListener("click", () => {
+  if(S.conf.size && !S.confSalva && !confirm(
+    `A conferência do lote ${S.loteConf || S.lote.trim() || "atual"} ainda não foi gravada.\n\nLimpar apaga o que foi marcado. Continuar?`)) return;
+  proximoLote();
+  $("inVerBusca").value = "";
+  const c = $("inVerCod"); if(c){ c.value = ""; c.focus(); }
+  renderVer();
+});
 
 const nomeColab = mat => (S.colab.find(c => c.mat === mat) || {}).nome || "";
 function renderConferente(){
@@ -2357,12 +2591,24 @@ function resolverProduto(txt, soLeitura){
    código, nunca o texto digitado. */
 function ligarBusca(idIn, idSug, soLeitura){
   const inp = $(idIn), pan = $(idSug);
-  let ativo = -1;
+  let ativo = -1, fechando = null;
   const botoes = () => [...pan.querySelectorAll("button")];
 
   function fechar(){
+    clearTimeout(fechando); fechando = null;
     pan.hidden = true; ativo = -1;
     inp.setAttribute("aria-expanded", "false");
+  }
+  /* No tablet o toque na linha da lista tirava o foco do campo ANTES de o
+     toque virar clique: o campo perdia o foco, a lista sumia na hora, e o
+     clique caía no vazio — a lista aparecia e escolher não fazia nada.
+     No computador o mousedown com preventDefault segurava o foco; no
+     Android o mesmo truque não vale, porque o mouse ali é simulado depois
+     do toque. Então a lista não fecha na hora: espera um quinto de
+     segundo, tempo de o toque virar escolha. */
+  function fecharDepois(){
+    clearTimeout(fechando);
+    fechando = setTimeout(() => { fechar(); resolverProduto(inp.value, soLeitura); }, 220);
   }
   function escolher(p){
     fechar();
@@ -2400,10 +2646,12 @@ function ligarBusca(idIn, idSug, soLeitura){
         b.innerHTML = `<span>${escapa(p.desc || "(sem descrição)")}</span>` +
                       `<i${semErp ? ' class="ruim"' : ""}>${escapa(codErp(p.cod))}` +
                       `${semErp ? " · sem código do ERP" : ""} · ${p.n_trilhos || 0} trilhos</i>`;
-        /* O clique não pode tirar o foco do campo antes de chegar: o blur é
-           o mousedown do clique, e é ele que dispara a leitura do texto.
-           Sem isto, escolher da lista abria o produto duas vezes. */
-        b.addEventListener("mousedown", ev => ev.preventDefault());
+        /* Nada de preventDefault aqui: no Android o mouse é simulado
+           depois do toque, e cancelá-lo às vezes leva o clique junto.
+           Quem garante que o toque chega é o fecharDepois(), que segura a
+           lista aberta por um quinto de segundo depois do campo perder o
+           foco. Escolher também cancela a leitura do texto que o blur
+           agendou, então o produto não abre duas vezes. */
         b.addEventListener("click", () => escolher(p));
         pan.appendChild(b);
       });
@@ -2425,14 +2673,14 @@ function ligarBusca(idIn, idSug, soLeitura){
   }
 
   inp.addEventListener("input", pintar);
-  inp.addEventListener("focus", pintar);
+  inp.addEventListener("focus", () => { clearTimeout(fechando); fechando = null; pintar(); });
   /* Rolar a página com a lista aberta não pode soltar a lista do campo —
      rolar a própria lista, sim, é para deixar em paz. */
   window.addEventListener("scroll", ev => { if(!pan.hidden && !pan.contains(ev.target)) posicionar(); }, true);
   window.addEventListener("resize", () => { if(!pan.hidden) posicionar(); });
   /* Sair do campo fecha a lista e lê o que ficou escrito — é o mesmo
      comportamento de antes, quando o campo só aceitava código. */
-  inp.addEventListener("blur", () => { fechar(); resolverProduto(inp.value, soLeitura); });
+  inp.addEventListener("blur", fecharDepois);
   inp.addEventListener("keydown", ev => {
     if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){
       ev.preventDefault();
@@ -2640,10 +2888,18 @@ function montarFolha(){
     const peca   = itens.filter(x => !x.insumo).map(txt).join(" + ");
     const vazio  = !itens.length;
     const ini    = S.inicioOp.has(t);
+    /* Trilho que só tem insumo usa também a coluna da peça, que naquela
+       linha está vazia. "ISOPOR 1/2 RC 1808X145X30 PAINEL/HOME SUPREMO 1.8"
+       espremido em um quarto da folha saía em quatro linhas, e três ou
+       quatro trilhos assim jogavam o mapa para uma segunda página com a
+       primeira metade vazia. O contrário não se faz: a coluna da descrição
+       começa sempre no mesmo lugar, que é o que se lê de cima a baixo. */
+    const meio = insumo && !peca && !vazio
+      ? `<td class="fins" colspan="2">${insumo}</td>`
+      : `<td class="fins">${insumo}</td><td class="fpeca">${vazio ? "trilho livre" : peca}</td>`;
     return `<tr class="${ini ? "fini" : ""}${vazio ? " fvazio" : ""}">
        <td class="fop">${ini ? "OP " + String(opDoTrilho(t)).padStart(2, "0") : ""}</td>
-       <td class="fins">${insumo}</td>
-       <td class="fpeca">${vazio ? "trilho livre" : peca}</td>
+       ${meio}
        <td class="ftr">${t}</td>
        ${vazio ? "<td></td>" : '<td class="fok"></td>'}
      </tr>`;
@@ -2655,7 +2911,7 @@ function montarFolha(){
              "Trilhos", String(S.nTrilhos),
              `vel. ${escapa(S.vel || "—")} · esq. ${escapa(S.esq || "—")}`)}
       <div class="fmeta">
-        <div><small>Código</small><b>${escapa(codErp(S.cod)) || "—"}</b></div>
+        <div><small>Código</small><b class="longo">${escapa(codErp(S.cod)) || "—"}</b></div>
         <div><small>Data</small><b>___ / ___ / _____</b></div>
         <div><small>Lote</small><b>_____________</b></div>
         <div><small>Cor</small><b>_____________</b></div>
@@ -2663,8 +2919,8 @@ function montarFolha(){
       </div>
       <table>
         <colgroup>
-          <col style="width:12%"><col style="width:20%">
-          <col style="width:53%"><col style="width:8%"><col style="width:7%">
+          <col style="width:10%"><col style="width:23%">
+          <col style="width:52%"><col style="width:8%"><col style="width:7%">
         </colgroup>
         <thead><tr><th>OP</th><th>Insumo</th><th>Descrição da peça</th>
           <th style="text-align:center">Trilho</th><th style="text-align:center">OK</th></tr></thead>

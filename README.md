@@ -75,6 +75,15 @@ por sinônimo, abreviação e comparação de medidas, e ainda abria um diálogo
 pendências para o líder desempatar. Era a maior fonte de complicação do app, e
 resolvia um problema que o processo não tem.
 
+**A folha sai em uma página.** O insumo que ocupa o trilho sozinho usa também a coluna
+da descrição, que naquela linha está vazia: `ISOPOR 1/2 RC 1808X145X30 PAINEL/HOME
+SUPREMO 1.8` espremido num quarto da folha saía em quatro linhas, e três trilhos assim
+jogavam o mapa para uma segunda página — com a primeira ainda pela metade. O contrário
+não se faz: a coluna da descrição começa sempre no mesmo lugar, que é o que se lê de
+cima a baixo. O número do trilho e a OP perderam a entrelinha (número ocupa uma linha
+só, e era ela que definia a altura de todas), e a peça e o insumo cresceram um ponto
+com a folha que sobrou. Um mapa de 30 trilhos passou de duas páginas para uma.
+
 **Insumo ocupa trilho.** Isomanta, isopor, tabuleiro e a própria caixa estão na
 sequência do mapa, lado a lado com painel de MDP. A única diferença é a coluna em que
 saem na folha impressa — `Insumo`, separada de `Descrição da peça` — e a cor do chip
@@ -257,6 +266,16 @@ Uma linha por peça da caixa de amostra:
 | `RESULTADO` | `OK` ou `DIVERGENTE` |
 | `OBS` | o que houve, quando divergente |
 
+### `OBSERVACOES` — o que a linha avisou
+
+`ID | TS | COD_PRODUTO | DESC_PRODUTO | TRILHO | MATRICULA | NOME | TEXTO | STATUS |
+TS_STATUS | RESOLVIDO_POR`
+
+Uma linha por recado. `STATUS` nasce `ABERTA` e vira `ARRUMADO` ou `NAO PROCEDE` quando
+o PPCP decide — nunca volta atrás e nunca é apagada, então a aba é também o histórico
+de quantos erros de mapa a linha achou, em que produto e em quanto tempo foram
+resolvidos. O `ID` nasce no app: é ele que faz o reenvio da fila não duplicar o recado.
+
 ### `COLABORADORES` — a equipe
 
 `MATRICULA · NOME · ATIVO · CADASTRADO_EM`. O botão **+ Colaborador** cadastra pelo
@@ -282,7 +301,26 @@ dela, acesos. Apagar a busca devolve o mapa inteiro.
 
 O mapa aberto é o mesmo das outras abas — mesma busca de produto, mesmo estado. Abrir
 outro produto aqui troca o mapa da tela, e se houver conferência marcada e não gravada
-o app avisa antes, como sempre.
+o app avisa antes, como sempre. *Limpar* tira o produto da tela para o próximo.
+
+### A linha avisa, o PPCP decide
+
+Quem abastece vê o mapa errado antes de todo mundo: peça no trilho trocado, peça que
+não vem mais na caixa, insumo que falta. Ele **não altera o mapa** — o mapa é do PPCP,
+e mapa com dois donos é o começo de mapa nenhum. O que ele faz é **avisar**.
+
+*Avisar o PPCP* grava um recado com o produto, o trilho (se for de um só), o texto, o
+nome de quem avisou e a hora. Sem rede, o recado entra na mesma fila da conferência e
+sai sozinho quando a rede voltar — o que se viu na esteira não depende do wi-fi.
+
+Do outro lado, no computador: a barra de status mostra **quantos recados estão em
+aberto** e abre a lista com um toque, e o mapa de um produto com recado abre com a
+faixa **A linha avisou** em cima dele — que é onde o PPCP está quando pode arrumar.
+Cada recado tem duas saídas, e as duas fecham o ciclo: **Arrumado** ou **Não procede**.
+A decisão fica gravada na aba `OBSERVACOES` com quem decidiu e quando; nada é apagado.
+
+O recado não muda o mapa sozinho, em nenhum dos dois lados. Ele muda a fila de trabalho
+do PPCP, que é o que ele tem de fazer.
 
 ## Quatro abas, uma tela de cada vez
 
