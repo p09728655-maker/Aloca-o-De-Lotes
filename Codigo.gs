@@ -23,6 +23,7 @@ var SHEET_ID = '1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g';
 var AB_MAPA  = 'MAPA';
 var AB_COLAB = 'COLABORADORES';
 var AB_CONF  = 'CONFERENCIA';
+var AB_OBS   = 'OBSERVACOES';
 
 /* Uma linha por TRILHO, inclusive o vazio — é assim que o número de trilhos
    da esteira e a fronteira de cada OP sobrevivem à ida e volta da planilha.
@@ -47,6 +48,16 @@ var CAB_COLAB = ['MATRICULA', 'NOME', 'ATIVO', 'CADASTRADO_EM'];
    de OP 04 daquele lote.
    Gravar de novo o mesmo lote e produto SUBSTITUI: uma caixa de amostra por
    lote, e o que está na tela é o que vale. */
+/* O recado da linha para o PPCP. Quem abastece a esteira ve o mapa errado
+   antes de qualquer um: peca no trilho trocado, peca que nao existe mais,
+   insumo que falta. Ele NAO altera o mapa — quem decide e o PPCP —, mas o
+   que ele viu nao pode morrer na conversa de corredor.
+   ID nasce no app: e ele que faz o reenvio da fila nao duplicar o recado e
+   o "arrumado" achar a linha certa depois.
+   STATUS: ABERTA -> ARRUMADO ou NAO PROCEDE. */
+var CAB_OBS = ['ID', 'TS', 'COD_PRODUTO', 'DESC_PRODUTO', 'TRILHO',
+               'MATRICULA', 'NOME', 'TEXTO', 'STATUS', 'TS_STATUS', 'RESOLVIDO_POR'];
+
 var CAB_CONF = ['TS', 'LOTE', 'DATA_EMB', 'COD_PRODUTO', 'DESC_PRODUTO',
                 'TRILHO', 'OP', 'COD_ITEM', 'DESC_ITEM', 'QTD',
                 'MATRICULA', 'NOME', 'RESULTADO', 'OBS',
@@ -81,13 +92,16 @@ function doPost(e) {
        text/plain, que é o que não dispara o preflight CORS que o Apps
        Script não responde. Um caminho testado vale mais que dois meio
        testados. O doGet abaixo fica para conferir no navegador. */
-    if (p.acao === 'lista')   return json(listarProdutos(ss));
+    if (p.acao === 'lista')   return json(listarProdutos(ss, true));
     if (p.acao === 'mapa')    return json(lerMapa(ss, p.cod));
     if (p.acao === 'colaboradores')  return json(listarColaboradores(ss));
     if (p.acao === 'novo_colaborador') return json(novoColaborador(ss, p));
     if (p.acao === 'conferir')       return json(gravarConferencia(ss, p));
     if (p.acao === 'conferencia')    return json(lerConferencia(ss, p));
     if (p.acao === 'relatorio')      return json(relatorioConferencia(ss, p));
+    if (p.acao === 'obs_nova')       return json(gravarObs(ss, p));
+    if (p.acao === 'obs_fechar')     return json(fecharObs(ss, p));
+    if (p.acao === 'obs')            return json(listarObs(ss));
     return json({ ok: false, erro: 'acao desconhecida: ' + p.acao });
 
   } catch (err) {
@@ -158,10 +172,14 @@ function excluirMapa(ss, p) {
 }
 
 /** Só o cabeçalho de cada produto — é o que o app precisa para a lista. */
-function listarProdutos(ss) {
+function listarProdutos(ss, comObs) {
   var sh = aba(ss, AB_MAPA, CAB_MAPA);
   var ult = sh.getLastRow();
-  if (ult < 2) return { ok: true, produtos: [] };
+  /* As observacoes abertas vem junto com a lista: sao poucas linhas e
+     poupam uma segunda viagem no arranque do tablet, que e onde a espera
+     aparece. */
+  var obs = comObs ? listarObs(ss).obs : [];
+  if (ult < 2) return { ok: true, produtos: [], obs: obs };
 
   var vals = sh.getRange(2, 1, ult - 1, CAB_MAPA.length).getValues();
   var por = {};
@@ -180,7 +198,7 @@ function listarProdutos(ss) {
 
   var out = Object.keys(por).map(function (k) { return por[k]; });
   out.sort(function (a, b) { return a.cod < b.cod ? -1 : 1; });
-  return { ok: true, produtos: out };
+  return { ok: true, produtos: out, obs: obs };
 }
 
 function lerMapa(ss, codBruto) {
@@ -423,6 +441,79 @@ function linhasDoLote(sh, lote, cod) {
 /** Só dígitos e letras: o ERP escreve 501.118.001 e o app manda 501118001. */
 function dois(n) { n = String(n || ''); return n.length < 2 ? '0' + n : n; }
 
+/* ================================================================
+   OBSERVACOES DA LINHA
+   ================================================================ */
+
+/** Recado novo. Nunca substitui nada: cada recado e um fato do dia. */
+function gravarObs(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var cod = normCod(p.cod);
+  var texto = String(p.texto || '').trim();
+  if (!cod)   return { ok: false, erro: 'Falta o codigo do produto.' };
+  if (!texto) return { ok: false, erro: 'Falta o texto da observacao.' };
+
+  var sh = aba(ss, AB_OBS, CAB_OBS);
+  var id = String(p.id || ('o' + new Date().getTime()));
+  /* Reenvio da fila (o tablet ficou sem rede e mandou de novo) nao pode
+     virar dois recados iguais na planilha. */
+  if (acharObs(sh, id) > 0) return { ok: true, id: id, repetido: true };
+
+  var ini = sh.getLastRow() + 1;
+  garantirLinhas(sh, ini);
+  [1, 3, 5, 6, 8].forEach(function (col) {      // ids, codigos e textos: nao viram numero
+    sh.getRange(ini, col, 1, 1).setNumberFormat('@');
+  });
+  sh.getRange(ini, 1, 1, CAB_OBS.length).setValues([[
+    id, new Date(), cod, String(p.desc || ''), Number(p.trilho) || '',
+    String(p.matricula || ''), String(p.nome || ''), texto, 'ABERTA', '', ''
+  ]]);
+  return { ok: true, id: id };
+}
+
+/** Só as abertas: o PPCP precisa ver o que ainda nao foi decidido. */
+function listarObs(ss) {
+  var sh = aba(ss, AB_OBS, CAB_OBS);
+  var ult = sh.getLastRow();
+  if (ult < 2) return { ok: true, obs: [] };
+  var vals = sh.getRange(2, 1, ult - 1, CAB_OBS.length).getValues();
+  var out = [];
+  vals.forEach(function (r) {
+    if (String(r[8] || 'ABERTA').toUpperCase() !== 'ABERTA') return;
+    out.push({
+      id: String(r[0] || ''), ts: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''),
+      cod: normCod(r[2]), desc: String(r[3] || ''), trilho: Number(r[4]) || 0,
+      matricula: String(r[5] || ''), nome: String(r[6] || ''), texto: String(r[7] || '')
+    });
+  });
+  out.sort(function (a, b) { return a.ts < b.ts ? 1 : -1; });   // a mais nova primeiro
+  return { ok: true, obs: out };
+}
+
+/** O PPCP decidiu: ARRUMADO ou NAO PROCEDE. O recado sai da lista de abertas
+    e fica na planilha com a decisao, que e o historico do processo. */
+function fecharObs(ss, p) {
+  if (!p) return { ok: false, erro: RODE_NO_APP };
+  var id = String(p.id || '');
+  var st = String(p.status || '').toUpperCase();
+  if (!id) return { ok: false, erro: 'Falta o id da observacao.' };
+  if (st !== 'ARRUMADO' && st !== 'NAO PROCEDE') return { ok: false, erro: 'status invalido: ' + st };
+
+  var sh = aba(ss, AB_OBS, CAB_OBS);
+  var ln = acharObs(sh, id);
+  if (ln < 2) return { ok: false, erro: 'observacao nao encontrada: ' + id };
+  sh.getRange(ln, 9, 1, 3).setValues([[st, new Date(), String(p.por || '')]]);
+  return { ok: true, id: id, status: st };
+}
+
+function acharObs(sh, id) {
+  var ult = sh.getLastRow();
+  if (ult < 2 || !id) return 0;
+  var col = sh.getRange(2, 1, ult - 1, 1).getValues();
+  for (var i = 0; i < col.length; i++) if (String(col[i][0]) === id) return i + 2;
+  return 0;
+}
+
 function normCod(c) {
   return String(c == null ? '' : c).toUpperCase().replace(/[^0-9A-Z]/g, '');
 }
@@ -491,6 +582,7 @@ function garantirAbas() {
   aba(ss, AB_MAPA, CAB_MAPA);
   aba(ss, AB_COLAB, CAB_COLAB);
   aba(ss, AB_CONF, CAB_CONF);
+  aba(ss, AB_OBS, CAB_OBS);
 
   /* A planilha nasce com uma aba vazia chamada "Página1"/"Sheet1". Ela não
      atrapalha, mas confunde quem abre o arquivo procurando o mapa. */
@@ -498,7 +590,7 @@ function garantirAbas() {
     var s = ss.getSheetByName(n);
     if (s && s.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s);
   });
-  Logger.log('abas MAPA, COLABORADORES e CONFERENCIA prontas');
+  Logger.log('abas MAPA, COLABORADORES, CONFERENCIA e OBSERVACOES prontas');
 }
 
 /**
