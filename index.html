@@ -456,6 +456,13 @@
     border-top:2px solid var(--amber)}
   .vop b{font-family:var(--f-tit); font-size:17px; letter-spacing:.1em; color:var(--amber)}
   .vop small{font-family:var(--f-mono); font-size:11px; color:var(--mut2); letter-spacing:.04em}
+  /* Discreto de propósito: a tela é para ler, e o aviso é a exceção. Mas
+     com alvo de dedo, que quem abastece está em pé e de luva. */
+  .vop .vavisar{margin-left:auto; flex:none; min-height:var(--tap); padding:0 14px;
+    font-family:var(--f-tit); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--line); color:var(--mut);
+    border-radius:8px; touch-action:manipulation}
+  .vop .vavisar:active{background:var(--amber-dim); border-color:var(--amber); color:var(--ink)}
   .vtr{display:flex; align-items:stretch; gap:12px; padding:0 12px 0 0;
     border-bottom:1px solid var(--line); min-height:56px}
   /* O número é o endereço: é o maior elemento da linha, e o que o olho
@@ -806,7 +813,7 @@
   <h3>Avisar o PPCP</h3>
   <div class="body">
     <p class="hint" id="obsProd"></p>
-    <div class="fld"><label for="obsTrilho">Trilho (se for de um só)</label>
+    <div class="fld"><label for="obsTrilho">Trilho (se for de um só — a OP já vai junto)</label>
       <input type="text" id="obsTrilho" inputmode="numeric" autocomplete="off"
              placeholder="ex.: 15 — vazio se for do mapa todo"></div>
     <div class="fld"><label for="obsTexto">O que você viu</label>
@@ -856,7 +863,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.14.0";
+const VERSAO = "3.15.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1019,7 +1026,15 @@ async function chamar(payload){
   if(!out.ok){
     /* Recusa da planilha, não falha de rede: reenviar o mesmo dado dá o
        mesmo erro para sempre, então quem chamou precisa saber a diferença. */
-    const e = new Error(out.erro || "erro no Apps Script");
+    /* "acao desconhecida" não é erro do dado: é o Apps Script da planilha
+       numa versão anterior à do app. Sem dizer isso, o líder relê o recado
+       procurando o que digitou de errado — e o que falta é uma
+       reimplantação de dois minutos no computador do PPCP. */
+    const e = new Error(/aca[oõ]\s+desconhecida/i.test(out.erro || "")
+      ? `o Apps Script da planilha está numa versão antiga e não conhece "${payload.acao}" — ` +
+        "atualize o Codigo.gs na planilha (Extensões > Apps Script) e reimplante em " +
+        "Implantar > Gerenciar implantações > nova versão"
+      : (out.erro || "erro no Apps Script"));
     e.recusado = true;
     throw e;
   }
@@ -1665,8 +1680,12 @@ function renderVer(){
     if(itens.length && op !== opAtual){
       opAtual = op;
       const pecas = pecasDaOp(op).length;
+      /* O aviso nasce onde a pessoa está: ela abastece uma OP, vê o erro
+         naquela OP, e toca no avisar daquela OP — o recado já sai sabendo
+         de qual posto é, sem ninguém ter de digitar isso. */
       html += `<div class="vop"><b>${op ? "OP " + String(op).padStart(2, "0") : "ANTES DA 1ª OP"}</b>
-        <small>${pecas} ${pecas === 1 ? "peça" : "peças"}</small></div>`;
+        <small>${pecas} ${pecas === 1 ? "peça" : "peças"}</small>
+        <button type="button" class="vavisar" data-op="${op}">avisar o PPCP</button></div>`;
     }
     /* Com busca na tela, trilho sem a peça procurada sai da frente: a
        pergunta é "onde entra esta peça", e a resposta não pode estar no
@@ -1713,8 +1732,11 @@ function linhaObs(o, comProduto){
   const quem = o.nome || nomeColab(o.matricula) || o.matricula || "sem nome";
   const quando = o.ts ? new Date(o.ts).toLocaleDateString("pt-BR") + " " +
                         new Date(o.ts).toTimeString().slice(0, 5) : "";
+  /* OP e trilho na frente do texto: é por onde o PPCP acha o que arrumar. */
+  const onde = [o.op ? "OP " + String(o.op).padStart(2, "0") : "", o.trilho ? "TRILHO " + o.trilho : ""]
+    .filter(Boolean).join(" · ");
   return `<div class="obsit" data-id="${escapa(o.id)}">
-    <div class="txt">${o.trilho ? `<b>TRILHO ${o.trilho}</b>` : ""}${escapa(o.texto)}
+    <div class="txt">${onde ? `<b>${onde}</b>` : ""}${escapa(o.texto)}
       <span class="quem">${escapa(quem)} · ${escapa(quando)}` +
       (comProduto ? ` · ${escapa(o.desc || codErp(o.cod))}` : "") + `</span></div>
     <button type="button" class="dec sim" data-st="ARRUMADO">Arrumado</button>
@@ -1769,16 +1791,33 @@ async function fecharObs(id, status, alvo){
 }));
 
 /* ---- o lado da linha: escrever o recado ---- */
-let obsQuem = "";
-$("btnObs").addEventListener("click", () => {
+let obsQuem = "", obsOp = 0;
+/* `op` vem do cabeçalho da OP; sem ela, o recado é do mapa inteiro. */
+function abrirObs(op){
   if(!totalItens()) return;
   obsQuem = S.conferente || "";
-  $("obsProd").innerHTML = `<b>${escapa(S.desc || codErp(S.cod))}</b> · ${codErp(S.cod)}`;
+  obsOp = Number(op) || 0;
+  const faixa = obsOp ? trilhosDaOp(obsOp) : null;
+  $("obsProd").innerHTML =
+    (obsOp ? `<b>OP ${String(obsOp).padStart(2, "0")}</b>` +
+             (faixa ? ` · trilhos ${faixa.de} a ${faixa.ate}` : "") + " · " : "") +
+    `${escapa(S.desc || codErp(S.cod))} · ${codErp(S.cod)}`;
   $("obsTrilho").value = ""; $("obsTexto").value = "";
   $("obsErro").hidden = true;
   pintarObsQuem();
   $("dlgObs").showModal();
   $("obsTexto").focus();
+}
+/* Do primeiro ao último trilho da OP — é o que a pessoa tem à frente. */
+function trilhosDaOp(op){
+  const ts = [];
+  for(let t = 1; t <= S.nTrilhos; t++) if(opDoTrilho(t) === op) ts.push(t);
+  return ts.length ? { de: ts[0], ate: ts[ts.length - 1] } : null;
+}
+$("btnObs").addEventListener("click", () => abrirObs(0));
+$("listaVer").addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest("button.vavisar");
+  if(b) abrirObs(b.dataset.op);
 });
 function pintarObsQuem(){
   const b = $("obsQuem");
@@ -1807,7 +1846,7 @@ $("obsOk").addEventListener("click", async () => {
 
   const o = {
     id: "o" + Date.now() + Math.random().toString(36).slice(2, 6),
-    cod: normCod(S.cod), desc: S.desc || "", trilho,
+    cod: normCod(S.cod), desc: S.desc || "", trilho, op: obsOp,
     matricula: obsQuem, nome: nomeColab(obsQuem), texto
   };
   $("dlgObs").close();
@@ -1824,7 +1863,15 @@ $("obsOk").addEventListener("click", async () => {
     await despacharFila();
     setMsgFixa("ok", "Recado enviado ao PPCP. O mapa na tela não mudou.", 6);
   }catch(e){
-    setMsgFixa("", "Sem rede: o recado ficou guardado no aparelho e sai sozinho quando a rede voltar.", 6);
+    /* Falta de rede e recusa da planilha são coisas diferentes, e dizer
+       "sem rede" para uma recusa manda o líder esperar por uma rede que
+       já está lá. Recusado não está gravado: sai da tela para o PPCP não
+       contar com um recado que a planilha não tem. */
+    const semRede = e.message === SEM_REDE || e.message === SEM_RESPOSTA;
+    if(!semRede){ S.obs = S.obs.filter(x => x.id !== o.id); renderObs(); linhaStatus(); }
+    setMsgFixa(semRede ? "" : "err", semRede
+      ? "Sem rede: o recado ficou guardado no aparelho e sai sozinho quando a rede voltar."
+      : "O recado NÃO foi gravado — " + e.message, semRede ? 6 : 20);
   }
 });
 
@@ -2777,7 +2824,7 @@ window.addEventListener("online", despacharSozinho);
 
 async function despacharAgora(){
   const fila = lerFila();
-  let enviados = 0, recusados = 0;
+  let enviados = 0, recusados = 0, motivo = "";
   while(fila.length){
     try{ await chamar(fila[0]); }
     catch(e){
@@ -2789,12 +2836,17 @@ async function despacharAgora(){
       rec.push({ payload: p, acao: p.acao, lote: p.lote || "", cod: p.cod || "",
                  erro: e.message, quando: new Date().toISOString() });
       salvarRecusados(rec); salvarFila(fila); recusados++;
+      motivo = motivo || e.message;
       continue;
     }
     fila.shift(); enviados++; salvarFila(fila);
   }
   salvarFila(fila); pintarFila();
-  if(recusados) throw new Error(`a planilha recusou ${recusados} ${recusados === 1 ? "envio" : "envios"} — toque em Ver recusados`);
+  /* O motivo vai junto: "a planilha recusou 1 envio" sozinho manda o líder
+     abrir outra tela para descobrir o que houve, e às vezes o motivo é uma
+     coisa que ele resolve na hora. */
+  if(recusados) throw new Error(`a planilha recusou ${recusados} ${recusados === 1 ? "envio" : "envios"}` +
+    (motivo ? " — " + motivo : " — toque em Ver recusados"));
   return enviados;
 }
 

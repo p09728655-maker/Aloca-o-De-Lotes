@@ -269,7 +269,7 @@ Uma linha por peça da caixa de amostra:
 ### `OBSERVACOES` — o que a linha avisou
 
 `ID | TS | COD_PRODUTO | DESC_PRODUTO | TRILHO | MATRICULA | NOME | TEXTO | STATUS |
-TS_STATUS | RESOLVIDO_POR`
+TS_STATUS | RESOLVIDO_POR | OP`
 
 Uma linha por recado. `STATUS` nasce `ABERTA` e vira `ARRUMADO` ou `NAO PROCEDE` quando
 o PPCP decide — nunca volta atrás e nunca é apagada, então a aba é também o histórico
@@ -309,8 +309,10 @@ Quem abastece vê o mapa errado antes de todo mundo: peça no trilho trocado, pe
 não vem mais na caixa, insumo que falta. Ele **não altera o mapa** — o mapa é do PPCP,
 e mapa com dois donos é o começo de mapa nenhum. O que ele faz é **avisar**.
 
-*Avisar o PPCP* grava um recado com o produto, o trilho (se for de um só), o texto, o
-nome de quem avisou e a hora. Sem rede, o recado entra na mesma fila da conferência e
+O aviso nasce **onde a pessoa está**: cada cabeçalho de OP tem o seu *avisar o PPCP*,
+e o recado já sai sabendo de qual posto é — sem ninguém ter de digitar isso. O botão da
+barra, sem OP, é para o que é do mapa inteiro. Grava produto, OP, trilho (se for de um
+só), texto, nome de quem avisou e hora. Sem rede, o recado entra na mesma fila da conferência e
 sai sozinho quando a rede voltar — o que se viu na esteira não depende do wi-fi.
 
 Do outro lado, no computador: a barra de status mostra **quantos recados estão em
