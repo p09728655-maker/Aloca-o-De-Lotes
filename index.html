@@ -863,7 +863,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.15.0";
+const VERSAO = "3.15.1";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1063,6 +1063,11 @@ async function carregarLista(){
     /* Os recados da linha vêm junto com a lista, na mesma viagem. */
     S.obs = out.obs || [];
     renderObs();
+    /* O rodapé e o Salvar dependem de S.produtos: no arranque eles são
+       decididos com a lista ainda vazia, e o mapa do rascunho aparecia
+       como "não é código do ERP" para sempre, mesmo com o produto
+       salvo na planilha. Com a lista na mão, refaz. */
+    atualizarBotoes();
     /* A busca por nome já funciona com isto na mão. Antes o status só
        mudava depois dos colaboradores, e uma segunda chamada lenta
        deixava a tela dizendo "Lendo a planilha…" com a lista já lida. */
@@ -1533,8 +1538,8 @@ function atualizarBotoes(){
   if(!S.trilhos.length){ setMsg("", ""); return; }
   if(!totalItens())            setMsg("", "Mapa vazio — toque no + de um trilho para acrescentar a peça.");
   else if(!normCod(S.cod))     setMsg("err", "Falta o código do produto para salvar.");
-  else if(!codValido(S.cod))   setMsg("err", `"${codErp(S.cod)}" não é código do ERP — o código tem dígitos (ex.: 501.118.001). ` +
-                                             `Busque o produto pelo nome no campo do código, ou digite o código do ERP.`);
+  else if(!codValido(S.cod))   setMsg("err", `"${codErp(S.cod)}" não é código do ERP — busque o produto pelo nome, ` +
+                                             `ou digite o código (ex.: 501.118.001).`);
   else if(!totalOps())         setMsg("", `${totalItens()} itens. Sem divisa de OP — marque com o botão OP do trilho onde cada posto começa.`);
   else                         setMsg("ok", `${totalItens()} ${totalItens() === 1 ? "item" : "itens"} · ` +
                                              `${S.nTrilhos} trilhos · ${totalOps()} ${totalOps() === 1 ? "OP" : "OPs"}.`);
@@ -2205,7 +2210,11 @@ function mostrarAba(a){
   /* O rodapé é compartilhado: ao entrar na Conferência ele precisa passar a
      falar dela, senão fica a mensagem do mapa. */
   if(a === "conf") atualizarBotaoConf();
-  else if(a === "ver") renderVer();
+  /* Ver o mapa é só leitura: o rodapé não tem nada a dizer ali. E o que a
+     aba do mapa escreveu não pode ficar na tela de quem abastece — era
+     assim que "não é código do ERP" aparecia debaixo do mapa da esteira,
+     onde ninguém pode fazer nada a respeito. */
+  else if(a === "ver"){ renderVer(); setMsg("", ""); }
   else atualizarBotoes();
   window.scrollTo(0, 0);
 }
