@@ -451,14 +451,17 @@
      esteira — a metade de cima ao lado da de baixo faz procurar o
      trilho 15 no alto da direita.
      ================================================================== */
-  .vop{display:flex; align-items:center; gap:10px; padding:7px 12px;
+  /* Mesmas colunas da linha de baixo: 62px do número + 12px de respiro. */
+  .vop{display:flex; align-items:center; gap:12px; padding:7px 12px 7px 0;
     background:#0b0d10; border-bottom:1px solid var(--line);
     border-top:2px solid var(--amber)}
+  .vop .rot{flex:none; width:62px; text-align:center; font-family:var(--f-mono);
+    font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut2)}
   .vop b{font-family:var(--f-tit); font-size:17px; letter-spacing:.1em; color:var(--amber)}
   .vop small{font-family:var(--f-mono); font-size:11px; color:var(--mut2); letter-spacing:.04em}
   /* Discreto de propósito: a tela é para ler, e o aviso é a exceção. Mas
      com alvo de dedo, que quem abastece está em pé e de luva. */
-  .vop .vavisar{margin-left:auto; flex:none; min-height:var(--tap); padding:0 14px;
+  .vop .vavisar{margin-left:auto; margin-right:0; flex:none; min-height:var(--tap); padding:0 14px;
     font-family:var(--f-tit); font-size:12.5px; letter-spacing:.06em; text-transform:uppercase;
     background:transparent; border:1px solid var(--line); color:var(--mut);
     border-radius:8px; touch-action:manipulation}
@@ -863,7 +866,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.15.1";
+const VERSAO = "3.16.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -1688,7 +1691,14 @@ function renderVer(){
       /* O aviso nasce onde a pessoa está: ela abastece uma OP, vê o erro
          naquela OP, e toca no avisar daquela OP — o recado já sai sabendo
          de qual posto é, sem ninguém ter de digitar isso. */
-      html += `<div class="vop"><b>${op ? "OP " + String(op).padStart(2, "0") : "ANTES DA 1ª OP"}</b>
+      /* "TRILHO" fica em cima da coluna dos números, e a OP sai de cima
+         dela para a coluna das peças. Sem isso o 1, 2, 3 é só um número
+         solto na borda da tela, e quem chega perto do tablet não sabe se
+         aquilo é o trilho, a OP ou a quantidade. A palavra se repete a
+         cada OP porque a tela rola: cabeçalho de tabela que só existe no
+         alto some no primeiro arrasto. */
+      html += `<div class="vop"><span class="rot">trilho</span>
+        <b>${op ? "OP " + String(op).padStart(2, "0") : "ANTES DA 1ª OP"}</b>
         <small>${pecas} ${pecas === 1 ? "peça" : "peças"}</small>
         <button type="button" class="vavisar" data-op="${op}">avisar o PPCP</button></div>`;
     }
