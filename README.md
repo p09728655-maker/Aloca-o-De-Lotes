@@ -57,10 +57,12 @@ o soltar do mouse, e o toque no `OP` ou na marca não fazia nada. Reduzir em cim
 trilho ocupado continua esperando o campo ser confirmado, porque pergunta antes e
 ninguém quer essa pergunta a cada dígito.
 
-Mapa com 16 trilhos ou mais **sai partido em duas metades lado a lado** — 28 trilhos
-cabem numa tela de computador sem rolar. Quem decide se elas ficam lado a lado ou
-empilhadas é o `flex-wrap` do CSS, então não existe listener de redimensionamento
-para desencontrar o desenho do estado.
+A tabela é **uma só, do trilho 1 ao último**, na ordem da esteira. Já foi partida em
+duas metades lado a lado, para caber numa tela sem rolar, e saiu caro: o trilho 15
+ficava no alto da direita, ao lado do 1, e a coluna da descrição ficava estreita
+demais para o nome da peça como a linha escreve — `ESCRIV ENCANTO PRAT/BASE ESQ
+497X300X15 MDP 3 (VIRAR UMA COM A OUTRA)` cortava no meio. Rolar a tela é mais
+barato do que ler o mapa fora de ordem.
 
 Nada disso mudou o que é **gravado**: trilho vazio, faixa de OP, insumo e suspenso
 continuam iguais na planilha e nas colunas que o Power BI consome.

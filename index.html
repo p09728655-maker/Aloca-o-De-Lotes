@@ -146,9 +146,12 @@
      Enter e Ctrl+V. Os 28 cartões de antes, com quatro botões cada e mais
      três por peça, davam cerca de 175 alvos de toque numa tela que, por
      configuração, nem é tocada: o tablet da esteira só abre a Conferência. */
-  #listaTrilhos{display:flex; flex-wrap:wrap; align-items:flex-start}
-  .tmapa{flex:1 1 540px; min-width:0; border-collapse:collapse; table-layout:fixed}
-  .tmapa + .tmapa{border-left:1px solid var(--line)}
+  #listaTrilhos{display:block}
+  /* Largura travada: numa tela de 1920 a linha esticada punha o `ins` e o
+     `+` a um metro da descrição, e o olho (e o mouse) tinham de atravessar
+     a tela inteira para marcar uma peça. */
+  .tmapa{width:100%; max-width:1180px; margin:0 auto; min-width:0;
+    border-collapse:collapse; table-layout:fixed}
   .tmapa th{font-family:var(--f-tit); font-weight:500; font-size:10px; letter-spacing:.14em;
     text-transform:uppercase; color:var(--mut); text-align:left; white-space:nowrap;
     padding:6px 7px; border-bottom:1px solid var(--line)}
@@ -1021,14 +1024,13 @@ function desenharTrilhos(box){
     $("selTxt").textContent = "";
     return;
   }
-  /* Mapa grande sai partido em duas metades, como era com os cartões: 28
-     trilhos cabem numa tela de computador sem rolar. Quem decide se ficam
-     lado a lado ou empilhadas é o flex-wrap do CSS — em tela estreita elas
-     descem na ordem, e não existe listener de redimensionamento para
-     desencontrar o desenho do estado. */
-  const corte = S.nTrilhos >= 16 ? Math.ceil(S.nTrilhos / 2) : S.nTrilhos;
-  box.innerHTML = tabelaTrilhos(1, corte)
-    + (corte < S.nTrilhos ? tabelaTrilhos(corte + 1, S.nTrilhos) : "");
+  /* Uma tabela só, do trilho 1 ao último, na ordem da esteira. Partido em
+     duas metades lado a lado cabia numa tela sem rolar, mas custava caro:
+     o trilho 15 ficava no alto da direita, do lado do 1, e a coluna da
+     descrição ficava estreita demais para o nome da peça como ele é escrito
+     ("ESCRIV ENCANTO PRAT/BASE ESQ 497X300X15 MDP 3 (VIRAR UMA COM A
+     OUTRA)"). Rolar a tela é mais barato do que ler o mapa fora de ordem. */
+  box.innerHTML = tabelaTrilhos(1, S.nTrilhos);
   atualizarResumoMapa();
   aplicarFoco();
 }
