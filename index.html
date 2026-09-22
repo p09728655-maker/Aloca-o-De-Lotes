@@ -57,6 +57,9 @@
   .status{font-family:var(--f-mono); font-size:11.5px; letter-spacing:.05em;
     color:var(--mut); padding:7px 0 3px; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   .status.err{color:var(--red)} .status.ok{color:var(--green)}
+  .status .rever{font-family:var(--f-tit); font-size:12px; letter-spacing:.06em;
+    min-height:30px; padding:3px 11px; border-radius:7px; border:1px solid var(--amber);
+    background:transparent; color:var(--amber); cursor:pointer}
 
   .setup{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:flex-end;
     background:var(--panel); border:1px solid var(--line); border-radius:12px;
@@ -912,17 +915,29 @@ function setMsgFixa(kind, txt, seg){
 /* "Failed to fetch" (Android) e "Load failed" (iPad) chegavam crus ao líder
    em pé na esteira. Uma tradução só, aqui, serve as sete mensagens. */
 const SEM_REDE = "sem conexão com a planilha";
+const SEM_RESPOSTA = "a planilha não respondeu a tempo";
+/* Chamada sem prazo é chamada que pode não voltar nunca — e foi o que
+   aconteceu na fábrica: o app ficou em "Lendo a planilha…" para sempre,
+   sem lista de produtos, sem erro e sem nada para o líder fazer. O
+   Apps Script responde em poucos segundos; passou disso, é falha, e
+   falha tem de aparecer na tela. Reenviar não duplica: salvar mapa e
+   gravar conferência substituem as linhas daquele produto/lote. */
+const PRAZO = 25000;
 async function chamar(payload){
   if(!CFG.api) throw new Error("Apps Script não configurado (⚙)");
   let res;
+  const corte = new AbortController();
+  const relogio = setTimeout(() => corte.abort(), PRAZO);
   try{
     res = await fetch(CFG.api, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
-      redirect: "follow"
+      redirect: "follow",
+      signal: corte.signal
     });
-  }catch(e){ throw new Error(SEM_REDE); }
+  }catch(e){ throw new Error(corte.signal.aborted ? SEM_RESPOSTA : SEM_REDE); }
+  finally{ clearTimeout(relogio); }
   const txt = await res.text();
   let out;
   try{ out = JSON.parse(txt); }
@@ -937,32 +952,59 @@ async function chamar(payload){
   return out;
 }
 
+/* Uma leitura por vez, e uma segunda tentativa sozinha: na fábrica a rede
+   pisca, e quem está de pé na esteira não tem como saber que precisa
+   recarregar o app. */
+let LENDO = false, JATENTEI = false;
 async function carregarLista(){
+  if(LENDO) return;
   if(!CFG.api){
     setStatus("err", "Apps Script não configurado — toque no ⚙ e cole a URL do /exec. " +
       `O app monta e imprime sem ele, mas não salva. <span class="versao">v${VERSAO}</span>`);
     return;
   }
+  LENDO = true;
   setStatus("", "Lendo a planilha…");
+  /* Leitura que passa de seis segundos já não é normal: dizer isso é o
+     que impede a tela de parecer travada. */
+  const demora = setTimeout(() => setStatus("", "Lendo a planilha… está demorando."), 6000);
   try{
     const out = await chamar({ acao: "lista" });
     S.produtos = out.produtos || [];
+    /* A busca por nome já funciona com isto na mão. Antes o status só
+       mudava depois dos colaboradores, e uma segunda chamada lenta
+       deixava a tela dizendo "Lendo a planilha…" com a lista já lida. */
+    linhaStatus();
     try{
       S.colab = (await chamar({ acao: "colaboradores" })).colaboradores || [];
     }catch(e){ S.colab = []; }
     renderConf();
     linhaStatus();
+    JATENTEI = false;
   }catch(e){
     /* "Failed to fetch" não diz nada para quem está de pé na esteira. Sem
-       rede o app continua servindo: monta, imprime e guarda na fila. */
-    const semRede = e.message === SEM_REDE;
-    setStatus("err", semRede
-      ? "Sem conexão com a planilha — dá para montar e imprimir; a gravação fica na fila. " +
-        `<span class="versao">v${VERSAO}</span>`
-      : "Não consegui ler a planilha: " + escapa(e.message) +
-        ` <span class="versao">v${VERSAO}</span>`);
+       rede o app continua servindo: monta, imprime e guarda na fila.
+       Sem a lista, porém, não há busca por nome — então o aviso traz o
+       botão que tenta de novo, em vez de mandar recarregar o app. */
+    const tenta = ' <button type="button" class="rever" id="btnRelerLista">Tentar de novo</button>';
+    setStatus("err", (
+        e.message === SEM_REDE     ? "Sem conexão com a planilha — dá para montar e imprimir; a gravação fica na fila."
+      : e.message === SEM_RESPOSTA ? "A planilha não respondeu em 25 segundos — a lista de produtos não foi lida, então a busca por nome não acha nada."
+      :                              "Não consegui ler a planilha: " + escapa(e.message))
+      + tenta + ` <span class="versao">v${VERSAO}</span>`);
+    /* Uma segunda tentativa sozinha, cinco segundos depois. Mais do que
+       isso vira teimosia contra uma planilha que está fora do ar. */
+    if(!JATENTEI){ JATENTEI = true; setTimeout(() => carregarLista(), 5000); }
+  }finally{
+    clearTimeout(demora);
+    LENDO = false;
   }
 }
+/* O botão nasce e morre junto com a mensagem de erro: o ouvinte fica na
+   barra, que é fixa. */
+$("status").addEventListener("click", ev => {
+  if(ev.target && ev.target.id === "btnRelerLista") carregarLista();
+});
 
 function linhaStatus(){
   const p = [];
@@ -2341,7 +2383,9 @@ function ligarBusca(idIn, idSug, soLeitura){
     pan.innerHTML = "";
     ativo = -1;
     if(!S.produtos.length){
-      pan.innerHTML = `<div class="nada">Nenhum mapa salvo lido da planilha — digite o <b>código do ERP</b>.</div>`;
+      pan.innerHTML = `<div class="nada">A <b>lista de produtos</b> não foi lida da planilha — sem ela
+        não dá para achar pelo nome. Toque em <b>Tentar de novo</b> no alto da tela, ou digite o
+        <b>código do ERP</b>.</div>`;
     }else if(!achados.length){
       pan.innerHTML = `<div class="nada">Nenhum produto com esse nome. Confira a escrita, ou digite o <b>código do ERP</b> se o produto ainda não tem mapa.</div>`;
     }else{

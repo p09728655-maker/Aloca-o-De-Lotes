@@ -343,7 +343,15 @@ o que foi gravado, para quem volta corrigir uma divergência.
 escrever à mão; depois alguém digita no app.
 
 Sem rede o app continua funcionando: o que está na tela é guardado no aparelho a cada
-toque, e a gravação entra numa fila que sai por *Reenviar pendentes*. Falha de rede
+toque, e a gravação entra numa fila que sai por *Reenviar pendentes*.
+
+**Quando a planilha não responde** — toda chamada ao Apps Script tem prazo de 25
+segundos. Passou disso, a tela diz o que aconteceu e mostra *Tentar de novo*, em vez
+de ficar em "Lendo a planilha…" para sempre; o app ainda tenta sozinho uma segunda vez,
+cinco segundos depois. Sem a lista lida da planilha **não há busca por nome** — é ela
+que o campo procura —, e a lista do campo diz isso em vez de aparecer vazia. A leitura
+dos produtos também não espera mais a dos colaboradores: assim que os produtos chegam,
+a busca já funciona. Falha de rede
 segura a fila até a próxima tentativa; envio que a **planilha recusa** sai da frente e
 fica separado como *recusado*, com o motivo, para não prender os lotes que vêm atrás.
 *Ver recusados* mostra a lista e devolve tudo para a fila. O que ficou guardado sai
