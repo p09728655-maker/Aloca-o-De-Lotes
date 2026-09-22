@@ -107,6 +107,7 @@
   .sug button span{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .sug button i{font-style:normal; font-family:var(--f-mono); font-size:11px;
     letter-spacing:.04em; color:var(--mut); text-transform:none}
+  .sug button i.ruim{color:var(--amber)}
   /* Teclado no computador, dedo no tablet: os dois acendem a mesma linha. */
   .sug button.ativo{background:var(--amber-dim); border-color:var(--amber)}
   @media(hover:hover){ .sug button:hover{background:#1f2227} }
@@ -411,6 +412,46 @@
   .obsdiv input{font-size:13px; min-height:38px}
 
   /* ==================================================================
+     VER O MAPA — a tela de quem abastece a esteira
+     Lida de pé, a um braço de distância, com peça na mão: número do
+     trilho grande à esquerda (é o endereço), nome da peça grande à
+     direita, e nada para tocar sem querer. Uma coluna, na ordem da
+     esteira — a metade de cima ao lado da de baixo faz procurar o
+     trilho 15 no alto da direita.
+     ================================================================== */
+  .vop{display:flex; align-items:center; gap:10px; padding:7px 12px;
+    background:#0b0d10; border-bottom:1px solid var(--line);
+    border-top:2px solid var(--amber)}
+  .vop b{font-family:var(--f-tit); font-size:17px; letter-spacing:.1em; color:var(--amber)}
+  .vop small{font-family:var(--f-mono); font-size:11px; color:var(--mut2); letter-spacing:.04em}
+  .vtr{display:flex; align-items:stretch; gap:12px; padding:0 12px 0 0;
+    border-bottom:1px solid var(--line); min-height:56px}
+  /* O número é o endereço: é o maior elemento da linha, e o que o olho
+     procura quando volta da esteira para o tablet. */
+  .vtr .num{flex:none; width:62px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--f-tit); font-weight:700; font-size:26px; color:var(--ink);
+    background:var(--panel2); border-right:1px solid var(--line)}
+  .vtr .pecas{flex:1 1 0; min-width:0; display:flex; flex-direction:column;
+    justify-content:center; gap:3px; padding:8px 0}
+  .vpeca{display:flex; align-items:baseline; gap:9px; font-size:17px; line-height:1.3}
+  .vpeca b{font-family:var(--f-tit); font-size:19px; color:var(--amber); flex:none; min-width:26px}
+  .vpeca span{min-width:0; overflow-wrap:anywhere}
+  .vpeca i{font-style:normal; font-family:var(--f-tit); font-size:11px; letter-spacing:.08em;
+    padding:2px 7px; border-radius:5px; flex:none; white-space:nowrap}
+  .vpeca i.ins{color:var(--roxo); border:1px solid var(--roxo)}
+  .vpeca i.sus{color:var(--steel); border:1px solid var(--steel)}
+  /* Trilho livre não some: quem abastece precisa saber que ali não entra
+     peça nenhuma — é o que evita empurrar a sequência inteira. */
+  .vtr.livre{min-height:34px; color:var(--mut2)}
+  .vtr.livre .num{font-size:17px; font-weight:400; color:var(--mut2); background:transparent}
+  .vtr.livre .pecas{font-size:12.5px; color:var(--mut2); font-family:var(--f-mono)}
+  /* Achou pela busca: a linha acende inteira, para achar de longe. */
+  .vtr.achou{background:var(--amber-dim)}
+  .vtr.achou .num{background:var(--amber); color:#000}
+  #listaVer{max-width:820px}
+  @media(min-width:900px){ #listaVer{margin:0 auto} }
+
+  /* ==================================================================
      FOLHA IMPRESSA — é o que fica pendurado na esteira.
      ================================================================== */
   #folha{display:none}
@@ -516,6 +557,7 @@
      morar embaixo de 30 trilhos: é uma aba, ocupa a tela inteira. -->
 <div class="abas" id="abas">
   <button data-aba="mapa" class="on">Mapa dos trilhos</button>
+  <button data-aba="ver">Ver o mapa</button>
   <button data-aba="conf">Conferência do lote</button>
   <button data-aba="rel">Relatório</button>
 </div>
@@ -528,7 +570,8 @@
        escrever o nome. -->
   <div class="fld" style="min-width:230px">
     <label for="inCod">Código ou nome</label>
-    <input type="text" id="inCod" autocomplete="off" role="combobox"
+    <input type="text" id="inCod" autocomplete="nope-cod" role="combobox"
+           inputmode="text" enterkeyhint="search" spellcheck="false"
            aria-expanded="false" aria-autocomplete="list" aria-controls="sugCod"
            placeholder="ex.: 501.118.001 ou MALTA">
     <div class="sug" id="sugCod" role="listbox" hidden></div>
@@ -570,6 +613,36 @@
   </div></div>
 </div>
 
+<!-- VER O MAPA — a tela de quem abastece a esteira.
+     Só leitura: nenhum campo de digitar peça, nenhum botão de marca. Quem
+     está com a peça na mão precisa de duas coisas, e o app só tem de
+     responder isso rápido: em que trilho ela entra, e o que falta no
+     trilho que está na frente. Montar mapa e conferir lote continuam onde
+     estavam — aqui ninguém estraga mapa por engano. -->
+<div class="box" id="boxVer" data-aba="ver" hidden>
+  <div class="confbar" id="verBarra">
+    <div class="fld" style="min-width:230px">
+      <label for="inVerCod">Código ou nome</label>
+      <input type="text" id="inVerCod" autocomplete="nope-ver" role="combobox"
+             inputmode="text" enterkeyhint="search" spellcheck="false"
+             aria-expanded="false" aria-autocomplete="list" aria-controls="sugVerCod"
+             placeholder="ex.: 501.118.001 ou MALTA">
+      <div class="sug" id="sugVerCod" role="listbox" hidden></div>
+      <span class="achou" id="verAchou"></span>
+    </div>
+    <div class="prodchip" id="verProd"></div>
+    <!-- Com a peça na mão: escreve um pedaço do nome e sobram os trilhos
+         dela. É a pergunta que se faz de pé na esteira. -->
+    <div class="fld grow" style="max-width:340px">
+      <label for="inVerBusca">Achar a peça</label>
+      <input type="text" id="inVerBusca" autocomplete="nope-peca" inputmode="text"
+             enterkeyhint="search" spellcheck="false" placeholder="ex.: ISOMANTA">
+    </div>
+    <em class="confmeta" id="verMeta"></em>
+  </div>
+  <div id="listaVer"></div>
+</div>
+
 <div class="box" id="boxConf" data-aba="conf" hidden>
   <!-- sem h2: a aba já diz "Conferência do lote", e no tablet cada 40px
        de altura é meia peça a menos na tela -->
@@ -579,7 +652,8 @@
   <div class="confbar" id="confBarra">
     <div class="fld" style="min-width:230px">
       <label for="inConfCod">Código ou nome</label>
-      <input type="text" id="inConfCod" autocomplete="off" role="combobox"
+      <input type="text" id="inConfCod" autocomplete="nope-conf" role="combobox"
+             inputmode="text" enterkeyhint="search" spellcheck="false"
              aria-expanded="false" aria-autocomplete="list" aria-controls="sugConfCod"
              placeholder="ex.: 501.118.001 ou MALTA">
       <div class="sug" id="sugConfCod" role="listbox" hidden></div>
@@ -647,8 +721,9 @@
     <p class="hint">Sem essa URL o app funciona e imprime, mas não salva: o mapa
       fica na fila local até você configurar.</p>
     <label class="check"><input type="checkbox" id="cfgTablet">
-      <span><b>Tablet da esteira: só a Conferência do lote</b> — esconde o Mapa dos
-      trilhos e o Relatório. Mapa se monta e relatório se tira no computador.</span></label>
+      <span><b>Tablet da esteira: só Ver o mapa e a Conferência do lote</b> — esconde a
+      montagem do mapa e o Relatório, que são do computador. Quem abastece abre o
+      produto e lê o trilho de cada peça; ninguém estraga mapa por engano.</span></label>
     <p class="hint"><a href="https://docs.google.com/spreadsheets/d/1D_GSK7D1SFQCyhgxuqjwawc1tflcm6-5_LQhAMMjh5g/edit"
       target="_blank" rel="noopener">Abrir a planilha do mapa</a></p>
     <p class="hint versao" id="cfgVersao"></p>
@@ -705,7 +780,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.12.0";
+const VERSAO = "3.13.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -981,6 +1056,7 @@ function limparTela(){
 function render(){
   renderTrilhos();
   renderConf();
+  renderVer();
   renderKpi();
   atualizarBotoes();
   guardarRascunho();
@@ -1312,6 +1388,8 @@ function atualizarBotoes(){
      está na esteira não pode ler "10 itens · 12 trilhos" enquanto o Gravar
      está travado por outro motivo. */
   if(ABA_ATIVA === "conf") return;
+  /* Ver o mapa não tem botão nem o que salvar: o rodapé fica fora disso. */
+  if(ABA_ATIVA === "ver"){ setMsg("", ""); return; }
   if(!S.trilhos.length){ setMsg("", ""); return; }
   if(!totalItens())            setMsg("", "Mapa vazio — toque no + de um trilho para acrescentar a peça.");
   else if(!normCod(S.cod))     setMsg("err", "Falta o código do produto para salvar.");
@@ -1422,6 +1500,67 @@ function renderConf(){
   guardarRascunho();
 }
 
+/* ==================================================================
+   VER O MAPA — só leitura, para quem abastece a esteira
+   O mapa é o mesmo das outras abas: mesma S.trilhos, mesma busca de
+   produto. O que muda é o desenho — número do trilho grande, peça
+   grande, nada para tocar — e a busca de peça, que responde a pergunta
+   de quem está de pé com a peça na mão: em que endereço ela entra.
+   ================================================================== */
+function renderVer(){
+  const lista = $("listaVer");
+  if(!lista) return;
+  const busca = palavras($("inVerBusca") ? $("inVerBusca").value : "");
+  const toks = busca ? busca.split(" ") : [];
+  const casa = d => !toks.length || toks.every(t => palavras(d).includes(t));
+
+  if(!totalItens()){
+    lista.innerHTML = `<div class="vazio-tela">Escolha o produto acima — pelo
+      <b>código</b> ou pelo <b>nome</b> — e o mapa aparece aqui: o trilho de cada peça,
+      na ordem da esteira.</div>`;
+    $("verMeta").textContent = "";
+    return;
+  }
+
+  let html = "", opAtual = null, achados = 0;
+  for(let t = 1; t <= S.nTrilhos; t++){
+    const itens = (S.trilhos[t - 1] || { itens: [] }).itens;
+    const op = opDoTrilho(t);
+    if(itens.length && op !== opAtual){
+      opAtual = op;
+      const pecas = pecasDaOp(op).length;
+      html += `<div class="vop"><b>${op ? "OP " + String(op).padStart(2, "0") : "ANTES DA 1ª OP"}</b>
+        <small>${pecas} ${pecas === 1 ? "peça" : "peças"}</small></div>`;
+    }
+    /* Com busca na tela, trilho sem a peça procurada sai da frente: a
+       pergunta é "onde entra esta peça", e a resposta não pode estar no
+       meio de mais 27 linhas. */
+    const doTrilho = itens.filter(x => casa(x.desc));
+    if(toks.length && !doTrilho.length) continue;
+    if(!itens.length){
+      if(toks.length) continue;
+      html += `<div class="vtr livre"><div class="num">${t}</div><div class="pecas">livre</div></div>`;
+      continue;
+    }
+    achados += doTrilho.length;
+    html += `<div class="vtr${toks.length ? " achou" : ""}"><div class="num">${t}</div><div class="pecas">` +
+      itens.map(x => `<div class="vpeca"><b>${escapa(fmtQtd(x.qtd))}×</b>
+          <span>${escapa(x.desc)}</span>` +
+        (x.insumo   ? `<i class="ins">insumo</i>` : "") +
+        (x.suspenso ? `<i class="sus">suspenso</i>` : "") + `</div>`).join("") +
+      `</div></div>`;
+  }
+  if(toks.length && !achados)
+    html = `<div class="vazio-tela">Nenhuma peça com esse nome neste mapa.
+      Apague a busca para ver o mapa inteiro.</div>`;
+  lista.innerHTML = html;
+  /* Sem busca o resumo fica vazio: peças e OPs já estão no chip do produto
+     e no alto da tela. Com busca, ele é a resposta. */
+  $("verMeta").textContent = toks.length
+    ? `${achados} ${achados === 1 ? "peça" : "peças"} com esse nome`
+    : "";
+}
+
 const nomeColab = mat => (S.colab.find(c => c.mat === mat) || {}).nome || "";
 function renderConferente(){
   const b = $("inConferente");
@@ -1473,9 +1612,10 @@ function escolherColab({ titulo, atual, ocupado, aoEscolher }){
 }
 $("quemCancel").addEventListener("click", () => $("dlgQuem").close());
 function renderProdChip(){
-  $("confProd").innerHTML = S.cod && totalItens()
+  const txt = S.cod && totalItens()
     ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs`
     : "";
+  ["confProd", "verProd"].forEach(id => { const el = $(id); if(el) el.innerHTML = txt; });
 }
 
 /* Um toque de OK por OP: marca OK o que ainda não tem marca e deixa o DIV
@@ -1718,12 +1858,18 @@ async function abrirConferencia(){
    ================================================================== */
 const ABA_KEY = "trilhosAba";
 let ABA_ATIVA = "mapa";
+/* No tablet da esteira só existem duas telas: ver o mapa (abastecer) e
+   conferir o lote. Montar mapa e tirar relatório são do computador. */
+const ABAS_TABLET = ["ver", "conf"];
 function mostrarAba(a){
-  if(CFG.tablet) a = "conf";
+  if(CFG.tablet && !ABAS_TABLET.includes(a)) a = "ver";
   ABA_ATIVA = a;
-  $("abas").hidden = !!CFG.tablet;
   document.querySelectorAll("[data-aba]").forEach(el => {
     if(el.parentElement && el.parentElement.id === "abas"){
+      /* No tablet a barra continua na tela, com as duas abas que existem
+         lá: escondê-la inteira deixava quem abastece sem caminho de volta
+         para o mapa depois de abrir a conferência. */
+      el.hidden = CFG.tablet && !ABAS_TABLET.includes(el.dataset.aba);
       el.classList.toggle("on", el.dataset.aba === a);
     }else{
       el.hidden = el.dataset.aba !== a;
@@ -1735,7 +1881,9 @@ function mostrarAba(a){
   try{ localStorage.setItem(ABA_KEY, a); }catch(e){}
   /* O rodapé é compartilhado: ao entrar na Conferência ele precisa passar a
      falar dela, senão fica a mensagem do mapa. */
-  if(a === "conf") atualizarBotaoConf(); else atualizarBotoes();
+  if(a === "conf") atualizarBotaoConf();
+  else if(a === "ver") renderVer();
+  else atualizarBotoes();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll("#abas button").forEach(b =>
@@ -2001,11 +2149,11 @@ let codPedido = "";
 /* O mesmo produto tem dois campos de código, um por aba. O aviso ("mapa
    salvo, aberto na tela") e o valor andam juntos nos dois. */
 function setAchou(cls, txt){
-  ["achouCod", "confAchou"].forEach(id => { const el = $(id); if(el){ el.className = cls; el.textContent = txt; } });
+  ["achouCod", "confAchou", "verAchou"].forEach(id => { const el = $(id); if(el){ el.className = cls; el.textContent = txt; } });
 }
 function sincronizarCod(cod){
   const v = cod ? codErp(cod) : "";
-  ["inCod", "inConfCod"].forEach(id => { const el = $(id); if(el && normCod(el.value) !== normCod(v)) el.value = v; });
+  ["inCod", "inConfCod", "inVerCod"].forEach(id => { const el = $(id); if(el && normCod(el.value) !== normCod(v)) el.value = v; });
 }
 
 /* Desfaz o que linhasDoMapa() fez: uma linha por trilho vira o mapa da tela
@@ -2029,10 +2177,11 @@ function mapaDeLinhas(cod, cab, linhas){
            vel: cab.velocidade, esq: cab.n_esquema, trilhos, inicioOp: [...ops] };
 }
 
-/* `daConf` = veio do campo da aba Conferência. Lá o mapa na tela é sempre
-   um mapa salvo (o tablet não monta mapa), então trocar de produto não
-   pergunta nada — só avisa se houver divergência marcada e não gravada. */
-async function abrirProduto(bruto, daConf){
+/* `soLeitura` = veio do campo da Conferência ou do Ver o mapa. Nessas duas
+   o mapa na tela é sempre um mapa salvo (o tablet não monta mapa), então
+   trocar de produto não pergunta nada — só avisa se houver divergência
+   marcada e não gravada. */
+async function abrirProduto(bruto, soLeitura){
   const cod = normCod(bruto);
   if(cod && cod === normCod(S.cod) && totalItens()) return;   // mesmo produto já aberto
   const anterior = S.cod;
@@ -2055,13 +2204,13 @@ async function abrirProduto(bruto, daConf){
     sincronizarCod(cod);
     /* As peças do produto anterior não podem ficar na tela debaixo de um
        código novo — a conferência seria gravada no produto errado. */
-    if(daConf) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
+    if(soLeitura) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
     setAchou("achou", "produto novo — monte o mapa e salve");
     atualizarBotoes();
     return;
   }
   const mapaSalvoNaTela = !!S.produtos.find(p => normCod(p.cod) === normCod(anterior));
-  if(!cab.incerto && totalItens() && !(daConf && mapaSalvoNaTela) && !confirm(
+  if(!cab.incerto && totalItens() && !(soLeitura && mapaSalvoNaTela) && !confirm(
     `${cab.desc || codErp(cod)} já tem mapa salvo (${cab.n_trilhos} trilhos).\n\n` +
     `Abrir o mapa salvo descarta o que está na tela agora. Continuar?`)){
     S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
@@ -2074,20 +2223,22 @@ async function abrirProduto(bruto, daConf){
     const out = await chamar({ acao: "mapa", cod });
     if(codPedido !== cod) return;              // o líder já digitou outro código
     if(!out.achou){
-      if(daConf) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
+      if(soLeitura) return semMapaNaTela(cod, "sem mapa salvo — o mapa se monta no computador");
       setAchou("achou", "produto novo — monte o mapa e salve");
       return;
     }
 
     aplicarMapa(mapaDeLinhas(cod, out.mapa, out.linhas));
-    setAchou("achou ok", daConf ? `mapa aberto — ${totalItens()} peças em ${totalOps()} OPs. Digite o lote.`
-                                : "mapa salvo, aberto na tela");
+    setAchou("achou ok",
+      !soLeitura            ? "mapa salvo, aberto na tela"
+      : ABA_ATIVA === "ver" ? `mapa aberto — ${totalItens()} peças em ${totalOps()} OPs, na ordem da esteira`
+                            : `mapa aberto — ${totalItens()} peças em ${totalOps()} OPs. Digite o lote.`);
   }catch(e){
     /* O código já mudou na tela, mas as peças ainda são do produto anterior:
        deixar assim grava a conferência no produto errado. Sem rede, a tela
        fica vazia com o código pedido; no computador, volta ao que estava. */
     codPedido = "";
-    if(daConf) return semMapaNaTela(cod, "sem conexão — não abriu o mapa deste produto");
+    if(soLeitura) return semMapaNaTela(cod, "sem conexão — não abriu o mapa deste produto");
     S.cod = anterior; renderProdChip(); sincronizarCod(anterior);
     setAchou("achou err", e.message);
     atualizarBotoes();
@@ -2131,23 +2282,23 @@ function buscarProdutos(txt){
 
 /* O que fazer com o que ficou escrito no campo quando ninguém escolheu da
    lista — saiu do campo ou apertou Enter. */
-function resolverProduto(txt, daConf){
+function resolverProduto(txt, soLeitura){
   const t = String(txt || "").trim();
-  if(!t) return abrirProduto("", daConf);
+  if(!t) return abrirProduto("", soLeitura);
   /* Sem lista lida (arranque sem rede) todo texto vai para o Apps Script,
      como sempre foi: é o único jeito de abrir ou montar mapa offline. */
-  if(!S.produtos.length) return abrirProduto(t, daConf);
+  if(!S.produtos.length) return abrirProduto(t, soLeitura);
 
   const cod = normCod(t);
   const exato = S.produtos.find(p => normCod(p.cod) === cod);
-  if(exato) return abrirProduto(exato.cod, daConf);
+  if(exato) return abrirProduto(exato.cod, soLeitura);
 
   const achados = buscarProdutos(t);
   /* Nome escrito inteiro e igual ao da planilha não pede escolha, mesmo
      que ele seja começo do nome de outro ("HOME ANGEL 1.8"). */
   const iguais = achados.filter(p => palavras(p.desc) === palavras(t));
-  if(iguais.length === 1) return abrirProduto(iguais[0].cod, daConf);
-  if(achados.length === 1) return abrirProduto(achados[0].cod, daConf);
+  if(iguais.length === 1) return abrirProduto(iguais[0].cod, soLeitura);
+  if(achados.length === 1) return abrirProduto(achados[0].cod, soLeitura);
   if(achados.length > 1){
     setAchou("achou", `${achados.length} produtos com esse nome — escolha na lista`);
     return;
@@ -2155,14 +2306,14 @@ function resolverProduto(txt, daConf){
   /* Não achou nada: só segue como produto novo o que tem cara de código.
      Nome digitado no lugar do código não vira produto — o campo que vai
      para a planilha e para a folha impressa é o código do ERP. */
-  if(pareceCodigo(t)) return abrirProduto(t, daConf);
+  if(pareceCodigo(t)) return abrirProduto(t, soLeitura);
   setAchou("achou err", "nenhum produto com esse nome — o código vem do ERP");
 }
 
 /* O mesmo campo nas duas abas: no computador anda pelo teclado (setas,
    Enter, Esc); no tablet é botão grande de tocar. A escolha grava o
    código, nunca o texto digitado. */
-function ligarBusca(idIn, idSug, daConf){
+function ligarBusca(idIn, idSug, soLeitura){
   const inp = $(idIn), pan = $(idSug);
   let ativo = -1;
   const botoes = () => [...pan.querySelectorAll("button")];
@@ -2174,7 +2325,7 @@ function ligarBusca(idIn, idSug, daConf){
   function escolher(p){
     fechar();
     inp.value = codErp(p.cod);
-    abrirProduto(p.cod, daConf);
+    abrirProduto(p.cod, soLeitura);
   }
   /* Colada ao campo, sem passar da direita nem do rodapé da tela. */
   function posicionar(){
@@ -2197,8 +2348,14 @@ function ligarBusca(idIn, idSug, daConf){
       achados.slice(0, MAX_SUG).forEach(p => {
         const b = document.createElement("button");
         b.type = "button"; b.setAttribute("role", "option");
+        /* Produto salvo com o nome no lugar do código aparece com o
+           aviso: é o que explica por que o campo fica com o nome sem
+           espaço depois de escolher, e diz qual linha da planilha
+           precisa ser arrumada. */
+        const semErp = !pareceCodigo(p.cod);
         b.innerHTML = `<span>${escapa(p.desc || "(sem descrição)")}</span>` +
-                      `<i>${escapa(codErp(p.cod))} · ${p.n_trilhos || 0} trilhos</i>`;
+                      `<i${semErp ? ' class="ruim"' : ""}>${escapa(codErp(p.cod))}` +
+                      `${semErp ? " · sem código do ERP" : ""} · ${p.n_trilhos || 0} trilhos</i>`;
         /* O clique não pode tirar o foco do campo antes de chegar: o blur é
            o mousedown do clique, e é ele que dispara a leitura do texto.
            Sem isto, escolher da lista abria o produto duas vezes. */
@@ -2231,7 +2388,7 @@ function ligarBusca(idIn, idSug, daConf){
   window.addEventListener("resize", () => { if(!pan.hidden) posicionar(); });
   /* Sair do campo fecha a lista e lê o que ficou escrito — é o mesmo
      comportamento de antes, quando o campo só aceitava código. */
-  inp.addEventListener("blur", () => { fechar(); resolverProduto(inp.value, daConf); });
+  inp.addEventListener("blur", () => { fechar(); resolverProduto(inp.value, soLeitura); });
   inp.addEventListener("keydown", ev => {
     if(ev.key === "ArrowDown" || ev.key === "ArrowUp"){
       ev.preventDefault();
@@ -2241,7 +2398,7 @@ function ligarBusca(idIn, idSug, daConf){
       ev.preventDefault();
       const bs = botoes();
       if(!pan.hidden && ativo >= 0 && bs[ativo]) bs[ativo].click();
-      else { fechar(); resolverProduto(inp.value, daConf); }
+      else { fechar(); resolverProduto(inp.value, soLeitura); }
     }else if(ev.key === "Escape" && !pan.hidden){
       ev.preventDefault(); fechar();
     }
@@ -2249,6 +2406,9 @@ function ligarBusca(idIn, idSug, daConf){
 }
 ligarBusca("inCod", "sugCod", false);
 ligarBusca("inConfCod", "sugConfCod", true);
+ligarBusca("inVerCod", "sugVerCod", true);
+/* Busca de peça: só redesenha a lista de leitura, não mexe no mapa. */
+$("inVerBusca").addEventListener("input", renderVer);
 
 /* ==================================================================
    GRAVAÇÃO — Apps Script + fila local
