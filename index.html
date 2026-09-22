@@ -300,6 +300,9 @@
     background:var(--panel2); color:var(--mut); border-color:var(--amber)}
   .confbar .achou{position:absolute; left:0; bottom:0; white-space:nowrap}
   .prodchip b{color:var(--ink); font-family:var(--f-txt); font-weight:600; letter-spacing:0}
+  /* Mapa de que dia: é o que separa o mapa que vale do mapa velho quando
+     há dois produtos de nome parecido na planilha. */
+  .prodchip .quando{color:var(--amber)}
 
   /* Tablet deitado: duas colunas, e 30 trilhos cabem numa tela sem rolar.
      Em pé (menos de 1000px) continua uma coluna. */
@@ -434,6 +437,9 @@
     background:none; border:none; padding:0; min-height:0; text-transform:none;
     letter-spacing:.03em; display:block; text-align:left; cursor:default}
   .obsit .quem::after{content:none}
+  .obsit .idade{flex:none; font-style:normal; font-family:var(--f-mono); font-size:11px;
+    color:var(--mut2); letter-spacing:.03em}
+  .obsit .idade.velho{color:var(--red)}
   .obsit button.dec{flex:none; min-height:38px; padding:0 13px; font-size:12.5px;
     border-radius:7px; background:transparent; border:1px solid var(--line); color:var(--mut)}
   .obsit button.dec.sim{border-color:var(--green); color:var(--green)}
@@ -866,7 +872,7 @@
 /* Ao publicar uma versão nova, mude aqui e no sw.js. É a troca de bytes do
    sw.js que faz o navegador procurar atualização; este número é o que o
    líder lê no telefone quando a gente pergunta "qual versão está aí?". */
-const VERSAO = "3.16.0";
+const VERSAO = "3.17.0";
 
 /* ==================================================================
    CONFIGURAÇÃO
@@ -934,6 +940,16 @@ const codErp = c => /^\d{9}$/.test(String(c || ""))
    "escriv. canto" casa com "ESCRIVANINHA CANTO MALTA" pelas duas palavras,
    em qualquer ordem. Diferente de `norm`, que cola tudo numa palavra só. */
 const palavras = s => semAcento(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/* De quando é o mapa. A planilha manda isso na lista de produtos e o app
+   ignorava. Quem abastece pelo tablet precisa saber se está lendo o mapa
+   de ontem ou o de três meses atrás — e, com dois produtos de nome
+   parecido na lista, é a data que diz qual é o que vale. */
+const dataCurta = iso => { const d = new Date(iso || ""); return isNaN(d) ? "" : d.toLocaleDateString("pt-BR"); };
+const atualizadoDe = cod => {
+  const p = S.produtos.find(x => normCod(x.cod) === normCod(cod));
+  return p ? dataCurta(p.atualizado) : "";
+};
 
 /* Código do ERP tem dígito e não tem espaço (501.118.001, 501118001). Nome
    de produto tem espaço, ou é só letra. É essa diferença que impede o nome
@@ -1747,6 +1763,10 @@ function linhaObs(o, comProduto){
   const quem = o.nome || nomeColab(o.matricula) || o.matricula || "sem nome";
   const quando = o.ts ? new Date(o.ts).toLocaleDateString("pt-BR") + " " +
                         new Date(o.ts).toTimeString().slice(0, 5) : "";
+  /* Dias em aberto. Sem isso a lista vira cemitério: recado sem idade não
+     cobra nada de ninguém, e em um mês quem avisa desiste de avisar. */
+  const dias = o.ts ? Math.floor((Date.now() - new Date(o.ts)) / 86400000) : 0;
+  const idade = dias >= 1 ? `<i class="idade${dias >= 7 ? " velho" : ""}">${dias} ${dias === 1 ? "dia" : "dias"} em aberto</i>` : "";
   /* OP e trilho na frente do texto: é por onde o PPCP acha o que arrumar. */
   const onde = [o.op ? "OP " + String(o.op).padStart(2, "0") : "", o.trilho ? "TRILHO " + o.trilho : ""]
     .filter(Boolean).join(" · ");
@@ -1754,6 +1774,7 @@ function linhaObs(o, comProduto){
     <div class="txt">${onde ? `<b>${onde}</b>` : ""}${escapa(o.texto)}
       <span class="quem">${escapa(quem)} · ${escapa(quando)}` +
       (comProduto ? ` · ${escapa(o.desc || codErp(o.cod))}` : "") + `</span></div>
+    ${idade}
     <button type="button" class="dec sim" data-st="ARRUMADO">Arrumado</button>
     <button type="button" class="dec" data-st="NAO PROCEDE">Não procede</button>
   </div>`;
@@ -1950,8 +1971,10 @@ function escolherColab({ titulo, atual, ocupado, aoEscolher }){
 }
 $("quemCancel").addEventListener("click", () => $("dlgQuem").close());
 function renderProdChip(){
+  const quando = S.cod ? atualizadoDe(S.cod) : "";
   const txt = S.cod && totalItens()
-    ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs`
+    ? `<b>${escapa(S.desc || "sem descrição")}</b> · ${totalItens()} peças · ${totalOps()} OPs` +
+      (quando ? ` · <span class="quando">mapa de ${quando}</span>` : "")
     : "";
   ["confProd", "verProd"].forEach(id => { const el = $(id); if(el) el.innerHTML = txt; });
 }
@@ -2709,9 +2732,11 @@ function ligarBusca(idIn, idSug, soLeitura){
            espaço depois de escolher, e diz qual linha da planilha
            precisa ser arrumada. */
         const semErp = !pareceCodigo(p.cod);
+        const quando = dataCurta(p.atualizado);
         b.innerHTML = `<span>${escapa(p.desc || "(sem descrição)")}</span>` +
                       `<i${semErp ? ' class="ruim"' : ""}>${escapa(codErp(p.cod))}` +
-                      `${semErp ? " · sem código do ERP" : ""} · ${p.n_trilhos || 0} trilhos</i>`;
+                      `${semErp ? " · sem código do ERP" : ""} · ${p.n_trilhos || 0} trilhos` +
+                      `${quando ? " · mapa de " + quando : ""}</i>`;
         /* Nada de preventDefault aqui: no Android o mouse é simulado
            depois do toque, e cancelá-lo às vezes leva o clique junto.
            Quem garante que o toque chega é o fecharDepois(), que segura a
@@ -2997,7 +3022,8 @@ function montarFolha(){
           <th style="text-align:center">Trilho</th><th style="text-align:center">OK</th></tr></thead>
         <tbody>${corpo}</tbody>
       </table>
-      ${fPe(`${escapa(codErp(S.cod)) || "sem código"} · ${S.nTrilhos} trilhos · ${totalOps()} OPs · ${totalItens()} itens`)}
+      ${fPe(`${escapa(codErp(S.cod)) || "sem código"} · ${S.nTrilhos} trilhos · ${totalOps()} OPs · ` +
+            `${totalItens()} itens` + (atualizadoDe(S.cod) ? ` · mapa atualizado em ${atualizadoDe(S.cod)}` : ""))}
     </div>`;
   return true;
 }

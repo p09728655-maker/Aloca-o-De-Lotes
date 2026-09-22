@@ -297,6 +297,12 @@ com a quantidade em destaque e as etiquetas `insumo` e `suspenso`. As peças fic
 agrupadas por OP, como na folha impressa, e **trilho livre continua aparecendo** — é o
 que evita empurrar a sequência inteira um endereço para a frente.
 
+Cada produto na busca e o produto aberto dizem **de quando é o mapa**. Parece detalhe e
+não é: a planilha tem produtos repetidos — o mesmo móvel salvo duas vezes, uma delas com
+o nome no lugar do código —, e é a data que diz qual dos dois é o que vale. A data sai
+também no rodapé da folha impressa, para dar para comparar a folha pendurada com o mapa
+de hoje. O dado sempre veio da planilha; o app é que o ignorava.
+
 O campo **Achar a peça** responde a outra metade da pergunta: com a peça na mão,
 escreve-se um pedaço do nome (`ISOMANTA`, `RODAPE`) e sobram na tela só os trilhos
 dela, acesos. Apagar a busca devolve o mapa inteiro.
@@ -320,7 +326,10 @@ sai sozinho quando a rede voltar — o que se viu na esteira não depende do wi-
 Do outro lado, no computador: a barra de status mostra **quantos recados estão em
 aberto** e abre a lista com um toque, e o mapa de um produto com recado abre com a
 faixa **A linha avisou** em cima dele — que é onde o PPCP está quando pode arrumar.
-Cada recado tem duas saídas, e as duas fecham o ciclo: **Arrumado** ou **Não procede**.
+Cada recado mostra **há quantos dias está em aberto**, e passa a vermelho depois de uma
+semana — recado sem idade não cobra nada de ninguém, e em um mês quem avisa desiste de
+avisar. Cada um tem duas saídas, e as duas fecham o ciclo: **Arrumado** ou
+**Não procede**.
 A decisão fica gravada na aba `OBSERVACOES` com quem decidiu e quando; nada é apagado.
 
 O recado não muda o mapa sozinho, em nenhum dos dois lados. Ele muda a fila de trabalho
