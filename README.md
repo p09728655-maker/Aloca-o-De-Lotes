@@ -105,45 +105,41 @@ leva o tampo *e* uma isomanta, e os trilhos 4 a 8 estão vazios. Trilho vazio ta
 gravado: é assim que o número de trilhos da esteira e a fronteira de cada OP voltam
 inteiros da planilha.
 
-## Achar o produto — pelo código ou pelo nome
+## O código do produto é o nome dele
 
-O campo do produto aceita as duas coisas, nas duas abas. `501.118.001` abre
-direto; `MALTA` lista os mapas salvos com esse nome. A lista casa **todas as
-palavras** digitadas com o nome e com o código, em qualquer ordem e sem acento
-— `canto malta` acha `ESCRIVANINHA CANTO MALTA` —, e mostra embaixo de cada
-nome o código e o número de trilhos, que é o que separa dois produtos de nome
-parecido. No computador anda pelas setas e `Enter`; no tablet é botão de tocar,
-e o campo deixou de abrir o teclado numérico — com ele não dá para escrever o
-nome.
+Decisão do PPCP, e é coerente com o processo: as planilhas `MAPA DOS TRILHOS DA
+EMBALGEM` que a linha usa **nunca tiveram código do ERP**, e quem está na esteira
+conhece o móvel pelo nome. `ARMARIO ENCANTO` vira `ARMARIOENCANTO`, e é essa a chave do
+mapa. Não há validação de formato, de propósito — exigir um código do ERP faria o campo
+ser preenchido com qualquer coisa, que é pior que não ter.
 
-O que a escolha grava é sempre o **código do ERP**: o nome é só o caminho até
-ele. E é por isso que o campo passou a recusar nome que não existe na planilha.
-O `<datalist>` do navegador, que estava ali antes, só compara o que se digita
-com o **código** — digitar o nome não achava nada e o app tratava o nome *como
-se fosse* o código. Foi assim que um mapa foi parar na planilha com o produto
-`ESCRIVANINHACANTOMALTA`, impresso desse jeito no campo `CÓDIGO` da folha que
-fica pendurada na linha.
+O campo aceita o nome de qualquer jeito: `canto malta`, `CANTO MALTA`, `Cantô Malta`.
+A lista casa **todas as palavras** digitadas com o nome e com o código, em qualquer ordem
+e sem acento, e mostra embaixo de cada nome o código, o número de trilhos e **de quando
+é o mapa** — que é o que separa dois produtos de nome parecido. No computador anda pelas
+setas e `Enter`; no tablet é botão de tocar.
+
+O `<datalist>` do navegador não servia para isso: ele casa o que se digita com o **valor
+da opção** e ignora a descrição, então nome com espaço não achava nada.
+
+**O preço dessa escolha é que escrever diferente cria produto diferente.** Duas defesas
+no app, porque a planilha não tem como impor unicidade de nome:
 
 | o que foi digitado | o que acontece |
 | --- | --- |
-| código que já tem mapa | abre o mapa salvo |
-| nome de um produto só | abre o mapa salvo |
+| nome que já tem mapa | abre o mapa salvo |
+| o mesmo nome com acento ou pontuação diferente (`CÔMODA GOLDEN` × `COMODA GOLDEN`) | abre o que já existe — `normCod` tira o `Ô` junto com o `O`, e sem isto seriam dois produtos |
+| nome que contém outro (`ARMARIO ENCANTO 2 PORTAS`, existindo `ARMARIO ENCANTO`) | **pergunta antes de criar**, mostrando com quem parece |
 | nome que serve para mais de um | pede para escolher na lista |
-| código novo (só dígitos) | produto novo — monta e salva, como sempre |
-| nome que não existe na planilha | avisa, e **não** cria produto |
+| nome sem nenhum parecido | produto novo — monta o mapa e salva |
 
-**Código do ERP é só dígito.** A primeira versão desta regra pedia "um dígito em algum
-lugar, sem espaço", e `HOMERIPADOSUPREMO18CX13` passava — o `1.8` e o `CX 13` do nome
-viravam os dígitos. Se um dia existir código com letra no ERP, é uma linha para
-afrouxar; enquanto não existir, o dígito é a única defesa contra o nome virar código.
+Renomear um produto **não** é salvar de novo com o nome novo: isso deixaria o mapa
+antigo órfão na planilha. É `renomearProduto()` no Apps Script, que troca o código em
+`MAPA`, `CONFERENCIA` e `OBSERVACOES` de uma vez.
 
-O *Salvar mapa* trava pelo mesmo motivo: código que não é só dígito só passa se já
-existir na planilha. Arrumar o que já foi gravado errado é assunto da planilha,
-não do app — o app só não deixa acontecer de novo.
-
-Sem rede nada disso vale: sem a lista lida da planilha não há como saber o que
-existe, então o campo aceita o que for digitado, como sempre fez. É o que
-permite montar mapa offline.
+Sem rede nada disso vale: sem a lista lida da planilha não há como saber o que existe,
+então o campo aceita o que for digitado, como sempre fez. É o que permite montar mapa
+offline.
 
 ## Conferência do lote — uma caixa, não todas
 
@@ -271,23 +267,21 @@ Uma linha por peça da caixa de amostra:
 | `RESULTADO` | `OK` ou `DIVERGENTE` |
 | `OBS` | o que houve, quando divergente |
 
-### Limpar o que já entrou errado
+### Achar o mesmo móvel salvo duas vezes
 
-O campo aceitou nome no lugar de código por um tempo, e a planilha ficou com o mesmo
-móvel salvo duas vezes. Três funções no `Codigo.gs`, para rodar no editor do Apps
-Script, resolvem isso — nessa ordem:
+As defesas do app valem para o que entra daqui para a frente. Para o que já está na
+planilha, três funções no `Codigo.gs`, para rodar no editor do Apps Script:
 
 | função | o que faz |
 | --- | --- |
-| `listarDuplicados()` | **não apaga nada.** Mostra o que seria apagado, o que precisa ser renomeado à mão e o que o script se recusa a decidir |
-| `limparDuplicados()` | apaga só a cópia **sem código do ERP** que tem gêmea com código do ERP, mesmo nome e pelo menos os mesmos itens |
-| `renomearProduto(de, para)` | troca o código em `MAPA`, `CONFERENCIA` e `OBSERVACOES` sem perder o mapa — é o caminho do produto que só existe com o nome no lugar do código |
+| `listarDuplicados()` | **não apaga nada.** Lista os grupos com o mesmo nome e códigos diferentes, e os nomes que são começo de outro |
+| `apagarMapa("COD")` | apaga o mapa de um produto, depois de você decidir qual fica |
+| `renomearProduto(de, para)` | troca o código em `MAPA`, `CONFERENCIA` e `OBSERVACOES` sem perder o mapa |
 
-O que o script **não** faz, de propósito: apagar mapa que não tem gêmea (perderia
-trabalho), decidir entre dois códigos do ERP com o mesmo nome (podem ser duas caixas do
-mesmo móvel, `CX 1/3` e `CX 2/3`), e apagar a cópia sem código quando ela tem **mais**
-itens que a gêmea — aí alguém digitou o mapa bom no registro errado, e isso é decisão
-do PPCP. O histórico de versões da planilha é a rede de segurança.
+O script **não decide sozinho** qual dos dois fica, e isso é de propósito: `BUFFET FLIP
+1.6 CX 1/2` e `CX 2/2` são caixas diferentes do mesmo móvel, não duplicata; e entre duas
+grafias do mesmo nome, quem sabe qual mapa está certo é o PPCP. O histórico de versões
+da planilha é a rede de segurança de qualquer apagão.
 
 ### `OBSERVACOES` — o que a linha avisou
 
@@ -395,14 +389,15 @@ sem adivinhar se `08/09` é agosto ou setembro.
 
 ## Como se usa
 
-**Produto que já tem mapa** — digite o código, ou o nome e escolha na lista.
-O app abre o mapa salvo.
+**Produto que já tem mapa** — digite o nome e escolha na lista. O app abre o mapa
+salvo.
 
 **Produto novo, com o mapa já em planilha** — *Importar Excel*. O app lê os dois
 formatos e diz quantos mapas achou no arquivo; toque no que quer abrir, ponha o
 código do produto e salve.
 
-**Produto novo, do zero** — ponha código e descrição, ajuste o número de trilhos, e
+**Produto novo, do zero** — ponha o nome do produto (que é o código) e a descrição,
+ajuste o número de trilhos, e
 no `+` de cada trilho acrescente os itens. O botão `OP` marca onde começa cada posto.
 
 **Abastecer a esteira** — aba *Ver o mapa*, escolha o produto pelo nome e leia o
