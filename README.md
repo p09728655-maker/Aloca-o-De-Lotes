@@ -263,24 +263,46 @@ Uma linha por peça da caixa de amostra:
 próprio tablet. A conferência grava a **matrícula**, não o nome digitado: é assim que
 o Power BI agrupa a pessoa certa mesmo quando alguém escreve o nome de outro jeito.
 
-## Três abas, uma tela de cada vez
+## Ver o mapa — a tela de quem abastece a esteira
 
-No tablet, em pé, a conferência não pode morar embaixo de 30 trilhos. O app tem três
-abas — **Mapa dos trilhos**, **Conferência do lote** e **Relatório** — e cada uma
-ocupa a tela inteira. A aba fica gravada no aparelho: o tablet da esteira abre na
-Conferência e fica nela.
+Quem põe a peça no trilho não monta mapa e não confere lote: precisa saber **em que
+endereço cada peça entra**, e precisa saber rápido, de pé, com a peça na mão. Essa é
+a aba **Ver o mapa**, e ela é **só leitura** — nenhum campo de digitar peça, nenhum
+botão de marca, nada que estrague o mapa por engano.
 
-A Conferência tem o seu próprio campo de **código do produto**, com a mesma lista de
-mapas salvos: o líder digita o código, o mapa abre ali mesmo, digita o lote e confere.
-Não precisa passar pelo Mapa dos trilhos. Produto sem mapa salvo avisa: o mapa se
-monta no computador.
+O desenho segue a pergunta: o **número do trilho é o maior elemento da linha**, porque
+é o endereço que o olho procura ao voltar da esteira para o tablet; ao lado vem a peça,
+com a quantidade em destaque e as etiquetas `insumo` e `suspenso`. As peças ficam
+agrupadas por OP, como na folha impressa, e **trilho livre continua aparecendo** — é o
+que evita empurrar a sequência inteira um endereço para a frente.
 
-No ⚙ há a opção **Tablet da esteira: só a Conferência do lote**. Ligada, o app esconde
-as abas de Mapa e Relatório — mapa se monta e relatório se tira no computador, o
-tablet só confere. A opção fica gravada no aparelho.
+O campo **Achar a peça** responde a outra metade da pergunta: com a peça na mão,
+escreve-se um pedaço do nome (`ISOMANTA`, `RODAPE`) e sobram na tela só os trilhos
+dela, acesos. Apagar a busca devolve o mapa inteiro.
 
-Em tela larga (tablet deitado) trilhos e peças aparecem em **duas colunas**: o mapa
-de 30 trilhos cabe sem rolar. Trilho vazio ocupa uma linha só, com `+` e `OP`.
+O mapa aberto é o mesmo das outras abas — mesma busca de produto, mesmo estado. Abrir
+outro produto aqui troca o mapa da tela, e se houver conferência marcada e não gravada
+o app avisa antes, como sempre.
+
+## Quatro abas, uma tela de cada vez
+
+No tablet, em pé, a conferência não pode morar embaixo de 30 trilhos. O app tem quatro
+abas — **Mapa dos trilhos**, **Ver o mapa**, **Conferência do lote** e **Relatório** —
+e cada uma ocupa a tela inteira. A aba fica gravada no aparelho.
+
+A Conferência e o Ver o mapa têm o seu próprio campo de **produto**, com a mesma lista
+de mapas salvos: o líder digita o código ou o nome, o mapa abre ali mesmo, digita o
+lote e confere. Não precisa passar pelo Mapa dos trilhos. Produto sem mapa salvo
+avisa: o mapa se monta no computador.
+
+No ⚙ há a opção **Tablet da esteira: só Ver o mapa e a Conferência do lote**. Ligada,
+o app esconde a montagem do mapa e o Relatório — os dois são do computador — e abre no
+Ver o mapa. A barra de abas continua na tela com as duas que sobram, para quem
+abastece voltar do lote para o mapa sem sair do app. A opção fica gravada no aparelho.
+
+Na Conferência, em tela larga (tablet deitado), as peças aparecem em **duas colunas**:
+o mapa de 30 trilhos cabe sem rolar. O Ver o mapa e a montagem ficam em **uma coluna
+só**, na ordem da esteira.
 
 ## Relatório — buscar o que foi conferido
 
@@ -309,6 +331,10 @@ código do produto e salve.
 **Produto novo, do zero** — ponha código e descrição, ajuste o número de trilhos, e
 no `+` de cada trilho acrescente os itens. O botão `OP` marca onde começa cada posto.
 
+**Abastecer a esteira** — aba *Ver o mapa*, escolha o produto pelo nome e leia o
+trilho de cada peça. Com a peça na mão e dúvida de onde ela vai, escreva parte do
+nome em *Achar a peça*.
+
 **Conferir um lote** — com o mapa na tela, preencha o lote e a data, diga quem está
 em cada OP, toque nas peças que estiverem erradas e grave. Lote já conferido abre com
 o que foi gravado, para quem volta corrigir uma divergência.
@@ -317,7 +343,15 @@ o que foi gravado, para quem volta corrigir uma divergência.
 escrever à mão; depois alguém digita no app.
 
 Sem rede o app continua funcionando: o que está na tela é guardado no aparelho a cada
-toque, e a gravação entra numa fila que sai por *Reenviar pendentes*. Falha de rede
+toque, e a gravação entra numa fila que sai por *Reenviar pendentes*.
+
+**Quando a planilha não responde** — toda chamada ao Apps Script tem prazo de 25
+segundos. Passou disso, a tela diz o que aconteceu e mostra *Tentar de novo*, em vez
+de ficar em "Lendo a planilha…" para sempre; o app ainda tenta sozinho uma segunda vez,
+cinco segundos depois. Sem a lista lida da planilha **não há busca por nome** — é ela
+que o campo procura —, e a lista do campo diz isso em vez de aparecer vazia. A leitura
+dos produtos também não espera mais a dos colaboradores: assim que os produtos chegam,
+a busca já funciona. Falha de rede
 segura a fila até a próxima tentativa; envio que a **planilha recusa** sai da frente e
 fica separado como *recusado*, com o motivo, para não prender os lotes que vêm atrás.
 *Ver recusados* mostra a lista e devolve tudo para a fila. O que ficou guardado sai
