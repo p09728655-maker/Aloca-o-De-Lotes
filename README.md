@@ -129,10 +129,15 @@ fica pendurada na linha.
 | código que já tem mapa | abre o mapa salvo |
 | nome de um produto só | abre o mapa salvo |
 | nome que serve para mais de um | pede para escolher na lista |
-| código novo (tem dígito, não tem espaço) | produto novo — monta e salva, como sempre |
+| código novo (só dígitos) | produto novo — monta e salva, como sempre |
 | nome que não existe na planilha | avisa, e **não** cria produto |
 
-O *Salvar mapa* trava pelo mesmo motivo: código sem nenhum dígito só passa se já
+**Código do ERP é só dígito.** A primeira versão desta regra pedia "um dígito em algum
+lugar, sem espaço", e `HOMERIPADOSUPREMO18CX13` passava — o `1.8` e o `CX 13` do nome
+viravam os dígitos. Se um dia existir código com letra no ERP, é uma linha para
+afrouxar; enquanto não existir, o dígito é a única defesa contra o nome virar código.
+
+O *Salvar mapa* trava pelo mesmo motivo: código que não é só dígito só passa se já
 existir na planilha. Arrumar o que já foi gravado errado é assunto da planilha,
 não do app — o app só não deixa acontecer de novo.
 
@@ -265,6 +270,24 @@ Uma linha por peça da caixa de amostra:
 | `MATRICULA` · `NOME` | **quem estava naquela OP naquele dia** |
 | `RESULTADO` | `OK` ou `DIVERGENTE` |
 | `OBS` | o que houve, quando divergente |
+
+### Limpar o que já entrou errado
+
+O campo aceitou nome no lugar de código por um tempo, e a planilha ficou com o mesmo
+móvel salvo duas vezes. Três funções no `Codigo.gs`, para rodar no editor do Apps
+Script, resolvem isso — nessa ordem:
+
+| função | o que faz |
+| --- | --- |
+| `listarDuplicados()` | **não apaga nada.** Mostra o que seria apagado, o que precisa ser renomeado à mão e o que o script se recusa a decidir |
+| `limparDuplicados()` | apaga só a cópia **sem código do ERP** que tem gêmea com código do ERP, mesmo nome e pelo menos os mesmos itens |
+| `renomearProduto(de, para)` | troca o código em `MAPA`, `CONFERENCIA` e `OBSERVACOES` sem perder o mapa — é o caminho do produto que só existe com o nome no lugar do código |
+
+O que o script **não** faz, de propósito: apagar mapa que não tem gêmea (perderia
+trabalho), decidir entre dois códigos do ERP com o mesmo nome (podem ser duas caixas do
+mesmo móvel, `CX 1/3` e `CX 2/3`), e apagar a cópia sem código quando ela tem **mais**
+itens que a gêmea — aí alguém digitou o mapa bom no registro errado, e isso é decisão
+do PPCP. O histórico de versões da planilha é a rede de segurança.
 
 ### `OBSERVACOES` — o que a linha avisou
 
