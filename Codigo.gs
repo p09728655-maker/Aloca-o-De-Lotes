@@ -55,8 +55,11 @@ var CAB_COLAB = ['MATRICULA', 'NOME', 'ATIVO', 'CADASTRADO_EM'];
    ID nasce no app: e ele que faz o reenvio da fila nao duplicar o recado e
    o "arrumado" achar a linha certa depois.
    STATUS: ABERTA -> ARRUMADO ou NAO PROCEDE. */
+/* OP entra no FIM da lista, e nao ao lado de TRILHO, que era o lugar
+   natural dela: aba() so sabe acrescentar coluna no fim. Enfiada no meio,
+   a coluna nova cairia em cima do texto dos recados ja gravados. */
 var CAB_OBS = ['ID', 'TS', 'COD_PRODUTO', 'DESC_PRODUTO', 'TRILHO',
-               'MATRICULA', 'NOME', 'TEXTO', 'STATUS', 'TS_STATUS', 'RESOLVIDO_POR'];
+               'MATRICULA', 'NOME', 'TEXTO', 'STATUS', 'TS_STATUS', 'RESOLVIDO_POR', 'OP'];
 
 var CAB_CONF = ['TS', 'LOTE', 'DATA_EMB', 'COD_PRODUTO', 'DESC_PRODUTO',
                 'TRILHO', 'OP', 'COD_ITEM', 'DESC_ITEM', 'QTD',
@@ -466,7 +469,8 @@ function gravarObs(ss, p) {
   });
   sh.getRange(ini, 1, 1, CAB_OBS.length).setValues([[
     id, new Date(), cod, String(p.desc || ''), Number(p.trilho) || '',
-    String(p.matricula || ''), String(p.nome || ''), texto, 'ABERTA', '', ''
+    String(p.matricula || ''), String(p.nome || ''), texto, 'ABERTA', '', '',
+    Number(p.op) || ''
   ]]);
   return { ok: true, id: id };
 }
@@ -483,7 +487,8 @@ function listarObs(ss) {
     out.push({
       id: String(r[0] || ''), ts: r[1] instanceof Date ? r[1].toISOString() : String(r[1] || ''),
       cod: normCod(r[2]), desc: String(r[3] || ''), trilho: Number(r[4]) || 0,
-      matricula: String(r[5] || ''), nome: String(r[6] || ''), texto: String(r[7] || '')
+      matricula: String(r[5] || ''), nome: String(r[6] || ''), texto: String(r[7] || ''),
+      op: Number(r[11]) || 0
     });
   });
   out.sort(function (a, b) { return a.ts < b.ts ? 1 : -1; });   // a mais nova primeiro
